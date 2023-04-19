@@ -52,7 +52,7 @@ number_streams = length(all_streams)
 #Trib index to use to predict efficiency for missing strata.
 #Note length=0 if doTrib is not part of trib set that has MR data. In this case model that samples from trib hyper will be called
 use_stream = which(all_streams == selected_stream)
-selected_run_year <- 2009
+selected_run_years <- 2009
 
 select_stream_data <- function(all_data, selected_stream, selected_run_years) {
   all_data |>
@@ -60,7 +60,7 @@ select_stream_data <- function(all_data, selected_stream, selected_run_years) {
          run_year %in% selected_run_years)
 }
 
-selected_stream_data <- select_stream_data(weekly_tributary_RST, selected_stream, selected_run_year)
+selected_stream_data <- select_stream_data(weekly_tributary_RST, selected_stream, selected_run_years)
 
 select_efficiency_data <- function(all_data) {
   all_data |>
@@ -75,7 +75,6 @@ efficiency_trials = unique(efficiency_data[c("stream", "run_year", "week")])
 number_efficiency_trials = nrow(efficiency_trials)
 efficiency_trials_years = unique(efficiency_trials$run_year)
 
-# TODO start here
 selected_weeks <- 1:53
 number_weeks <- length(selected_weeks)
 
@@ -87,98 +86,46 @@ indexes_year <- tibble(run_year = selected_run_year,
                        year_idx = row_number(selected_run_year))
 
 stream_flows <- efficiency_data |>
-  group_by(stream) |>
+  group_by(stream, site) |>
   summarise(stream_flow_mean = mean(flow_at_catch, na.rm = T),
             stream_flow_sd = sd(flow_at_catch, na.rm = T)) |>
   glimpse()
 
 efficiency_data_with_indices <- efficiency_trials |>
-  left_join(efficiency_data |> select(stream, run_year, week, release, recapture, flow_at_catch),
+  left_join(efficiency_data |> select(stream, run_year, week, release, recapture, flow_at_release),
             by = c("stream", "run_year", "week")) |>
   left_join(indexes_stream, by = "stream") |>
   left_join(indexes_week, by = "week") |>
   left_join(indexes_year, by = "run_year") |>
   left_join(stream_flows, by = "stream") |>
-  # TODO check this equation
-  mutate(standardized_flow = (flow_at_catch - stream_flow_mean) / stream_flow_sd) |>
-  select(-c(stream_flow_mean, stream_flow_sd)) |>
+  filter(run_year %in% selected_run_years,
+         week %in% selected_weeks,
+         stream %in% selected_stream) |>
+  mutate(standardized_flow = (flow_at_release - stream_flow_mean) / stream_flow_sd) |>
+  select(-c(stream_flow_mean, stream_flow_sd, flow_at_release)) |>
   glimpse()
 
-# check this against MRdata.txt (not complete, just battle & clear)
-
-Ntribs = length(alltribs)
-Nwks = length(doWks)
-Releases = vector(length = Nmr)
-Recaptures = Releases
-mr_flow = Releases
-ind_trib = vector(length = Nmr)
-ind_yr = ind_trib
-ind_wk = ind_trib
-
-
-#Loop through MR set and assign variables and indices (what, trib, year and week it belongs to
-#Note not all indices will be used in pCap model (e.g., ind_Wk won't be used if there is not a Week effect)
-for (i in 1:Nmr) {
-  dmr1 = subset(dmr,
-                Trib == mr_expts$Trib[i] &
-                  RunYr == mr_expts$RunYr[i] & Week == mr_expts$Week[i])
-  Releases[i] = dmr1$Rel1
-  Recaptures[i] = dmr1$Recap1
-
-  #create standardized flow for mark-recap experiments. catch_flow which is average for Jwk, mr_flow is average over recapture days (< 1 week)
-  #use mr_flow in fitting (as for /pCap/pCap.tws), but standardized based on catch_flow, which will be used in prediction
-  #for strata without MR data. Fitting based on mr_flow is more accurate and produces gentler b_flow.? slopes which provides more stability in abundance estimates
-  #Otherwise you can get very low pCaps at high flows for some tris
-  dmr1X = subset(dmr, Trib == mr_expts$Trib[i] &
-                   is.na(match(Week, doWks)) == F)
-  mr_flow[i] = (dmr1$mr_flow - mean(dmr1X$catch_flow, na.rm = T)) / sd(dmr1X$catch_flow, na.rm = T)
-  #mr_flow[i]=(dmr1$catch_flow-mean(dmr1X$catch_flow,na.rm=T))/sd(dmr1X$catch_flow,na.rm=T)
-
-  ind_trib[i] = which(alltribs == mr_expts$Trib[i])
-  ind_yr[i] = which(allyrs == mr_expts$RunYr[i])
-  if (length(which(doWks == mr_expts$Week[i])) > 0)
-    ind_wk[i] = which(doWks == mr_expts$Week[i])
-}
-
-
-
-#######################################################################################################
-
-#### Setup data and initial values for abundance component of model ##############
-Nstrata = dim(dC)[1]
-u0 = dC$us	#may includes strata with no catch data which will be na
-
-if (doTrib == "deer creek_deer creek" |
-    doTrib == "mill creek_mill creek") {
-  #currenly spring run not distingusihed, and there is also no effort for any records
-  #for now use total chinook, and don't adjust as effort data not available
-  u0 = dC$ua
-}
-
-#Effort adjustment will be ratio of average effort for trib across all years and doWks period relative to weekly effort value
-Effort = dC$Effort
-if (length(which(is.na(Effort) == T)) == Nstrata) {
-  #No effort data
-  muEff = 1	#Deer and mill have run years where there is no effort data, so assume constant over time
-  Effort = 1
+# TODO check this logic
+if(EffortAdjust == FALSE) {
+  abundance_data <- efficiency_data |>
+    filter(stream %in% selected_stream,
+           week %in% selected_weeks,
+           !is.na(week),
+           run_year %in% selected_run_years,
+           !is.na(effort)) |>
+    mutate(abundance = catch_spring)
 } else {
-  dCx = subset(d0, Trib == doTrib &
-                 is.na(match(Week, doWks)) == F & is.na(Effort) == F)
-  bad_recs = which(is.na(u0) == F &
-                     Effort == 0) #In rare cases where strata was fished but no effort was recorded assume average effort for year
-  if (length(bad_recs) == 0) {
-    muEff = mean(dCx$Effort, na.rm = T)
-  } else {
-    muEff = mean(dCx$Effort[-bad_recs], na.rm = T)
-    Effort[bad_recs] = muEff
-  }
+  abundance_data <- efficiency_data |>
+    filter(stream %in% selected_stream,
+           week %in% selected_weeks,
+           !is.na(week),
+           run_year %in% selected_run_years,
+           !is.na(effort)) |>
+    mutate(effort = ifelse(stream %in% c("deer creek", "mill creek"), 1, effort),
+           mean_effort = ifelse(stream %in% c("deer creek", "mill creek"), 1, mean(effort, na.rm = T)),
+           abundance = round((catch_spring * mean_effort)/effort, 0))
 }
-#Finally, adjust u based on ratio of mean effort to strata-specific effort
-if (EffortAdjust == T) {
-  u = round(u0 * muEff / Effort, digits = 0)
-} else {
-  u = u0
-}
+
 
 #Prior for upper limit on log abundance for any week. Note lgN estimated in units of thousands to avoid values in millions which occurs becasue of huge weekly catches in Butte
 #Likely results in reduced precision problems and better mising for other systems with big numbers as well
