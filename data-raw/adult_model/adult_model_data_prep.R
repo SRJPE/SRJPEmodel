@@ -128,9 +128,12 @@ gdd <- left_join(gdd_trib, gdd_sac,
   mutate(gdd_sac = ifelse(is.na(gdd_sac), 0, gdd_sac)) |>
   group_by(year, stream) |>
   summarise(gdd = sum(gdd_trib, gdd_sac)) |>
+  ungroup() |>
+  mutate(gdd = ifelse(gdd < 0, 0, gdd)) |>
   glimpse()
 
-
+# https://www.rdocumentation.org/packages/pollen/versions/0.82.0/topics/gdd
+# https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study
 
 # flow --------------------------------------------------------------------
 
@@ -220,6 +223,13 @@ survival_model_data |>
   ylab("Prespawn survival")
 
 survival_model_data |>
+  ggplot(aes(x = gdd, y = prespawn_survival, fill = stream)) +
+  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
+  theme_minimal() + ggtitle("Prespawn survival and GDD by stream") +
+  xlab("Growing degree days (GDD)") +
+  ylab("Prespawn survival")
+
+survival_model_data |>
   ggplot(aes(x = mean_flow, y = prespawn_survival, fill = stream)) +
   geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
   theme_minimal() + ggtitle("Prespawn survival and mean flow by stream") +
@@ -253,7 +263,7 @@ survival_model_data |>
   theme_minimal() + ggtitle("Prespawn survival and year")
 
 
-# identify variables for each stream --------------------------------
+# check for collinearity for each stream --------------------------------
 battle_data <- survival_model_data |>
   filter(stream == "battle creek") |>
   select(-c(year, stream, prop_days_exceed_threshold_migratory,
@@ -275,22 +285,22 @@ ggpairs(mill_data)
 
 # use step function: https://www.statology.org/multiple-linear-regression-r/
 
+
+# multiple linear regressions ---------------------------------------------
+
+
 # BATTLE
 intercept_only <- lm(prespawn_survival ~ 1, data = battle_data |>
                        filter(!is.na(mean_flow)))
 all <- lm(prespawn_survival ~ ., data = battle_data |>
             filter(!is.na(mean_flow)))
-forward <- step(intercept_only,
-                direction = "forward",
-                scope = formula(all))
-forward$anova
-forward$coefficients
-
-backward <- step(all,
-                 direction = "backward",
-                 scope = formula(all))
-backward$anova
-backward$coefficients
+# forward <- step(intercept_only,
+#                 direction = "forward",
+#                 scope = formula(all))
+#
+# backward <- step(all,
+#                  direction = "backward",
+#                  scope = formula(all))
 
 both_directions <- step(intercept_only,
                         direction = "both",
@@ -303,7 +313,7 @@ both_directions$coefficients
 battle_model <- lm(prespawn_survival ~ min_passage_timing,
                    data = battle_data)
 summary(battle_model)
-battle_model |>
+battle_data |>
   ggplot(aes(x = min_passage_timing, y = prespawn_survival)) + geom_point() +
   geom_smooth(method = "lm") + theme_minimal() +
   ggtitle("Linear regression of minimum passage week on prespawn survival - Battle Creek") +
@@ -315,17 +325,6 @@ intercept_only <- lm(prespawn_survival ~ 1, data = clear_data |>
                        filter(!is.na(median_passage_timing)))
 all <- lm(prespawn_survival ~ ., data = clear_data |>
             filter(!is.na(median_passage_timing)))
-forward <- step(intercept_only,
-                direction = "forward",
-                scope = formula(all))
-forward$anova
-forward$coefficients
-
-backward <- step(all,
-                 direction = "backward",
-                 scope = formula(all))
-backward$anova
-backward$coefficients
 
 both_directions <- step(intercept_only,
                         direction = "both",
@@ -333,36 +332,25 @@ both_directions <- step(intercept_only,
 both_directions$anova
 both_directions$coefficients
 
-summary(lm(prespawn_survival ~ min_passage_timing, data = clear_data |>
+summary(lm(prespawn_survival ~ gdd, data = clear_data |>
              filter(!is.na(median_passage_timing))))$r.squared
 summary(lm(prespawn_survival ~ mean_flow, data = clear_data |>
              filter(!is.na(median_passage_timing))))$r.squared
 
 # mean flow
-clear_model <- lm(prespawn_survival ~ mean_flow,
+clear_model <- lm(prespawn_survival ~ gdd,
                    data = clear_data)
 summary(clear_model)
-clear_model |>
-  ggplot(aes(x = mean_flow, y = prespawn_survival)) + geom_point() +
+clear_data |>
+  ggplot(aes(x = gdd, y = prespawn_survival)) + geom_point() +
   geom_smooth(method = "lm") + theme_minimal() +
-  ggtitle("Linear regression of mean flow on prespawn survival - Clear Creek") +
-  xlab("Mean flow (cfs)") +
+  ggtitle("Linear regression of GDD on prespawn survival - Clear Creek") +
+  xlab("Growing degree days") +
   ylab("Prespawn survival")
 
 # MILL
 intercept_only <- lm(prespawn_survival ~ 1, data = mill_data)
 all <- lm(prespawn_survival ~ ., data = mill_data)
-forward <- step(intercept_only,
-                direction = "forward",
-                scope = formula(all))
-forward$anova
-forward$coefficients
-
-backward <- step(all,
-                 direction = "backward",
-                 scope = formula(all))
-backward$anova
-backward$coefficients
 
 both_directions <- step(intercept_only,
                         direction = "both",
@@ -371,14 +359,14 @@ both_directions$anova
 both_directions$coefficients
 
 summary(lm(prespawn_survival ~ 1, data = mill_data))$r.squared
-summary(lm(prespawn_survival ~ mean_flow + total_prop_days_exceed_threshold, data = mill_data))$r.squared
+summary(lm(prespawn_survival ~ mean_flow + gdd, data = mill_data))$r.squared
 
 # according to backward, temperature and mean_flow
 mill_model <- lm(prespawn_survival ~ total_prop_days_exceed_threshold + mean_flow,
                   data = mill_data)
 summary(mill_model)
 avPlots(mill_model)
-mill_model |>
+mill_data |>
   ggplot(aes(x = mean_flow, y = prespawn_survival)) + geom_point() +
   geom_smooth(method = "lm") + theme_minimal() +
   ggtitle("Linear regression of mean flow on prespawn survival - Clear Creek") +
