@@ -8,6 +8,8 @@ library(rstan)
 library(bayesplot)
 library(GGally) # pairs plot
 library(waterYearType)
+library(car) # vif
+library(glmulti)
 
 # pull adult data & process ----------------------------------------------------------------
 gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
@@ -105,7 +107,7 @@ holding_temp <- standard_temp |>
 
 # growing degree days
 gdd_base_sac <- 0 # TODO confirm this
-gdd_base_trib <- 1
+gdd_base_trib <- 0
 
 gdd_sac <- standard_temp |>
   filter(month(date) %in% 3:5, stream == "sacramento river") |>
@@ -211,6 +213,7 @@ survival_model_data <- left_join(prespawn_survival,
   left_join(gdd,
             by = c("year", "stream")) |>
   dplyr::select(-c(upstream_count, redd_count, female_upstream)) |>
+  drop_na() |>
   glimpse()
 
 
@@ -222,6 +225,7 @@ survival_model_data |>
   xlab("Proportion of days exceeding threshold temperature") +
   ylab("Prespawn survival")
 
+# TODO anomalous point for 2013 clear creek
 survival_model_data |>
   ggplot(aes(x = gdd, y = prespawn_survival, fill = stream)) +
   geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
@@ -264,143 +268,148 @@ survival_model_data |>
 
 
 # check for collinearity for each stream --------------------------------
+# function to print Pearsons correlations
+print_cors <- function(data, cor_threshold) {
+  new_dat <- data |>
+    select(-c(prespawn_survival, water_year_type)) |> # can't calculate cor for a categorical variable
+    drop_na() |>
+    cor() |>
+    as.matrix()
+
+  new_dat[lower.tri(new_dat)] <- NA # get rid of duplicates (lower tri of matrix)
+
+  new_dat |>
+    as.data.frame() |>
+    rownames_to_column(var = "variable") |>
+    pivot_longer(cols = -variable, names_to = "variable_2",
+                 values_to = "correlation") |>
+    filter(!is.na(correlation),
+           abs(correlation) >= cor_threshold,
+           variable != variable_2)
+}
+
+# steps for each stream:
+# 1. look at ggpairs
+# 2. look at Pearson's correlations above threshold 0.65
+# 3. use VIF to identify correlated variables (threshold is 5)
+# 4. use steps 1:3 to select ONE passage timing variable and ONE temperature variable -
+# you can't use the glmulti() function with all these variables - it won't converge
+# theory - GDD is the standard. stronger than total_prop_days
+# 5. use glmuli to look for the best model (by AIC) - including interactions
+
 battle_data <- survival_model_data |>
   filter(stream == "battle creek") |>
   select(-c(year, stream, prop_days_exceed_threshold_migratory,
             prop_days_exceed_threshold_holding))
 ggpairs(battle_data)
+print_cors(battle_data, 0.65) # mean passage timing is correlated with other passage timing
+vif(lm(prespawn_survival ~ ., data = battle_data)) # remove median and mean passage timing
+vif(lm(prespawn_survival ~ ., data = battle_data |> select(-c(mean_passage_timing, median_passage_timing)))) # remove total_prop_days_exceed_threshold
 
+# remove variables with highest VIF values
+battle_variables_remove <- c("mean_passage_timing", "median_passage_timing", "total_prop_days_exceed_threshold")
+
+# now look for interactions using glmulti
+best_battle_model <- glmulti(y = "prespawn_survival",
+                             xr = battle_data |> select(-c("prespawn_survival",
+                                                           all_of(battle_variables_remove))) |>
+                               names(),
+                             intercept = TRUE,
+                             method = "h",
+                             level = 2,
+                             data = battle_data,
+                             fitfunction = "lm")
+
+# clear
 clear_data <- survival_model_data |>
   filter(stream == "clear creek") |>
   select(-c(year, stream, prop_days_exceed_threshold_migratory,
             prop_days_exceed_threshold_holding))
 ggpairs(clear_data)
+print_cors(clear_data, 0.65) # mean passage timing is correlated with other passage timing
+vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(mean_passage_timing, median_passage_timing,
+                                                             water_year_type)))) # variation inflaction factor - if over 5, concerning
+vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(min_passage_timing, median_passage_timing,
+                                                             water_year_type)))) # not as good as above
+vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(min_passage_timing, mean_passage_timing,
+                                                             water_year_type))))
+vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(min_passage_timing, mean_passage_timing,
+                                                             water_year_type, total_prop_days_exceed_threshold))))
+vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(min_passage_timing, mean_passage_timing,
+                                                             water_year_type, gdd)))) # gdd is better
 
+# remove variables with highest VIF values
+clear_variables_remove <- c("median_passage_timing", "mean_passage_timing", "water_year_type",
+                            "total_prop_days_exceed_threshold")
+
+# now look for interactions using glmulti
+best_clear_model <- glmulti(y = "prespawn_survival",
+                            xr = clear_data |> select(-c("prespawn_survival",
+                                                         all_of(clear_variables_remove))) |>
+                              names(),
+                            intercept = TRUE,
+                            method = "h",
+                            level = 2,
+                            data = clear_data,
+                            fitfunction = "lm")
+
+# mill
 mill_data <- survival_model_data |>
   filter(stream == "mill creek") |>
   select(-c(year, stream, prop_days_exceed_threshold_migratory,
             prop_days_exceed_threshold_holding,
             median_passage_timing, mean_passage_timing, min_passage_timing)) # mill does not have passage timing
+
 ggpairs(mill_data)
+print_cors(mill_data, 0.65) # mean passage timing is correlated with other passage timing
+vif(lm(prespawn_survival ~ ., data = mill_data))
+vif(lm(prespawn_survival ~ ., data = mill_data |> select(-c(mean_flow))))
+vif(lm(prespawn_survival ~ ., data = mill_data |> select(-c(total_prop_days_exceed_threshold))))
 
-# use step function: https://www.statology.org/multiple-linear-regression-r/
+summary(lm(prespawn_survival ~ mean_flow, data = mill_data))$r.squared # mean flow is worse
+summary(lm(prespawn_survival ~ total_prop_days_exceed_threshold, data = mill_data))$r.squared
+summary(lm(prespawn_survival ~ gdd, data = mill_data))$r.squared
+
+# remove variables with highest VIF values
+mill_variables_remove <- c("total_prop_days_exceed_threshold")
+
+# now look for interactions using glmulti
+best_mill_model <- glmulti(y = "prespawn_survival",
+                           xr = mill_data |> select(-c("prespawn_survival",
+                                                       all_of(mill_variables_remove))) |>
+                             names(),
+                           intercept = TRUE,
+                           method = "h",
+                           level = 2,
+                           data = mill_data,
+                           fitfunction = "lm")
+# plot best models
+summary(best_battle_model)$bestmodel
+best_battle_lm <- lm(prespawn_survival ~ 1 + min_passage_timing + gdd:mean_flow,
+                     data = battle_data)
+avPlots(best_battle_lm)
+
+summary(best_clear_model)$bestmodel
+best_clear_lm <- lm(prespawn_survival ~ 1 + mean_flow + min_passage_timing + gdd +
+                      min_passage_timing:mean_flow + gdd:mean_flow + gdd:min_passage_timing,
+                     data = clear_data)
+avPlots(best_clear_lm)
+
+summary(best_mill_model)$bestmodel
+best_mill_lm <- lm(prespawn_survival ~ 1 + mean_flow + water_year_type:mean_flow,
+                     data = mill_data)
+avPlots(best_mill_lm)
 
 
-# multiple linear regressions ---------------------------------------------
 
-
-# BATTLE
-intercept_only <- lm(prespawn_survival ~ 1, data = battle_data |>
-                       filter(!is.na(mean_flow)))
-all <- lm(prespawn_survival ~ ., data = battle_data |>
-            filter(!is.na(mean_flow)))
-# forward <- step(intercept_only,
-#                 direction = "forward",
-#                 scope = formula(all))
-#
-# backward <- step(all,
-#                  direction = "backward",
-#                  scope = formula(all))
-
-both_directions <- step(intercept_only,
-                        direction = "both",
-                        scope = formula(all))
-both_directions$anova
-both_directions$coefficients
-
-# min passage timing
-
-battle_model <- lm(prespawn_survival ~ min_passage_timing,
-                   data = battle_data)
-summary(battle_model)
-battle_data |>
-  ggplot(aes(x = min_passage_timing, y = prespawn_survival)) + geom_point() +
-  geom_smooth(method = "lm") + theme_minimal() +
-  ggtitle("Linear regression of minimum passage week on prespawn survival - Battle Creek") +
-  xlab("Minimum passage timing (julian week)") +
-  ylab("Prespawn survival")
-
-# CLEAR
-intercept_only <- lm(prespawn_survival ~ 1, data = clear_data |>
-                       filter(!is.na(median_passage_timing)))
-all <- lm(prespawn_survival ~ ., data = clear_data |>
-            filter(!is.na(median_passage_timing)))
-
-both_directions <- step(intercept_only,
-                        direction = "both",
-                        scope = formula(all))
-both_directions$anova
-both_directions$coefficients
-
-summary(lm(prespawn_survival ~ gdd, data = clear_data |>
-             filter(!is.na(median_passage_timing))))$r.squared
-summary(lm(prespawn_survival ~ mean_flow, data = clear_data |>
-             filter(!is.na(median_passage_timing))))$r.squared
-
-# mean flow
-clear_model <- lm(prespawn_survival ~ gdd,
-                   data = clear_data)
-summary(clear_model)
-clear_data |>
-  ggplot(aes(x = gdd, y = prespawn_survival)) + geom_point() +
-  geom_smooth(method = "lm") + theme_minimal() +
-  ggtitle("Linear regression of GDD on prespawn survival - Clear Creek") +
-  xlab("Growing degree days") +
-  ylab("Prespawn survival")
-
-# MILL
-intercept_only <- lm(prespawn_survival ~ 1, data = mill_data)
-all <- lm(prespawn_survival ~ ., data = mill_data)
-
-both_directions <- step(intercept_only,
-                        direction = "both",
-                        scope = formula(all))
-both_directions$anova
-both_directions$coefficients
-
-summary(lm(prespawn_survival ~ 1, data = mill_data))$r.squared
-summary(lm(prespawn_survival ~ mean_flow + gdd, data = mill_data))$r.squared
-
-# according to backward, temperature and mean_flow
-mill_model <- lm(prespawn_survival ~ total_prop_days_exceed_threshold + mean_flow,
-                  data = mill_data)
-summary(mill_model)
-avPlots(mill_model)
-mill_data |>
-  ggplot(aes(x = mean_flow, y = prespawn_survival)) + geom_point() +
-  geom_smooth(method = "lm") + theme_minimal() +
-  ggtitle("Linear regression of mean flow on prespawn survival - Clear Creek") +
-  xlab("Mean flow (cfs)") +
-  ylab("Prespawn survival")
-
-# ALL
-intercept_only <- lm(prespawn_survival ~ 1, data = survival_model_data)
-all <- lm(prespawn_survival ~ ., data = survival_model_data)
-forward <- step(intercept_only,
-                direction = "forward",
-                scope = formula(all))
-forward$anova
-forward$coefficients
-
-backward <- step(all,
-                 direction = "backward",
-                 scope = formula(all))
-backward$anova
-backward$coefficients
-
-both_directions <- step(intercept_only,
-                        direction = "both",
-                        scope = formula(all))
-both_directions$anova
-both_directions$coefficients
-# TODO what is most important variable when all data included together?
 
 # next steps --------------------------------------------------------------
 
 
-# TODO passage timing/mean flow - choose one
-# TODO best way to summarize timing
-# TODO then can we get rid of year effect (or absorb it)
+
+# scratch -----------------------------------------------------------------
+
+
 
 # use mean flow (based on m5 r squared > m6 ?)
 # recommended models - variation among streams
@@ -519,6 +528,93 @@ compare_models("battle creek")
 # cumulative normal plots of passage
 # additional thinking and exploration of year effect
 
+
+# more scratch ------------------------------------------------------------
+
+# use step function: https://www.statology.org/multiple-linear-regression-r/
+
+
+# decide on which param should represent temp & passage ---------------------------------------------
+
+
+# BATTLE
+intercept_only <- lm(prespawn_survival ~ 1, data = battle_data)
+all <- lm(prespawn_survival ~ ., data = battle_data |>
+            filter(!is.na(mean_flow)))
+# forward <- step(intercept_only,
+#                 direction = "forward",
+#                 scope = formula(all))
+#
+# backward <- step(all,
+#                  direction = "backward",
+#                  scope = formula(all))
+
+both_directions <- step(intercept_only,
+                        direction = "both",
+                        scope = formula(all))
+both_directions$anova
+both_directions$coefficients
+
+# min passage timing
+
+battle_model <- lm(prespawn_survival ~ min_passage_timing,
+                   data = battle_data)
+summary(battle_model)
+battle_data |>
+  ggplot(aes(x = min_passage_timing, y = prespawn_survival)) + geom_point() +
+  geom_smooth(method = "lm") + theme_minimal() +
+  ggtitle("Linear regression of minimum passage week on prespawn survival - Battle Creek") +
+  xlab("Minimum passage timing (julian week)") +
+  ylab("Prespawn survival")
+
+# CLEAR
+intercept_only <- lm(prespawn_survival ~ 1, data = clear_data)
+all <- lm(prespawn_survival ~ ., data = clear_data)
+
+both_directions <- step(intercept_only,
+                        direction = "both",
+                        scope = formula(all))
+both_directions$anova
+both_directions$coefficients
+
+summary(lm(prespawn_survival ~ gdd, data = clear_data))$r.squared
+summary(lm(prespawn_survival ~ mean_flow, data = clear_data))$r.squared
+
+# gdd
+clear_model <- lm(prespawn_survival ~ gdd,
+                  data = clear_data)
+summary(clear_model)
+clear_data |>
+  ggplot(aes(x = gdd, y = prespawn_survival)) + geom_point() +
+  geom_smooth(method = "lm") + theme_minimal() +
+  ggtitle("Linear regression of GDD on prespawn survival - Clear Creek") +
+  xlab("Growing degree days") +
+  ylab("Prespawn survival")
+
+# MILL
+intercept_only <- lm(prespawn_survival ~ 1, data = mill_data |> drop_na())
+all <- lm(prespawn_survival ~ ., data = mill_data |> drop_na())
+
+both_directions <- step(intercept_only,
+                        direction = "both",
+                        scope = formula(all))
+both_directions$anova
+both_directions$coefficients
+
+summary(lm(prespawn_survival ~ 1, data = mill_data |> drop_na()))$r.squared
+summary(lm(prespawn_survival ~ mean_flow + gdd, data = mill_data |> drop_na()))$r.squared
+
+# according to backward, water_year_type and mean_flow
+mill_model <- lm(prespawn_survival ~ water_year_type + mean_flow,
+                 data = mill_data)
+summary(mill_model)
+avPlots(mill_model)
+mill_data |>
+  ggplot(aes(x = mean_flow, y = prespawn_survival)) + geom_point() +
+  geom_smooth(method = "lm") + theme_minimal() +
+  ggtitle("Linear regression of mean flow on prespawn survival - Clear Creek") +
+  xlab("Mean flow (cfs)") +
+  ylab("Prespawn survival")
 
 
 # scratch for temp index -----------------------------------------------------------------
