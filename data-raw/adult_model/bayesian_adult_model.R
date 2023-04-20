@@ -10,6 +10,8 @@ source(here::here("analysis", "adult_model_data_prep.R"))
 
 
 # TODO input is prop_days_over_threshold * coefficient * ratio_k
+# TODO change ratio_k to prespawn mortality
+# TODO use flora's paper to get priors?
 
 # write base model in stan --------------------------------------------------
 
@@ -33,7 +35,7 @@ mill_model_temp_prop <- "
     real alpha[N];
     real beta;
     beta = mu_k * sigma_k;
-    for(i in 1:N) { 
+    for(i in 1:N) {
       alpha[i] = mu_k * beta * temp_index[i];
       upstream_count[i] ~ lognormal(mu_a, sigma_a);
       ratio_k[i] ~ gamma(alpha[i], beta);
@@ -45,42 +47,42 @@ mill_model_temp_prop <- "
 
 # prep data ---------------------------------------------------------------
 
-all_mill <- redd |> 
+all_mill <- redd |>
   filter(stream == "mill creek") |>
-  rename(redd_count = count) |> 
-  full_join(upstream_passage |> 
-              filter(stream == "mill creek") |> 
-              rename(upstream_count = count) |> 
+  rename(redd_count = count) |>
+  full_join(upstream_passage |>
+              filter(stream == "mill creek") |>
+              rename(upstream_count = count) |>
               select(-stream),
-            by = "year") |> 
+            by = "year") |>
   glimpse()
 
-years <- all_mill |> filter(!is.na(redd_count) & !is.na(upstream_count)) |> 
+years <- all_mill |> filter(!is.na(redd_count) & !is.na(upstream_count)) |>
                               pull(year)
 N <- length(years)
-redd_count <- all_mill |> 
-  filter(year %in% years) |> 
+redd_count <- all_mill |>
+  filter(year %in% years) |>
   pull(redd_count)
-upstream_count <- all_mill |> 
-  filter(year %in% years) |> 
+upstream_count <- all_mill |>
+  filter(year %in% years) |>
   pull(upstream_count)
 ratio_k <- upstream_count / redd_count
-temp_index <- temp_index |> 
-  filter(year %in% years) |> 
+temp_index <- temp_index |>
+  filter(year %in% years) |>
   pull(temp_index)
 prop_surveyed <- rep(1.0, N) # assume all of spawning population is surveyed
 
 
 
 # fit model ---------------------------------------------------------------
-fit <- stan(model_code = mill_model_temp_prop, 
+fit <- stan(model_code = mill_model_temp_prop,
             data = list(N = N,
-                        
+
                         upstream_count = upstream_count,
                         redd_count = redd_count,
                         ratio_k = ratio_k,
                         temp_index = temp_index,
-                        prop_surveyed = prop_surveyed), 
+                        prop_surveyed = prop_surveyed),
             #init = init_list,
             chains = 4, iter = 5000*2, seed = 84735)
 
@@ -114,16 +116,16 @@ test <- "
     sigma_k ~ gamma(1,2);
     mu_a ~ uniform(0, 1000);
     sigma_a ~ gamma(0.001,0.001);
-    
+
     real alpha[N];
     real beta;
-    
+
     beta = mu_k * sigma_k;
 
     vector[N] lambda;
-    
+
     // calibration between upstream adults and redd count
-    for(i in 1:N) { 
+    for(i in 1:N) {
       alpha[i] = mu_k * beta * temp_index[i];
       upstream_count[i] ~ lognormal(mu_a, sigma_a);
       ratio_k[i] ~ gamma(alpha[i], beta);
@@ -133,12 +135,12 @@ test <- "
 
   }"
 
-test_fit <- stan(model_code = test, 
+test_fit <- stan(model_code = test,
                   data = list(N = N,
                               upstream_count = upstream_count,
                               redd_count = redd_count,
                               ratio_k = ratio_k,
-                              temp_index = temp_index), 
+                              temp_index = temp_index),
                   #init = init_list,
                   chains = 4, iter = 5000*2, seed = 84735)
 
@@ -174,58 +176,58 @@ test_missing <- "
     sigma_k ~ gamma(1,2);
     mu_a ~ uniform(0, 1000);
     sigma_a ~ gamma(0.001,0.001);
-    
+
     for(i in 1:Y) {
       upstream_missing[i] ~ uniform(0, 1000);
     }
-    
+
     real alpha[N];
     real beta;
-    
+
     beta = mu_k * sigma_k;
 
     vector[N] lambda;
     vector[Y] lambda_old;
     vector[Y] ratio_k_old;
     vector[Y] alpha_old;
-    
-    for(i in 1:N) { 
+
+    for(i in 1:N) {
       alpha[i] = mu_k * beta * temp_index[i];
       upstream_count[i] ~ lognormal(mu_a, sigma_a);
       ratio_k[i] ~ gamma(alpha[i], beta);
       lambda[i] = upstream_count[i] * ratio_k[i];
       redd_count[i] ~ poisson(lambda[i]);
     }
-    
+
     for(i in 1:Y){
       alpha_old[i] = mu_k * beta * temp_index_old[i];
       upstream_missing[i] ~ lognormal(mu_a, sigma_a);
       ratio_k_old[i] ~ gamma(alpha_old[i], beta);
       lambda_old[i] = upstream_missing[i] * ratio_k_old[i];
       redd_missing[i] ~ poisson(lambda_old[i]);
-      
+
     }
 
   }"
 
-years_missing <- all_mill |> 
-  filter(is.na(upstream_count)) |> 
+years_missing <- all_mill |>
+  filter(is.na(upstream_count)) |>
   pull(year)
 Y <- length(years_missing)
-redd_missing <- all_mill |> 
-  filter(year %in% years_missing) |> 
+redd_missing <- all_mill |>
+  filter(year %in% years_missing) |>
   pull(redd_count)
 
-temp_index_old <- temp_prespawn_scaled |> 
-  group_by(year) |> 
-  summarise(temp_index = mean(scaled_prop_days_exceed, na.rm = T)) |> 
-  ungroup() |> 
-  mutate(temp_index = ifelse(is.na(temp_index), 1, temp_index)) |> 
-  filter(year %in% years_missing) |> 
-  pull(temp_index) |> 
+temp_index_old <- temp_prespawn_scaled |>
+  group_by(year) |>
+  summarise(temp_index = mean(scaled_prop_days_exceed, na.rm = T)) |>
+  ungroup() |>
+  mutate(temp_index = ifelse(is.na(temp_index), 1, temp_index)) |>
+  filter(year %in% years_missing) |>
+  pull(temp_index) |>
   append(1, 0)
 
-test_missing_fit <- stan(model_code = test_missing, 
+test_missing_fit <- stan(model_code = test_missing,
                          data = list(N = N,
                                      Y = Y,
                                      upstream_count = upstream_count,
@@ -233,7 +235,7 @@ test_missing_fit <- stan(model_code = test_missing,
                                      redd_missing = redd_missing,
                                      ratio_k = ratio_k,
                                      temp_index = temp_index,
-                                     temp_index_old = temp_index_old), 
+                                     temp_index_old = temp_index_old),
                          #init = init_list,
                          chains = 4, iter = 5000*2, seed = 84735)
 
@@ -241,81 +243,81 @@ test_missing_fit <- stan(model_code = test_missing,
 # dauphin et al model code ------------------------------------------------
 
 model{
-  
+
   # Prior distributions of the model parameters
   tau.p ~dgamma(0.001,0.001)
   mu.p~dbeta(1,1)I(0.001,)
   L.mu.p <- logit(mu.p)
-  
+
   mu.kappa ~ dgamma(1,0.001)
   tau.kappa ~ dgamma(0.001,0.001)I(0.001,)
   alpha <- mu.kappa * beta
   beta <- mu.kappa * tau.kappa
-  
+
   for (i in 1:3){
     mu.A[i]~dunif(0,500000)
     L.mu.A[i]<-log(mu.A[i])
     tau.A[i]~dgamma(0.001,0.001)
   }
-  
+
   # calibration between adult counts and redd counts
   # T = 8 years, 2001 to 2008; i = rivers (1=Faughan; 2=Finn; 3=Roe)
   for (t in 1:T){
-    for (i in 1:3){						
+    for (i in 1:3){
       L.p[t,i] ~ dnorm(L.mu.p, tau.p)
-      logit(p[t,i]) <- L.p[t,i] 
+      logit(p[t,i]) <- L.p[t,i]
       A[t,i] ~ dlnorm(L.mu.A[i],tau.A[i])
       S[t,i] <- A[t,i] - C[t,i]
       kappa[t,i] ~ dgamma(alpha, beta)I(0.001,)
-      lambda[t,i] <- (A[t,i] - C[t,i]) * p[t,i] * kappa[t,i]					
+      lambda[t,i] <- (A[t,i] - C[t,i]) * p[t,i] * kappa[t,i]
       R[t,i] ~dpois(lambda[t,i])
-    }					
+    }
   }
   # time series
   # Y = 42 years, 1959 to 2000; i = rivers (1=Faughan; 2=Finn; 3=Roe)
   for (y in 1:Y){
     for (i in 1:3){
       L.p.old[y,i] ~ dnorm(L.mu.p, tau.p)
-      logit(p.old[y,i]) <- L.p.old[y,i] 
-      
+      logit(p.old[y,i]) <- L.p.old[y,i]
+
       A.old[y,i] ~ dlnorm(L.mu.A[i],tau.A[i])
-      
-      kappa.old[y,i] ~ dgamma(alpha, beta)I(0.001,)			
-      lambda.redds.old[y,i] <- (A.old[y,i] – C[t,i]) * p.old[y,i] * kappa.old[y,i]			
-      Redds.old[y,i] ~dpois(lambda.redds.old[y,i])   
+
+      kappa.old[y,i] ~ dgamma(alpha, beta)I(0.001,)
+      lambda.redds.old[y,i] <- (A.old[y,i] – C[t,i]) * p.old[y,i] * kappa.old[y,i]
+      Redds.old[y,i] ~dpois(lambda.redds.old[y,i])
     }
-    
+
   }
 }
 # try hierarchical structure ----------------------------------------------
 
 # prep data
-all_tribs_all_data <- upstream_passage |> 
-  rename(upstream_count = count) |> 
+all_tribs_all_data <- upstream_passage |>
+  rename(upstream_count = count) |>
   full_join(redd |> rename(redd = count),
-            by = c("year", "stream")) |> 
+            by = c("year", "stream")) |>
   full_join(holding |> rename(holding = count),
-            by = c("year", "stream")) |> 
-  select(year, stream, upstream = upstream_count, redd, holding) |> 
+            by = c("year", "stream")) |>
+  select(year, stream, upstream = upstream_count, redd, holding) |>
   glimpse()
 
 # just try redd and upstream for battle & yuba
-upstream_hierarchical <- all_tribs_all_data |> 
-  filter(stream %in% c("yuba river", "battle creek"),
-         year %in% 2011:2019) |> 
-  select(year, upstream, stream) |> 
-  pivot_wider(names_from = stream, values_from = upstream) |> 
-  select(-year) |> 
-  as.matrix() |> 
-  unname()
-
-redd_hierarchical <- all_tribs_all_data |> 
+upstream_hierarchical <- all_tribs_all_data |>
   filter(stream %in% c("yuba river", "battle creek"),
          year %in% 2011:2019) |>
-  select(year, redd, stream) |> 
-  pivot_wider(names_from = stream, values_from = redd) |> 
-  select(-year) |> 
-  as.matrix() |> 
+  select(year, upstream, stream) |>
+  pivot_wider(names_from = stream, values_from = upstream) |>
+  select(-year) |>
+  as.matrix() |>
+  unname()
+
+redd_hierarchical <- all_tribs_all_data |>
+  filter(stream %in% c("yuba river", "battle creek"),
+         year %in% 2011:2019) |>
+  select(year, redd, stream) |>
+  pivot_wider(names_from = stream, values_from = redd) |>
+  select(-year) |>
+  as.matrix() |>
   unname()
 
 ratio_hierarchical <- upstream_hierarchical / redd_hierarchical
@@ -353,12 +355,12 @@ mill_model_hierarchical <- "
     }
   }"
 
-fit_hierarchical <- stan(model_code = mill_model_hierarchical, 
+fit_hierarchical <- stan(model_code = mill_model_hierarchical,
                           data = list(N = N,
                                       S = S,
                                       upstream_count = upstream_hierarchical,
                                       redd_count = redd_hierarchical,
-                                      ratio_k = ratio_hierarchical), 
+                                      ratio_k = ratio_hierarchical),
                           chains = 4, iter = 5000*2, seed = 84735)
 
 # diagnostics -------------------------------------------------------------
@@ -383,7 +385,7 @@ pars <- as.data.frame(fit, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
 predict_redd <- function(mu_k, sigma_k, mu_a, sigma_a) {
   beta <- mu_k * sigma_k
   alpha <- mu_k * beta
-  
+
   upstream_count <- rlnorm(1, mu_a, sigma_a)
   ratio_k <- rgamma(1, alpha, beta)
   lambda <- upstream_count * ratio_k
@@ -411,13 +413,13 @@ pred_dat <- tibble(year = year,
                    adult = pred_adult,
                    ratio = pred_ratio)
 ggplot(pred_dat) +
-  geom_line(data = pred_dat, aes(x = year, y = redd)) + 
+  geom_line(data = pred_dat, aes(x = year, y = redd)) +
   geom_line(data = pred_dat, aes(x = year, y = adult),  col = "blue")
 
 ggplot(pred_dat) +
   geom_line(aes(x = year, y = pred_ratio))
-# TODO could covariate explain years where ratio is below 1 ? upstream passage has 
-# high flow? 
+# TODO could covariate explain years where ratio is below 1 ? upstream passage has
+# high flow?
 
 
 
