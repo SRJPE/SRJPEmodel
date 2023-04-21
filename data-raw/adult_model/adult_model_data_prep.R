@@ -11,6 +11,7 @@ library(GGally) # pairs plot
 library(waterYearType)
 library(car) # vif
 library(glmulti)
+library(tidybayes)
 
 # pull adult data & process ----------------------------------------------------------------
 gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
@@ -392,7 +393,7 @@ avPlots(best_battle_lm)
 
 summary(best_clear_model)$bestmodel
 best_clear_lm <- lm(prespawn_survival ~ 1 + mean_flow + min_passage_timing + gdd +
-                      min_passage_timing:mean_flow + gdd:mean_flow + gdd:min_passage_timing,
+                      min_passage_timing:mean_flow + gdd:min_passage_timing, #+ gdd:mean_flow + ,
                      data = clear_data)
 avPlots(best_clear_lm)
 
@@ -410,6 +411,75 @@ battle_bayes <- stan_lm(prespawn_survival ~ min_passage_timing + mean_flow * gdd
                         data = battle_data,
                         prior = R2(0.1))
 
+battle_bayes |>
+  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `mean_flow:gdd`, sigma) |>
+  median_qi()
+
+clear_bayes <- stan_lm(prespawn_survival ~ mean_flow + min_passage_timing + gdd +
+                         min_passage_timing * mean_flow,
+                       data = clear_data,
+                       prior = R2(0.1))
+
+clear_bayes |>
+  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `mean_flow:min_passage_timing`, sigma) |>
+  median_qi()
+
+mill_bayes <- stan_lm(prespawn_survival ~ mean_flow + water_year_type * mean_flow,
+                      data = mill_data,
+                      prior = R2(0.1))
+mill_bayes |>
+  gather_draws(`(Intercept)`, mean_flow, water_year_typewet, `mean_flow:water_year_typewet`) |>
+  median_qi()
+
+
+# try basic bayesian model w all streams ----------------------------------
+all_streams_data <- survival_model_data |>
+  drop_na() |>
+  mutate(prespawn_survival = round(prespawn_survival, 2)) |>
+  select(prespawn_survival, gdd, mean_flow, stream, min_passage_timing) |>
+  #filter(stream != "mill creek") |> # to try passage timing
+  glimpse()
+
+# TODO try out different covariates here. Can we get this to work?
+all_streams_bayes <- stan_glmer(
+    prespawn_survival ~ (1 | stream),
+    data = all_streams_data, family = gaussian,
+    chains = 4, iter = 5000*2, seed = 84735
+)
+
+mcmc_areas(all_streams_bayes)
+mcmc_dens_overlay(all_streams_bayes)
+neff_ratio(all_streams_bayes)# should be >0.1
+mcmc_acf(all_streams_bayes)
+rhat(all_streams_bayes)
+
+all_streams_bayes |>
+  spread_draws(`(Intercept)`, sigma) |>
+  median_qi()
+
+all_streams_bayes |>
+  spread_draws(b[, stream]) |>
+  median_qi()
+
+all_streams_bayes |>
+  spread_draws(b[, stream]) |>
+  summarise_draws()
+
+hierarchical_bayes_results <- all_streams_bayes |>
+  spread_draws(`(Intercept)`, b[, stream]) |>
+  mutate(condition_mean = `(Intercept)` + b) |>
+  median_qi(condition_mean) |>
+  select(stream, condition_mean, lower = .lower, upper = .upper) |>
+  glimpse()
+
+# predictions and further documentation
+# https://cran.r-project.org/web/packages/tidybayes/vignettes/tidy-rstanarm.html
+
+all_streams_bayes |>
+  posterior_predict(draws = 1000) |>
+  ppc_stat_grouped(y = all_streams_data$prespawn_survival,
+                   group = all_streams_data$stream,
+                   stat = "median")
 
 # scratch -----------------------------------------------------------------
 
