@@ -5,6 +5,7 @@ library(tidyverse)
 library(lubridate)
 library(googleCloudStorageR)
 library(rstan)
+library(rstanarm)
 library(bayesplot)
 library(GGally) # pairs plot
 library(waterYearType)
@@ -403,8 +404,11 @@ avPlots(best_mill_lm)
 
 
 
-# next steps --------------------------------------------------------------
+# build bayesian models for each stream --------------------------------------------------------------
 
+battle_bayes <- stan_lm(prespawn_survival ~ min_passage_timing + mean_flow * gdd,
+                        data = battle_data,
+                        prior = R2(0.1))
 
 
 # scratch -----------------------------------------------------------------
