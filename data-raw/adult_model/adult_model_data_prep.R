@@ -199,7 +199,7 @@ water_year_data <- rbind(water_year_data, later_years)
 
 # combine -----------------------------------------------------------------
 
-survival_model_data <- left_join(prespawn_survival,
+survival_model_data_raw <- left_join(prespawn_survival,
                                 migratory_temp,
                                 by = c("year")) |>
   left_join(holding_temp,
@@ -214,10 +214,12 @@ survival_model_data <- left_join(prespawn_survival,
             by = c("year" = "WY")) |>
   left_join(gdd,
             by = c("year", "stream")) |>
-  dplyr::select(-c(upstream_count, redd_count, female_upstream)) |>
   drop_na() |>
   glimpse()
 
+survival_model_data <- survival_model_data_raw |>
+  dplyr::select(-c(upstream_count, redd_count, female_upstream)) |>
+  glimpse()
 
 
 survival_model_data |>
@@ -480,6 +482,79 @@ all_streams_bayes |>
   ppc_stat_grouped(y = all_streams_data$prespawn_survival,
                    group = all_streams_data$stream,
                    stat = "median")
+
+
+
+# modified dauphin et al --------------------------------------------------
+
+single_stream_dauphin <- "
+  data {
+    int N;
+    int upstream_count[N];
+    int redd_count[N];
+    real prespawn_survival[N];
+    real environmental_index[N];
+  }
+  parameters {
+    real <lower = 0> mu_k;
+    real <lower = 0> sigma_k;
+    real mu_a;
+    real <lower = 0> sigma_a;
+  }
+  model {
+    // priors
+    mu_k ~ gamma(3,1);
+    sigma_k ~ gamma(1,2);
+    mu_a ~ uniform(0, 1000);
+    sigma_a ~ gamma(0.001,0.001);
+
+    real alpha[N];
+    real beta;
+
+    beta = mu_k * sigma_k;
+
+    vector[N] lambda;
+
+    // calibration between upstream adults and redd count
+    for(i in 1:N) {
+      alpha[i] = mu_k * beta * environmental_index[N];
+      upstream_count[i] ~ lognormal(mu_a, sigma_a);
+      prespawn_survival[i] ~ gamma(alpha[i], beta);
+      lambda[i] = upstream_count[i] * prespawn_survival[i];
+      redd_count[i] ~ poisson(lambda[i]);
+    }
+
+  }"
+
+prep_data_dauphin <- function(data, stream_name) {
+  new_dat <- data |>
+    drop_na() |>
+    filter(stream == stream_name) |>
+    mutate(standard_passage_timing = min_passage_timing / sum(min_passage_timing),
+           standard_gdd = gdd / sum(gdd),
+           standard_flow = mean_flow / sum(mean_flow)) |>
+    select(year, upstream_count, redd_count, prespawn_survival,
+           standard_passage_timing, standard_gdd, standard_flow, mean_flow)
+
+  return(list(N = length(new_dat$year),
+              redd_count = new_dat$redd_count,
+              upstream_count = new_dat$upstream_count,
+              prespawn_survival = new_dat$prespawn_survival,
+              environmental_index = new_dat$mean_flow))
+}
+
+
+battle_dauphin <- stan(model_code = single_stream_dauphin,
+                 data = prep_data_dauphin(survival_model_data_raw, "battle creek"),
+                 chains = 4, iter = 5000*2, seed = 84735)
+
+mcmc_trace(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(battle_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a")) # should be indistinguishable
+neff_ratio(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
+mcmc_acf(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
+rhat(battle_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
+
 
 # scratch -----------------------------------------------------------------
 
