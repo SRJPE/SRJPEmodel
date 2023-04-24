@@ -150,17 +150,19 @@ standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/sta
 
 # prespawn survival -------------------------------------------------------
 
-streams <- c("battle creek", "clear creek", "deer creek", "mill creek")
 
-prespawn_survival <- inner_join(upstream_passage |>
-                                  rename(upstream_count = count),
-                                redd |>
-                                  rename(redd_count = count),
-                                by = c("year", "stream")) |>
+
+prespawn_survival <- left_join(upstream_passage |>
+                                 rename(upstream_count = count),
+                               redd |>
+                                 rename(redd_count = count),
+                               by = c("year", "stream")) |>
+  left_join(holding |>
+              rename(holding_count = count),
+            by = c("year", "stream")) |>
   mutate(female_upstream = upstream_count * 0.5,
-         prespawn_survival = redd_count / female_upstream,
+         prespawn_survival = ifelse(stream == "deer creek", holding_count / upstream_count, redd_count / female_upstream),
          prespawn_survival = ifelse(prespawn_survival > 1, 1, prespawn_survival)) |>
-  filter(stream %in% streams) |>
   glimpse()
 
 
@@ -555,6 +557,24 @@ neff_ratio(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # sho
 mcmc_acf(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
 rhat(battle_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
 
+
+# scratch for calculating prespawn survival -------------------------------
+
+streams <- c("battle creek", "clear creek", "deer creek", "mill creek")
+prespawn_survival <- inner_join(upstream_passage |>
+                                  rename(upstream_count = count),
+                                redd |>
+                                  rename(redd_count = count),
+                                by = c("year", "stream")) |> glimpse()
+left_join(holding |>
+            rename(holding_count = count) |>
+            filter(stream == "deer creek"),
+          by = c("year", "stream")) |> glimpse()
+mutate(female_upstream = upstream_count * 0.5,
+       prespawn_survival = ifelse(stream == "deer creek", holding_count / upstream_count, redd_count / female_upstream),
+       prespawn_survival = ifelse(prespawn_survival > 1, 1, prespawn_survival)) |>
+  filter(stream %in% streams) |>
+  glimpse()
 
 # scratch -----------------------------------------------------------------
 
