@@ -465,10 +465,18 @@ mill_bayes |>
   gather_draws(`(Intercept)`, mean_flow, water_year_typewet, `mean_flow:water_year_typewet`) |>
   median_qi()
 
+deer_bayes <- stan_lm(prespawn_survival ~ water_year_type * median_passage_timing * gdd,
+                      data = deer_data,
+                      prior = R2(0.1))
+deer_bayes |>
+  gather_draws(`(Intercept)`, water_year_typewet, median_passage_timing, gdd,
+               `water_year_typewet:gdd`, `median_passage_timing:gdd`) |>
+  median_qi()
+
 
 # try basic bayesian model w all streams ----------------------------------
 all_streams_data <- survival_model_data |>
-  drop_na() |>
+  #drop_na() |>
   mutate(prespawn_survival = round(prespawn_survival, 2)) |>
   select(prespawn_survival, gdd, mean_flow, stream, min_passage_timing) |>
   #filter(stream != "mill creek") |> # to try passage timing
