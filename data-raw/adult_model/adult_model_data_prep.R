@@ -62,11 +62,6 @@ redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_ann
   select(year, stream, count) |>
   glimpse()
 
-# TODO holding time by stream and year
-# TODO look at hatchery/natural fish
-# TODO run identification
-
-
 # temperature -------------------------------------------------------------
 
 # threshold
@@ -108,7 +103,8 @@ holding_temp <- standard_temp |>
   glimpse()
 
 # growing degree days
-gdd_base_sac <- 0 # TODO confirm this
+# TODO confirm this code
+gdd_base_sac <- 0 # TODO source this
 gdd_base_trib <- 0
 
 gdd_sac <- standard_temp |>
@@ -393,6 +389,35 @@ best_mill_model <- glmulti(y = "prespawn_survival",
                            level = 2,
                            data = mill_data,
                            fitfunction = "lm")
+
+# deer
+deer_data <- survival_model_data |>
+  filter(stream == "deer creek") |>
+  select(-c(year, stream, prop_days_exceed_threshold_migratory,
+            prop_days_exceed_threshold_holding))
+ggpairs(deer_data)
+print_cors(deer_data, 0.65) # mean flow & decide on pasage timing
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing)))) # variation inflaction factor - if over 5, concerning
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
+                                                            mean_flow)))) # better
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
+                                                            mean_flow, total_prop_days_exceed_threshold)))) # better
+
+# remove variables with highest VIF values
+deer_variables_remove <- c("mean_passage_timing", "min_passage_timing", "mean_flow",
+                           "total_prop_days_exceed_threshold")
+
+# now look for interactions using glmulti
+best_deer_model <- glmulti(y = "prespawn_survival",
+                           xr = deer_data |> select(-c("prespawn_survival",
+                                                       all_of(deer_variables_remove))) |>
+                             names(),
+                           intercept = TRUE,
+                           method = "h",
+                           level = 2,
+                           data = deer_data,
+                           fitfunction = "lm")
+
 # plot best models
 summary(best_battle_model)$bestmodel
 best_battle_lm <- lm(prespawn_survival ~ 1 + min_passage_timing + gdd:mean_flow,
@@ -406,38 +431,16 @@ best_clear_lm <- lm(prespawn_survival ~ 1 + mean_flow + min_passage_timing + gdd
 avPlots(best_clear_lm)
 
 summary(best_mill_model)$bestmodel
-best_mill_lm <- lm(prespawn_survival ~ 1 + mean_flow + water_year_type:mean_flow,
+best_mill_lm <- lm(prespawn_survival ~ 1 + water_year_type:mean_flow,
                      data = mill_data)
 avPlots(best_mill_lm)
 
+summary(best_deer_model)$bestmodel
+best_mill_lm <- lm(prespawn_survival ~ 1 + water_year_type + water_year_type *
+                     median_passage_timing * gdd,
+                   data = deer_data)
+avPlots(best_mill_lm)
 
-# deer
-deer_data <- survival_model_data |>
-  filter(stream == "deer creek") |>
-  select(-c(year, stream, prop_days_exceed_threshold_migratory,
-            prop_days_exceed_threshold_holding))
-ggpairs(deer_data)
-print_cors(deer_data, 0.65) # mean flow & decide on pasage timing
-vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing)))) # variation inflaction factor - if over 5, concerning
-vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
-                                                             mean_flow)))) # better
-vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
-                                                            mean_flow, total_prop_days_exceed_threshold)))) # better
-
-# remove variables with highest VIF values
-deer_variables_remove <- c("mean_passage_timing", "min_passage_timing", "mean_flow",
-                            "total_prop_days_exceed_threshold")
-
-# now look for interactions using glmulti
-best_deer_model <- glmulti(y = "prespawn_survival",
-                            xr = deer_data |> select(-c("prespawn_survival",
-                                                         all_of(deer_variables_remove))) |>
-                              names(),
-                            intercept = TRUE,
-                            method = "h",
-                            level = 2,
-                            data = deer_data,
-                            fitfunction = "lm")
 
 # build bayesian models for each stream --------------------------------------------------------------
 
@@ -449,23 +452,24 @@ battle_bayes |>
   gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `mean_flow:gdd`, sigma) |>
   median_qi()
 
-clear_bayes <- stan_lm(prespawn_survival ~ mean_flow + min_passage_timing + gdd +
-                         min_passage_timing * mean_flow,
+clear_bayes <- stan_lm(prespawn_survival ~ mean_flow + min_passage_timing + min_passage_timing * gdd + mean_flow * gdd,
                        data = clear_data,
                        prior = R2(0.1))
 
 clear_bayes |>
-  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `mean_flow:min_passage_timing`, sigma) |>
+  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd,
+               `min_passage_timing:gdd`, `mean_flow:gdd`, sigma) |>
   median_qi()
 
-mill_bayes <- stan_lm(prespawn_survival ~ mean_flow + water_year_type * mean_flow,
+mill_bayes <- stan_lm(prespawn_survival ~ water_year_type * mean_flow,
                       data = mill_data,
                       prior = R2(0.1))
 mill_bayes |>
-  gather_draws(`(Intercept)`, mean_flow, water_year_typewet, `mean_flow:water_year_typewet`) |>
+  gather_draws(`(Intercept)`, mean_flow, water_year_typewet, `water_year_typewet:mean_flow`) |>
   median_qi()
 
-deer_bayes <- stan_lm(prespawn_survival ~ water_year_type * median_passage_timing * gdd,
+deer_bayes <- stan_lm(prespawn_survival ~ water_year_type *
+                        median_passage_timing * gdd,
                       data = deer_data,
                       prior = R2(0.1))
 deer_bayes |>
@@ -476,7 +480,6 @@ deer_bayes |>
 
 # try basic bayesian model w all streams ----------------------------------
 all_streams_data <- survival_model_data |>
-  #drop_na() |>
   mutate(prespawn_survival = round(prespawn_survival, 2)) |>
   select(prespawn_survival, gdd, mean_flow, stream, min_passage_timing) |>
   #filter(stream != "mill creek") |> # to try passage timing
@@ -526,12 +529,12 @@ all_streams_bayes |>
 
 
 # modified dauphin et al --------------------------------------------------
-
+# TODO decide on environmental index
 single_stream_dauphin <- "
   data {
     int N;
     int upstream_count[N];
-    int redd_count[N];
+    int spawner_count[N];
     real prespawn_survival[N];
     real environmental_index[N];
   }
@@ -561,23 +564,25 @@ single_stream_dauphin <- "
       upstream_count[i] ~ lognormal(mu_a, sigma_a);
       prespawn_survival[i] ~ gamma(alpha[i], beta);
       lambda[i] = upstream_count[i] * prespawn_survival[i];
-      redd_count[i] ~ poisson(lambda[i]);
+      spawner_count[i] ~ poisson(lambda[i]);
     }
 
   }"
 
 prep_data_dauphin <- function(data, stream_name) {
   new_dat <- data |>
-    drop_na() |>
     filter(stream == stream_name) |>
-    mutate(standard_passage_timing = min_passage_timing / sum(min_passage_timing),
+    # TODO how to standardize/compute environmental variables to multiply by prespawn survival? Intercept?
+    # TODO decide on which covars
+    mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count),
+           standard_passage_timing = ifelse(stream == "mill creek", 0, min_passage_timing / sum(min_passage_timing)),
            standard_gdd = gdd / sum(gdd),
            standard_flow = mean_flow / sum(mean_flow)) |>
-    select(year, upstream_count, redd_count, prespawn_survival,
+    select(year, upstream_count, spawner_count, prespawn_survival,
            standard_passage_timing, standard_gdd, standard_flow, mean_flow)
 
   return(list(N = length(new_dat$year),
-              redd_count = new_dat$redd_count,
+              spawner_count = new_dat$spawner_count,
               upstream_count = new_dat$upstream_count,
               prespawn_survival = new_dat$prespawn_survival,
               environmental_index = new_dat$mean_flow))
@@ -594,6 +599,40 @@ mcmc_dens_overlay(battle_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a"
 neff_ratio(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
 mcmc_acf(battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
 rhat(battle_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
+
+clear_dauphin <- stan(model_code = single_stream_dauphin,
+                       data = prep_data_dauphin(survival_model_data_raw, "clear creek"),
+                       chains = 4, iter = 5000*2, seed = 84735)
+
+mcmc_trace(clear_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(clear_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(clear_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a")) # should be indistinguishable
+neff_ratio(clear_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
+mcmc_acf(clear_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
+rhat(clear_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
+
+
+mill_dauphin <- stan(model_code = single_stream_dauphin,
+                       data = prep_data_dauphin(survival_model_data_raw, "mill creek"),
+                       chains = 4, iter = 5000*2, seed = 84735)
+
+mcmc_trace(mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(mill_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a")) # should be indistinguishable
+neff_ratio(mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
+mcmc_acf(mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
+rhat(mill_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
+
+deer_dauphin <- stan(model_code = single_stream_dauphin,
+                       data = prep_data_dauphin(survival_model_data_raw, "deer creek"),
+                       chains = 4, iter = 5000*2, seed = 84735)
+
+mcmc_trace(deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(deer_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a")) # should be indistinguishable
+neff_ratio(deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
+mcmc_acf(deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should drop to be low
+rhat(deer_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
 
 
 # scratch for calculating prespawn survival -------------------------------
