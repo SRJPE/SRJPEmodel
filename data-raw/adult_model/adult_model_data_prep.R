@@ -150,7 +150,8 @@ standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/sta
 
 # prespawn survival -------------------------------------------------------
 
-
+# TODO add in carcass data
+carcass_streams <- c("yuba river", "butte creek", "feather river")
 
 prespawn_survival <- left_join(upstream_passage |>
                                  rename(upstream_count = count),
@@ -163,6 +164,7 @@ prespawn_survival <- left_join(upstream_passage |>
   mutate(female_upstream = upstream_count * 0.5,
          prespawn_survival = ifelse(stream == "deer creek", holding_count / upstream_count, redd_count / female_upstream),
          prespawn_survival = ifelse(prespawn_survival > 1, 1, prespawn_survival)) |>
+  filter(!stream %in% carcass_streams) |>
   glimpse()
 
 
@@ -216,11 +218,13 @@ survival_model_data_raw <- left_join(prespawn_survival,
             by = c("year" = "WY")) |>
   left_join(gdd,
             by = c("year", "stream")) |>
-  drop_na() |>
+  drop_na(prespawn_survival, mean_flow, median_passage_timing,
+          mean_passage_timing, min_passage_timing, water_year_type,
+          gdd, total_prop_days_exceed_threshold) |> # no NAs in covariate columns
   glimpse()
 
 survival_model_data <- survival_model_data_raw |>
-  dplyr::select(-c(upstream_count, redd_count, female_upstream)) |>
+  dplyr::select(-c(upstream_count, redd_count, female_upstream, holding_count)) |>
   glimpse()
 
 
@@ -407,7 +411,33 @@ best_mill_lm <- lm(prespawn_survival ~ 1 + mean_flow + water_year_type:mean_flow
 avPlots(best_mill_lm)
 
 
+# deer
+deer_data <- survival_model_data |>
+  filter(stream == "deer creek") |>
+  select(-c(year, stream, prop_days_exceed_threshold_migratory,
+            prop_days_exceed_threshold_holding))
+ggpairs(deer_data)
+print_cors(deer_data, 0.65) # mean flow & decide on pasage timing
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing)))) # variation inflaction factor - if over 5, concerning
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
+                                                             mean_flow)))) # better
+vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(mean_passage_timing, min_passage_timing,
+                                                            mean_flow, total_prop_days_exceed_threshold)))) # better
 
+# remove variables with highest VIF values
+deer_variables_remove <- c("mean_passage_timing", "min_passage_timing", "mean_flow",
+                            "total_prop_days_exceed_threshold")
+
+# now look for interactions using glmulti
+best_deer_model <- glmulti(y = "prespawn_survival",
+                            xr = deer_data |> select(-c("prespawn_survival",
+                                                         all_of(deer_variables_remove))) |>
+                              names(),
+                            intercept = TRUE,
+                            method = "h",
+                            level = 2,
+                            data = deer_data,
+                            fitfunction = "lm")
 
 # build bayesian models for each stream --------------------------------------------------------------
 
