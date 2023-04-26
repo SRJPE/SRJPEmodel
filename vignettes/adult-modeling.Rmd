@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 #library(SRJPEmodel)
-#source("adult_model_data_prep.R")
+source(here::here("data-raw", "adult_model", "dauphin_single_stream.R"))
 ```
 
 
@@ -55,7 +55,7 @@ Generally, upstream passage count exceeds spawner count which indicates that som
 
 #### Calculating Prespawn Survival
 
-Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. If this value exceed `1`, it was set to `1`:
+Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. If this value exceed `1`, it was considered to be an anomalous year and was removed from the dataset:
 ```{r}
 survival_model_data_raw |> 
   ggplot(aes(x = year, y = prespawn_survival, color = stream)) +
@@ -64,19 +64,58 @@ survival_model_data_raw |>
   xlab("Year") + ylab("Prespawn Survival") + ggtitle("Prespawn Survival by Stream")
 ```
 
-#### Environmental Covariates 
+### Environmental Covariates 
 
-To better understand the relationship between `upstream_count` and `spawner_count` - i.e. prespawn survival - several environmental covariates were investigated: 
-* mean flow (cfs) 
-* temperature: total proportion of days exceeding a threshold of 20 degrees Celsius
-* temperature: growing degree days (gdd) 
-* passage timing: mean, median, and minimum passage timing were all considered 
+To better understand the relationship between `upstream_count` and `spawner_count` - i.e. prespawn survival - several environmental covariates were investigated from the following categories:
+* flow
+* temperature
+* passage timing
 * water year type (wet or dry) 
 
 The aim was to identify environmental covariates driving prespawn survival and incorporate them into the spawning adult abundance model. When performing these analyses, there were several points to consider: 
-* temperature and passage timing could each only be represented once (i.e. mean and median passage timing could not be included in one linear model because of their high correlation - same with growing degree days and proportion of days exceeding the threshold) 
-* Mill Creek did not have daily granularity for passage timing and so these variables were not considered 
-* Collinearity needed to be accounted for (i.e. several variables were highly correlated with one another) 
+* temperature and passage timing could be summarized several different ways, and so different summarization methods needed to be compared.
+* Mill Creek did not have daily granularity for passage timing and so these variables were not considered.
+* Collinearity needed to be accounted for (i.e. several variables were highly correlated with one another).
+
+#### Flow 
+
+We considered two approaches for summarizing flow in cfs: 
+1) Mean flow
+2) Maximum flow 
+
+Maximum flow was considered to more effectively capture one-off large flow events that would theoretically support migration events. Additionally, upon inspection of the data source across multiple years, average maximum flow over the migratory and holding months (March-May and May-August, respectively) was more representative of the fluctuations in flow over the entire year. We decided to use maximum flow based on those criteria. 
+
+
+#### Temperature
+
+Several approaches were considered for summarizing temperature:
+1) proportion of days where the temperature surpassed a threshold of 20 degrees Celsius (source: https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf)
+2) Growing degree days (GDD) with a base temperature of 0 degrees Celsius (source: https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study and input from MAT team) 
+3) Degree Day 20 (DD20), where cumulative degree days are calculated against a threshold of 20 degrees Celsius (source: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204274) 
+
+For each metric approach, we calculated the metric for migration months (March - May) in the Sacramento River and holding months (May - August) in each tributary. We tested both the individual effects of migratory and holding temperatures as well as a cumulative metric (summed migratory and holding temperatures).
+
+We visually inspected regressions of prespawn survival against each of the three temperature metrics. Metrics 1 and 2 did not show a consistent relationship across streams, and in particular metric 1 was not considered to sufficiently capture the relationship between temperature, time exposed to high temperatures, and the cumulative effect of exposure to high temperatures on stress.
+
+#### Passage Timing 
+
+We calculated the passage timing metric at a weekly granularity for streams where such data was available. Mill Creek at the time of this report had not supplied passage data at a finer granularity than annual, and so was excluded from regressions with this metric. 
+
+We considered the following metrics for passage timing: 
+1) Median passage timing 
+2) Mean passage timing 
+3) Minimum passage timing 
+
+We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing. Because some years were not collected for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
+
+We did not have a theoretical reason to support one metric over the others, and so all three were analyzed for statistical importance.
+
+#### Water Year Type 
+
+To account for year effects, we used the `waterYearType` package to pull water year assignments as a categorical covariate. Because for some streams we had very few data points (i.e. for Mill Creek, only three years were considered dependable), we simplified all potential categories of water year type into either dry (`Dry`, `Below Normal`, `Critical`) or wet (`Wet`, `Above Normal`).
+
+
+#### Statistical Importance of Covariates
 
 With an eye toward eventually building a model with all streams modeled together, we first developed the following methods for identifying key environmental covariates for each stream individually: 
 1) Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflaction factor (VIF) analysis to eliminate highly correlated variables. 
