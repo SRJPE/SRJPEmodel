@@ -16,6 +16,9 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 #library(SRJPEmodel)
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
 load(here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
 load(here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
 load(here::here("data-raw", "adult_model", "single_stream_dauphin_fits.Rdata"))
