@@ -16,7 +16,9 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 #library(SRJPEmodel)
-source(here::here("data-raw", "adult_model", "dauphin_single_stream.R"))
+load(here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
+load(here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
+load(here::here("data-raw", "adult_model", "single_stream_dauphin_fits.Rdata"))
 ```
 
 
@@ -42,7 +44,7 @@ According to the Adult Data Report, the tributaries could be modeled by either a
 Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into one dataset where `spawner_count` represented the survey associated with spawning adults (either `redd_count` or `holding_count`) and `upstream_count` represented the counts of adults passing through the video stations. These counts were summarized by year.
 
 ```{r}
-survival_model_data_raw |> 
+adult_data_objects$survival_model_data_raw |> 
   mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
   ggplot(aes(x = year, y = spawner_count, color = "spawner count")) + 
   geom_line() +
@@ -51,13 +53,13 @@ survival_model_data_raw |>
   theme_minimal() +
   xlab("Year") + ylab("Spawner Count") + ggtitle("Spawner Count by Stream")
 ```
-Generally, upstream passage count exceeds spawner count which indicates that some level of prespawn mortality is occurring. 
+Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. Any years where `spawner count` exceeded `upstream count` was removed from the dataset as it was not considered dependable. This limited the data for some streams, but most especially Mill Creek, which had three data points.
 
 #### Calculating Prespawn Survival
 
-Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. If this value exceed `1`, it was considered to be an anomalous year and was removed from the dataset:
+Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. 
 ```{r}
-survival_model_data_raw |> 
+adult_data_objects$survival_model_data_raw |> 
   ggplot(aes(x = year, y = prespawn_survival, color = stream)) +
   geom_line() +
   theme_minimal() +
@@ -66,20 +68,19 @@ survival_model_data_raw |>
 
 ### Environmental Covariates 
 
-To better understand the relationship between `upstream_count` and `spawner_count` - i.e. prespawn survival - several environmental covariates were investigated from the following categories:
+To better understand the relationship between `upstream count` and `spawner count` - i.e. `prespawn survival` - environmental covariates were investigated from the following categories:
 * flow
 * temperature
-* passage timing
+* upstream passage timing
 * water year type (wet or dry) 
 
 The aim was to identify environmental covariates driving prespawn survival and incorporate them into the spawning adult abundance model. When performing these analyses, there were several points to consider: 
-* temperature and passage timing could be summarized several different ways, and so different summarization methods needed to be compared.
-* Mill Creek did not have daily granularity for passage timing and so these variables were not considered.
-* Collinearity needed to be accounted for (i.e. several variables were highly correlated with one another).
+* temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories. 
+* Collinearity needed to be accounted for among the predictor variables. 
 
 #### Flow 
 
-We considered two approaches for summarizing flow in cfs: 
+We considered two approaches for summarizing flow in cubic feet per second (cfs): 
 1) Mean flow
 2) Maximum flow 
 
@@ -97,9 +98,27 @@ For each metric approach, we calculated the metric for migration months (March -
 
 We visually inspected regressions of prespawn survival against each of the three temperature metrics. Metrics 1 and 2 did not show a consistent relationship across streams, and in particular metric 1 was not considered to sufficiently capture the relationship between temperature, time exposed to high temperatures, and the cumulative effect of exposure to high temperatures on stress.
 
+```{r}
+adult_data_objects$survival_model_data_raw |>  
+  filter(stream != "mill creek") |> 
+  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, color = stream)) + 
+  geom_smooth(method = "lm") + 
+  ggtitle("Proportion of days exceeding threshold as predictor variable")
+```
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(stream != "mill creek") |> 
+  ggplot(aes(x = gdd_total, y = prespawn_survival, color = stream)) + 
+  geom_smooth(method = "lm") + 
+  ggtitle("Degree days (20) as predictor variable")
+```
+
+
+
 #### Passage Timing 
 
-We calculated the passage timing metric at a weekly granularity for streams where such data was available. Mill Creek at the time of this report had not supplied passage data at a finer granularity than annual, and so was excluded from regressions with this metric. 
+We calculated the passage timing metric at a weekly granularity for streams where such data was available. 
 
 We considered the following metrics for passage timing: 
 1) Median passage timing 
@@ -108,81 +127,103 @@ We considered the following metrics for passage timing:
 
 We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing. Because some years were not collected for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
 
-We did not have a theoretical reason to support one metric over the others, and so all three were analyzed for statistical importance.
+Minimum passage timing could theoretically capture not only passage timing but also how long fish were exposed to higher temperatures (i.e. the earlier the first passage timing, the less time exposed to high temperatures later in the year), inspection of plots of passage counts by year and stream showed that the bulk of the fish were not being captured by the minimum passage metric.
+
+Median and mean passage timing were very similar across years, rarely differing by more than 2 weeks:
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  mutate(diff = median_passage_timing - mean_passage_timing) |> 
+  ggplot(aes(x = year, y = diff)) + 
+  geom_line() +
+  facet_wrap(~stream)
+```
+
+We decided upon median passage timing over mean passage timing as it was more represented in automated model selection.
 
 #### Water Year Type 
 
 To account for year effects, we used the `waterYearType` package to pull water year assignments as a categorical covariate. Because for some streams we had very few data points (i.e. for Mill Creek, only three years were considered dependable), we simplified all potential categories of water year type into either dry (`Dry`, `Below Normal`, `Critical`) or wet (`Wet`, `Above Normal`).
 
+Because some datasets were so small due to anomalous years where `prespawn survival > 1`, some streams were reduced to only having either `wet` or `dry` years represented:
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(stream == "mill creek") |>
+  distinct(stream, water_year_type)
+```
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(stream == "clear creek") |> 
+  distinct(water_year_type, stream)
+```
+Ultimately, `water_year_type` could not be used for Mill Creek or Clear Creek, but as more data become available it should be incorporated as a potentially important variable.
 
 #### Statistical Importance of Covariates
 
-With an eye toward eventually building a model with all streams modeled together, we first developed the following methods for identifying key environmental covariates for each stream individually: 
+We developed the following methods for identifying key environmental covariates for each stream individually: 
 1) Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflaction factor (VIF) analysis to eliminate highly correlated variables. 
-2) Use information in step 1 to select ONE temperature variable and ONE passage timing variable, as well as any other significant variables. 
+2) Use information in step 1 to remove any confounding variables. 
+3) Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC. 
 
 The best fitting models for each stream were: 
-* Battle Creek: `prespawn_survival ~ 1 + min_passage_timing + gdd * mean_flow` 
-* Clear Creek: `prespawn_survival ~ 1 + mean_flow + min_passage_timing * gdd` 
-* Deer Creek: `prespawn_survival ~ 1 + water_year_type * median_passage_timing * water_year_type * gdd` 
-* Mill Creek: `prespawn_survival ~ 1 + water_year_type * mean_flow` 
+* Battle Creek: ```{r} best_adult_models$best_battle_lm``` 
+* Clear Creek: ```{r} best_adult_models$best_clear_lm``` 
+* Deer Creek: ```{r} best_adult_models$best_deer_lm``` 
+* Mill Creek: ```{r} best_adult_models$best_deer_lm```  
 
-Once the best environmental covariates were selected for each stream, the package `glmulti` was used to select the best combination of variables in a linear regression for each stream (based on AIC). The best model for each stream was then implemented in `stan_glm` (package `rstanarm`) to assess its performance in a bayesian framework. 
+### Single Stream Dauphin model
 
-### Bayesian Multiple Linear Regressions 
+Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of Dauphin et al. (2010). The model is coded in `rstan` and produces estimates of prespawn survival (mean `mu_k` and standard deviation `sigma_k`), as well as upstream passage (log-scale mean `mu_alpha` and log-scale standard deviation `sigma_alpha`). The results were examined for several diganostics: 
+* N eff ratio 
+* Traceplots 
+* Density overlay plots 
+* Rhat 
+* Autocorrelation
 
-#### By Stream
-
-Battle Creek:
-
-```{r}
-battle_bayes <- stan_lm(prespawn_survival ~ min_passage_timing + mean_flow * gdd,
-                        data = battle_data,
-                        prior = R2(0.1))
-
-battle_bayes |>
-  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `mean_flow:gdd`, sigma) |>
-  median_qi()
-```
-
-Clear Creek: 
+#### Battle
 
 ```{r}
-clear_bayes <- stan_lm(prespawn_survival ~ mean_flow + min_passage_timing + min_passage_timing * gdd + mean_flow * gdd,
-                       data = clear_data,
-                       prior = R2(0.1))
-
-clear_bayes |>
-  gather_draws(`(Intercept)`, min_passage_timing, mean_flow, gdd, `min_passage_timing:gdd`, `mean_flow:gdd`, sigma) |>
-  median_qi()
+mcmc_trace(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a"))
+neff_ratio(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_acf(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+rhat(single_stream_dauphin_fits$battle_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a"))
 ```
 
-Deer Creek:
+#### Clear
 
 ```{r}
-deer_bayes <- stan_lm(prespawn_survival ~ water_year_type *
-                        median_passage_timing * gdd,
-                      data = deer_data,
-                      prior = R2(0.1))
-deer_bayes |>
-  gather_draws(`(Intercept)`, water_year_typewet, median_passage_timing, gdd,
-               `water_year_typewet:gdd`, `median_passage_timing:gdd`) |>
-  median_qi()
+mcmc_trace(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a"))
+neff_ratio(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_acf(single_stream_dauphin_fits$battle_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+rhat(single_stream_dauphin_fits$battle_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a"))
 ```
 
-Mill Creek: 
+#### Mill
 
 ```{r}
-mill_bayes <- stan_lm(prespawn_survival ~ water_year_type * mean_flow,
-                      data = mill_data,
-                      prior = R2(0.1))
-mill_bayes |>
-  gather_draws(`(Intercept)`, mean_flow, water_year_typewet, `water_year_typewet:mean_flow`) |>
-  median_qi()
+mcmc_trace(single_stream_dauphin_fits$mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(single_stream_dauphin_fits$mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(single_stream_dauphin_fits$mill_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a"))
+neff_ratio(single_stream_dauphin_fits$mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_acf(single_stream_dauphin_fits$mill_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+rhat(single_stream_dauphin_fits$mill_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a"))
 ```
 
-#### All Streams - Hierarchical
+#### Deer
 
+```{r}
+mcmc_trace(single_stream_dauphin_fits$deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_areas(single_stream_dauphin_fits$deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_dens_overlay(single_stream_dauphin_fits$deer_dauphin, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a"))
+neff_ratio(single_stream_dauphin_fits$deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+mcmc_acf(single_stream_dauphin_fits$deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+rhat(single_stream_dauphin_fits$deer_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a"))
+```
 
 
 

@@ -198,6 +198,13 @@ mcmc_acf(deer_dauphin, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should 
 rhat(deer_dauphin, c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be close to 1
 
 
+# save data objects -------------------------------------------------------
+single_stream_dauphin_fits <- list("battle_dauphin" = battle_dauphin,
+                                   "clear_dauphin" = clear_dauphin,
+                                   "mill_dauphin" = mill_dauphin,
+                                   "deer_dauphin" = deer_dauphin)
+save(single_stream_dauphin_fits, file = here::here("data-raw", "adult_model", "single_stream_dauphin_fits.Rdata"))
+
 # pull together into data frame -------------------------------------------
 # TODO decide on best way to summarize
 summarized_results <- tibble("stream" = c("battle creek", "clear creek", "mill creek", "deer creek"),
