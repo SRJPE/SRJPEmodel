@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+```{r setup, include = FALSE}
 #library(SRJPEmodel)
 library(ggplot2)
 library(tidyverse)
@@ -161,7 +161,7 @@ adult_data_objects$survival_model_data_raw |>
   filter(stream == "clear creek") |> 
   distinct(water_year_type, stream)
 ```
-Ultimately, `water_year_type` could not be used for Mill Creek or Clear Creek, but as more data become available it should be incorporated as a potentially important variable.
+Ultimately, this variable could not be used for Mill Creek or Clear Creek, but as more data become available it should be incorporated as a potentially important variable.
 
 #### Statistical Importance of Covariates
 
@@ -171,10 +171,14 @@ We developed the following methods for identifying key environmental covariates 
 3) Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC. 
 
 The best fitting models for each stream were: 
-* Battle Creek: `r print(best_adult_models$best_battle_lm)` 
-* Clear Creek: `r best_adult_models$best_clear_lm`   
-* Deer Creek: `r best_adult_models$best_deer_lm` 
-* Mill Creek: `r best_adult_models$best_mill_lm`   
+
+```{r}
+best_adult_models$best_battle_lm
+best_adult_models$best_clear_lm
+best_adult_models$best_mill_lm
+best_adult_models$best_deer_lm
+```
+
 
 ### Single Stream Dauphin model
 
