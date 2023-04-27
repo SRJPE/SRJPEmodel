@@ -69,6 +69,24 @@ redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_ann
   select(year, stream, count) |>
   glimpse()
 
+# raw carcass
+carcass <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_carcass.csv",
+                                   bucket = gcs_get_global_bucket())) |>
+  filter(run %in% c("spring", NA, "unknown")) |>
+  group_by(year(date), stream) |>
+  summarise(count = sum(count, na.rm = T)) |>
+  ungroup() |>
+  select(year = `year(date)`, stream, count) |>
+  glimpse()
+
+# estimates from CJS model (carcass survey)
+carcass_estimates <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_carcass_cjs_estimate.csv",
+                                             bucket = gcs_get_global_bucket())) |>
+  rename(carcass_spawner_estimate = spawner_abundance_estimate) |>
+  glimpse()
+
+
+
 # temperature -------------------------------------------------------------
 
 # threshold
@@ -154,7 +172,7 @@ standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/sta
 # prespawn survival -------------------------------------------------------
 
 # TODO add in carcass data
-carcass_streams <- c("yuba river", "butte creek", "feather river")
+carcass_streams <- c("yuba river", "butte creek") # feather
 
 prespawn_survival <- left_join(upstream_passage_estimates |>
                                  select(-passage_estimate),
@@ -164,10 +182,15 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
   left_join(holding |>
               rename(holding_count = count),
             by = c("year", "stream")) |>
+  # TODO use carcass counts or carcass estimates for prespawn survival exploration?
+  left_join(carcass |>
+              rename(carcass_count = count),
+            by = c("year", "stream")) |>
   mutate(female_upstream = upstream_count * 0.5,
-         prespawn_survival = ifelse(stream == "deer creek", holding_count / upstream_count, redd_count / female_upstream)) |>
-  filter(!stream %in% carcass_streams,
-         prespawn_survival <= 1,
+         prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
+                                       stream %in% carcass_streams ~ carcass_count / upstream_count,
+                                       TRUE ~ redd_count / female_upstream)) |>
+  filter(prespawn_survival <= 1,
          prespawn_survival != Inf) |> # this excludes a lot of data points
   glimpse()
 
@@ -223,7 +246,7 @@ survival_model_data_raw <- left_join(prespawn_survival |>
 
 # plots to inspect different covars ---------------------------------------
 survival_model_data_raw |>
-  filter(stream != "mill creek") |>
+  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
   ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, fill = stream)) +
   geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
   theme_minimal() + ggtitle("Prespawn survival and temperature by stream") +
@@ -231,7 +254,7 @@ survival_model_data_raw |>
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(stream != "mill creek") |>  # mill only has 3 data points; is skewing plot
+  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
   ggplot(aes(x = gdd_total, y = prespawn_survival, fill = stream)) +
   geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
   theme_minimal() + ggtitle("Prespawn survival and GDD by stream") +
@@ -239,7 +262,7 @@ survival_model_data_raw |>
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(stream != "mill creek") |>
+  filter(!stream %in% c("mill creek", "yuba river")) |>
   ggplot(aes(x = mean_flow, y = prespawn_survival, fill = stream)) +
   geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
   theme_minimal() + ggtitle("Prespawn survival and mean flow by stream") +
@@ -296,7 +319,7 @@ variables_to_remove <- c("mean_flow", "prop_days_exceed_threshold_holding",
                          "min_passage_timing", "mean_passage_timing",
                          "gdd_sac", "gdd_trib",
                          "upstream_count", "redd_count", "female_upstream",
-                         "holding_count")
+                         "holding_count", "carcass_count")
 
 survival_model_data <- survival_model_data_raw |>
   select(-all_of(variables_to_remove)) |>
@@ -441,6 +464,50 @@ best_deer_model <- glmulti(y = "prespawn_survival",
                            level = 2,
                            data = deer_data,
                            fitfunction = "lm")
+
+# butte
+butte_data <- survival_model_data |>
+  filter(stream == "butte creek") |>
+  select(-c(year, stream))
+ggpairs(butte_data)
+print_cors(butte_data, 0.65)
+vif(lm(prespawn_survival ~ ., data = butte_data |> select(-c(gdd_total)))) # too few data points
+vif(lm(prespawn_survival ~ ., data = butte_data |> select(-c(max_flow))))
+
+# remove variables with highest VIF values
+butte_variables_remove <- c("median_passage_timing", "water_year_type") # no median passage timing available, water_year_type is the same for all points
+
+# now look for interactions using glmulti
+best_butte_model <- glmulti(y = "prespawn_survival",
+                           xr = butte_data |> select(-c("prespawn_survival",
+                                                       all_of(butte_variables_remove))) |>
+                             names(),
+                           intercept = TRUE,
+                           method = "h",
+                           level = 2,
+                           data = butte_data,
+                           fitfunction = "lm")
+
+# yuba
+yuba_data <- survival_model_data |>
+  filter(stream == "yuba river") |>
+  select(-c(year, stream))
+ggpairs(yuba_data)
+print_cors(yuba_data, 0.65)
+
+# remove variables with highest VIF values
+yuba_variables_remove <- c("median_passage_timing", "gdd_total") # no median passage timing or gdd available
+
+# now look for interactions using glmulti
+best_yuba_model <- glmulti(y = "prespawn_survival",
+                            xr = yuba_data |> select(-c("prespawn_survival",
+                                                         all_of(yuba_variables_remove))) |>
+                              names(),
+                            intercept = TRUE,
+                            method = "h",
+                            level = 2,
+                            data = yuba_data,
+                            fitfunction = "lm")
 
 # plot best models and get estimates of coefficients
 # this is important because these are used to create the environmental index

@@ -234,6 +234,12 @@ rhat(single_stream_dauphin_fits$deer_dauphin, c("mu_k", "sigma_k", "mu_a", "sigm
 ```
 
 
+### Carcass data
 
+Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use, though estimates of uncertainty around these values are needed.
+
+Yuba River provided adult spawner abundance as estimated by CJS. These data, however, are only available for four years: 2014, 2015, 2019, and 2020. 
+
+Feather River has not yet provided adult spawner abundance as estimated by CJS. Raw carcass counts are available but a JPE-specific CJS model has not yet been developed.
 
 
