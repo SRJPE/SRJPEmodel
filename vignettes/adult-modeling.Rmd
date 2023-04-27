@@ -56,6 +56,7 @@ adult_data_objects$survival_model_data_raw |>
   theme_minimal() +
   xlab("Year") + ylab("Spawner Count") + ggtitle("Spawner Count by Stream")
 ```
+
 Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. Any years where `spawner count` exceeded `upstream count` was removed from the dataset as it was not considered dependable. This limited the data for some streams, but most especially Mill Creek, which had three data points.
 
 #### Calculating Prespawn Survival
@@ -165,15 +166,15 @@ Ultimately, `water_year_type` could not be used for Mill Creek or Clear Creek, b
 #### Statistical Importance of Covariates
 
 We developed the following methods for identifying key environmental covariates for each stream individually: 
-1) Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflaction factor (VIF) analysis to eliminate highly correlated variables. 
+1) Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflation factor (VIF) analysis to eliminate highly correlated variables. 
 2) Use information in step 1 to remove any confounding variables. 
 3) Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC. 
 
 The best fitting models for each stream were: 
-* Battle Creek: ```{r} best_adult_models$best_battle_lm``` 
-* Clear Creek: ```{r} best_adult_models$best_clear_lm``` 
-* Deer Creek: ```{r} best_adult_models$best_deer_lm``` 
-* Mill Creek: ```{r} best_adult_models$best_deer_lm```  
+* Battle Creek: `r print(best_adult_models$best_battle_lm)` 
+* Clear Creek: `r best_adult_models$best_clear_lm`   
+* Deer Creek: `r best_adult_models$best_deer_lm` 
+* Mill Creek: `r best_adult_models$best_mill_lm`   
 
 ### Single Stream Dauphin model
 
