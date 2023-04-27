@@ -171,7 +171,6 @@ standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/sta
 
 # prespawn survival -------------------------------------------------------
 
-# TODO add in carcass data
 carcass_streams <- c("yuba river", "butte creek") # feather
 
 prespawn_survival <- left_join(upstream_passage_estimates |>

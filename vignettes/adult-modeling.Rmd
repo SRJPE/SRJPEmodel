@@ -10,8 +10,11 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
 )
+
 ```
 
 ```{r setup, include = FALSE}
@@ -29,16 +32,19 @@ load(here::here("data-raw", "adult_model", "single_stream_dauphin_fits.Rdata"))
 
 The JPE requires an estimate of number of spawning adults for each tributary ideally with associated uncertainty. These estimates will be passed into the spawn-recruit submodel, connecting spawning adults to juvenile production within each tributary.
 
-There are two main methods of getting an estimate for spawning adult abundance: 
-1. adult upstream passage counts * pre-spawn mortality
-2. Cormack Jolly-Seber model applied to carcass surveys 
+There are two main methods of getting an estimate for spawning adult abundance:
+
+1. `adult upstream passage counts * pre-spawn mortality`
+2. Cormack Jolly-Seber model applied to carcass surveys
 
 For each tributary, a method was selected based on the relative availability, completeness, and quality of adult data sources. These selections are outlined in the Adult Data Report and took into account information from stream teams to recommend adult data sources.
 
-According to the Adult Data Report, the tributaries could be modeled by either approach 1 or 2: 
+According to the Adult Data Report, the tributaries could be modeled by either approach 1 or 2:
+
 * Battle Creek, Clear Creek, and Mill Creek: upstream passage and redd counts combined for approach 1
-* Deer Creek: upstream passage and holding counts combined for approach 1 
-* Butte Creek, Feather River, and Yuba River: carcass surveys used in approach 2. 
+* Deer Creek: upstream passage and holding counts combined for approach 1
+* Butte Creek, Feather River, and Yuba River: carcass surveys used in approach 2.
+
 
 ### Method 1: Adult Upstream Passage and Prespawn Mortality
 
@@ -73,30 +79,34 @@ adult_data_objects$survival_model_data_raw |>
 ### Environmental Covariates 
 
 To better understand the relationship between `upstream count` and `spawner count` - i.e. `prespawn survival` - environmental covariates were investigated from the following categories:
+
 * flow
 * temperature
 * upstream passage timing
-* water year type (wet or dry) 
+* water year type (wet or dry)
 
-The aim was to identify environmental covariates driving prespawn survival and incorporate them into the spawning adult abundance model. When performing these analyses, there were several points to consider: 
-* temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories. 
-* Collinearity needed to be accounted for among the predictor variables. 
+The aim was to identify environmental covariates driving prespawn survival and incorporate them into the spawning adult abundance model. When performing these analyses, there were several points to consider:
+
+* temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories.
+* Collinearity needed to be accounted for among the predictor variables.
 
 #### Flow 
 
-We considered two approaches for summarizing flow in cubic feet per second (cfs): 
-1) Mean flow
-2) Maximum flow 
+We considered two approaches for summarizing flow in cubic feet per second (cfs):
+
+1. Mean flow
+2. Maximum flow
 
 Maximum flow was considered to more effectively capture one-off large flow events that would theoretically support migration events. Additionally, upon inspection of the data source across multiple years, average maximum flow over the migratory and holding months (March-May and May-August, respectively) was more representative of the fluctuations in flow over the entire year. We decided to use maximum flow based on those criteria. 
 
 
 #### Temperature
 
-Several approaches were considered for summarizing temperature:
-1) proportion of days where the temperature surpassed a threshold of 20 degrees Celsius (source: https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf)
-2) Growing degree days (GDD) with a base temperature of 0 degrees Celsius (source: https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study and input from MAT team) 
-3) Degree Day 20 (DD20), where cumulative degree days are calculated against a threshold of 20 degrees Celsius (source: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204274) 
+Several approaches were considered for summarizing temperature: 
+
+1. proportion of days where the temperature surpassed a threshold of 20 degrees Celsius [(source)](https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf) 
+2. Growing degree days (GDD) with a base temperature of 0 degrees Celsius [(source)](https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study and input from MAT team)  
+3. Degree Day 20 (DD20), where cumulative degree days are calculated against a threshold of 20 degrees Celsius [(source)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204274) 
 
 For each metric approach, we calculated the metric for migration months (March - May) in the Sacramento River and holding months (May - August) in each tributary. We tested both the individual effects of migratory and holding temperatures as well as a cumulative metric (summed migratory and holding temperatures).
 
@@ -125,9 +135,10 @@ adult_data_objects$survival_model_data_raw |>
 We calculated the passage timing metric at a weekly granularity for streams where such data was available. 
 
 We considered the following metrics for passage timing: 
-1) Median passage timing 
-2) Mean passage timing 
-3) Minimum passage timing 
+
+1. Median passage timing 
+2. Mean passage timing 
+3. Minimum passage timing 
 
 We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing. Because some years were not collected for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
 
@@ -166,9 +177,10 @@ Ultimately, this variable could not be used for Mill Creek or Clear Creek, but a
 #### Statistical Importance of Covariates
 
 We developed the following methods for identifying key environmental covariates for each stream individually: 
-1) Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflation factor (VIF) analysis to eliminate highly correlated variables. 
-2) Use information in step 1 to remove any confounding variables. 
-3) Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC. 
+
+1. Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of 0.65, and using variation inflation factor (VIF) analysis to eliminate highly correlated variables. 
+2. Use information in step 1 to remove any confounding variables. 
+3. Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC. 
 
 The best fitting models for each stream were: 
 
@@ -183,6 +195,7 @@ best_adult_models$best_deer_lm
 ### Single Stream Dauphin model
 
 Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of Dauphin et al. (2010). The model is coded in `rstan` and produces estimates of prespawn survival (mean `mu_k` and standard deviation `sigma_k`), as well as upstream passage (log-scale mean `mu_alpha` and log-scale standard deviation `sigma_alpha`). The results were examined for several diganostics: 
+
 * N eff ratio 
 * Traceplots 
 * Density overlay plots 
