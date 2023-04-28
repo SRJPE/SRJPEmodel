@@ -53,6 +53,7 @@ single_stream_dauphin <- "
       alpha[i] = mu_k * beta * environmental_index[N];
       upstream_count[i] ~ lognormal(mu_a, sigma_a);
       prespawn_survival[i] ~ gamma(alpha[i], beta);
+      // consider using predicted upstream_count to incorporate obsv error
       lambda[i] = upstream_count[i] * prespawn_survival[i];
       spawner_count[i] ~ poisson(lambda[i]);
     }
@@ -217,3 +218,72 @@ summarized_results <- tibble("stream" = c("battle creek", "clear creek", "mill c
                                            median(extract(mill_dauphin, permuted = TRUE)$sigma_k),
                                            median(extract(deer_dauphin, permuted = TRUE)$sigma_k))) |>
   glimpse()
+
+
+# model with obsv error ---------------------------------------------------
+
+single_stream_dauphin <- "
+  data {
+    int N;
+    int obsv_upstream_count[N];
+    int spawner_count[N];
+    real prespawn_survival[N];
+    real environmental_index[N];
+  }
+  parameters {
+    real <lower = 0> mu_k;
+    real <lower = 0> sigma_k;
+    real <lower = 0> pred_upstream_count[N];
+    real <lower = 0 > upstream_sd;
+  }
+  model {
+    // priors
+    mu_k ~ gamma(3,1);
+    sigma_k ~ gamma(1,2);
+
+    real alpha[N];
+    real beta;
+
+    beta = mu_k * sigma_k;
+
+    vector[N] lambda;
+
+    // calibration between upstream adults and redd count
+    for(i in 1:N) {
+      alpha[i] = mu_k * beta * environmental_index[N];
+      prespawn_survival[i] ~ gamma(alpha[i], beta);
+
+      pred_upstream_count[i] ~ normal(obsv_upstream_count[i], upstream_sd);
+
+      // consider using predicted upstream_count to incorporate obsv error
+      lambda[i] = pred_upstream_count[i] * prespawn_survival[i];
+      spawner_count[i] ~ poisson(lambda[i]);
+    }
+
+  }"
+
+prep_data_dauphin <- function(raw_data, stream_name, predictor_vars) {
+  new_dat <- raw_data |>
+    filter(stream == stream_name) |>
+    drop_na(all_of(predictor_vars)) # can't have any NAs in predictor variables
+
+  if(stream_name == "deer creek"){
+    return(list(N = length(new_dat$year),
+                obsv_upstream_count = new_dat$upstream_count,
+                spawner_count = new_dat$holding_count, # deer uses holding count
+                prespawn_survival = new_dat$prespawn_survival))
+  } else {
+    return(list(N = length(new_dat$year),
+                obsv_upstream_count = new_dat$upstream_count,
+                spawner_count = new_dat$redd_count,
+                prespawn_survival = new_dat$prespawn_survival))
+  }
+}
+
+# diagnostics
+mcmc_trace(battle_dauphin, pars = c("mu_k", "sigma_k", "upstream_sd"))
+mcmc_areas(battle_dauphin, pars = c("mu_k", "sigma_k", "upstream_sd"))
+mcmc_dens_overlay(battle_dauphin, pars = c("mu_k", "sigma_k", "upstream_sd"))# should be indistinguishable
+neff_ratio(battle_dauphin, pars = c("mu_k", "sigma_k", "upstream_sd"))# should be >0.1
+mcmc_acf(battle_dauphin, pars  = c("mu_k", "sigma_k", "upstream_sd"))# should drop to be low
+rhat(battle_dauphin, pars = c("mu_k", "sigma_k", "upstream_sd"))# should be close to 1
