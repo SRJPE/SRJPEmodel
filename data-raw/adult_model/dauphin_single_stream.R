@@ -222,7 +222,7 @@ summarized_results <- tibble("stream" = c("battle creek", "clear creek", "mill c
 
 # model with obsv error ---------------------------------------------------
 
-single_stream_dauphin <- "
+single_stream_dauphin_obsv <- "
   data {
     int N;
     int obsv_upstream_count[N];
@@ -250,7 +250,7 @@ single_stream_dauphin <- "
 
     // calibration between upstream adults and redd count
     for(i in 1:N) {
-      alpha[i] = mu_k * beta * environmental_index[N];
+      alpha[i] = mu_k * beta * environmental_index[i];
       prespawn_survival[i] ~ gamma(alpha[i], beta);
 
       pred_upstream_count[i] ~ normal(obsv_upstream_count[i], upstream_sd);
@@ -259,7 +259,6 @@ single_stream_dauphin <- "
       lambda[i] = pred_upstream_count[i] * prespawn_survival[i];
       spawner_count[i] ~ poisson(lambda[i]);
     }
-
   }"
 
 prep_data_dauphin <- function(raw_data, stream_name, predictor_vars) {

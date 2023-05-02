@@ -189,8 +189,9 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
          prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
                                        stream %in% carcass_streams ~ carcass_count / upstream_count,
                                        TRUE ~ redd_count / female_upstream)) |>
-  filter(prespawn_survival <= 1,
-         prespawn_survival != Inf) |> # this excludes a lot of data points
+  filter(prespawn_survival != Inf) |>
+  # filter(prespawn_survival <= 1,
+  #        prespawn_survival != Inf) |> # this excludes a lot of data points
   glimpse()
 
 
@@ -392,10 +393,11 @@ best_battle_model <- glmulti(y = "prespawn_survival",
 # as data availability increases we may want to include water year type
 clear_data <- survival_model_data |>
   filter(stream == "clear creek") |>
-  select(-c(stream,  year, water_year_type))
+  select(-c(stream,  year))
 ggpairs(clear_data)
 print_cors(clear_data, 0.65)
 vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(median_passage_timing))))
+vif(lm(prespawn_survival ~ ., data = clear_data))
 
 
 # remove variables with highest VIF values
@@ -404,7 +406,7 @@ clear_variables_remove <- c("median_passage_timing") # NAs for many years
 # now look for interactions using glmulti
 best_clear_model <- glmulti(y = "prespawn_survival",
                             xr = clear_data |> select(-c("prespawn_survival",
-                                                         all_of(clear_variables_remove))) |>
+                                               all_of(clear_variables_remove))) |>
                               names(),
                             intercept = TRUE,
                             method = "h",
@@ -419,7 +421,7 @@ best_clear_model <- glmulti(y = "prespawn_survival",
 # currently only 3 data points for mill...this is not a lot of statistical power
 mill_data <- survival_model_data |>
   filter(stream == "mill creek") |>
-  select(-c(year, stream, water_year_type))
+  select(-c(year, stream))
 
 ggpairs(mill_data)
 print_cors(mill_data, 0.65)
