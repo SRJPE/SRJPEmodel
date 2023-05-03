@@ -190,6 +190,7 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
                                        stream %in% carcass_streams ~ carcass_count / upstream_count,
                                        TRUE ~ redd_count / female_upstream)) |>
   filter(prespawn_survival != Inf) |>
+  # TODO resave this dataset without filtering prespawn_survival
   # filter(prespawn_survival <= 1,
   #        prespawn_survival != Inf) |> # this excludes a lot of data points
   glimpse()
@@ -368,7 +369,7 @@ print_cors <- function(data, cor_threshold) {
 battle_data <- survival_model_data |>
   filter(stream == "battle creek") |>
   select(-c(year, stream))
-ggpairs(battle_data)
+ggpairs(battle_data |> drop_na())
 print_cors(battle_data, 0.65) # gdd total correlated with each other; mean passage timing correlated with each other
 vif(lm(prespawn_survival ~ ., data = battle_data))
 
@@ -383,9 +384,11 @@ best_battle_model <- glmulti(y = "prespawn_survival",
                                names(),
                              intercept = TRUE,
                              method = "h",
-                             level = 2,
+                             maxsize = 1,
+                             level = 1,
                              data = battle_data,
                              fitfunction = "lm")
+summary(best_battle_model)$bestmodel
 
 # clear
 # clear had lots of points where prespawn_survival > 1 (filtered earlier). This gets rid
@@ -394,7 +397,7 @@ best_battle_model <- glmulti(y = "prespawn_survival",
 clear_data <- survival_model_data |>
   filter(stream == "clear creek") |>
   select(-c(stream,  year))
-ggpairs(clear_data)
+ggpairs(clear_data |> drop_na()) # lots of NAs for median_passage
 print_cors(clear_data, 0.65)
 vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(median_passage_timing))))
 vif(lm(prespawn_survival ~ ., data = clear_data))
@@ -402,7 +405,7 @@ vif(lm(prespawn_survival ~ ., data = clear_data))
 
 # remove variables with highest VIF values
 clear_variables_remove <- c("median_passage_timing") # NAs for many years
-
+clear_variables_remove <- c()
 # now look for interactions using glmulti
 best_clear_model <- glmulti(y = "prespawn_survival",
                             xr = clear_data |> select(-c("prespawn_survival",
@@ -410,9 +413,11 @@ best_clear_model <- glmulti(y = "prespawn_survival",
                               names(),
                             intercept = TRUE,
                             method = "h",
-                            level = 2,
+                            maxsize = 1,
+                            level = 1,
                             data = clear_data,
                             fitfunction = "lm")
+summary(best_clear_model)$bestmodel
 
 # mill
 # mill had lots of points where prespawn_survival > 1 (filtered earlier). This gets rid
@@ -439,9 +444,11 @@ best_mill_model <- glmulti(y = "prespawn_survival",
                              names(),
                            intercept = TRUE,
                            method = "h",
-                           level = 2,
+                           maxsize = 1,
+                           level = 1,
                            data = mill_data,
                            fitfunction = "lm")
+summary(best_mill_model)$bestmodel
 
 # deer
 deer_data <- survival_model_data |>
@@ -462,9 +469,11 @@ best_deer_model <- glmulti(y = "prespawn_survival",
                              names(),
                            intercept = TRUE,
                            method = "h",
-                           level = 2,
+                           level = 1,
+                           maxsize = 1,
                            data = deer_data,
                            fitfunction = "lm")
+summary(best_deer_model)$bestmodel
 
 # butte
 butte_data <- survival_model_data |>
@@ -485,7 +494,7 @@ best_butte_model <- glmulti(y = "prespawn_survival",
                              names(),
                            intercept = TRUE,
                            method = "h",
-                           level = 2,
+                           level = 1,
                            data = butte_data,
                            fitfunction = "lm")
 
@@ -506,7 +515,7 @@ best_yuba_model <- glmulti(y = "prespawn_survival",
                               names(),
                             intercept = TRUE,
                             method = "h",
-                            level = 2,
+                            level = 1,
                             data = yuba_data,
                             fitfunction = "lm")
 
@@ -519,17 +528,17 @@ best_battle_lm <- lm(prespawn_survival ~ 1 + water_year_type,
 avPlots(best_battle_lm)
 
 summary(best_clear_model)$bestmodel
-best_clear_lm <- lm(prespawn_survival ~ 1 + gdd_total,
+best_clear_lm <- lm(prespawn_survival ~ 1 + max_flow,
                      data = clear_data)
 avPlots(best_clear_lm)
 
 summary(best_mill_model)$bestmodel
-best_mill_lm <- lm(prespawn_survival ~ 1 + max_flow + gdd_total:max_flow,
+best_mill_lm <- lm(prespawn_survival ~ 1 + gdd_total,
                      data = mill_data)
 avPlots(best_mill_lm)
 
 summary(best_deer_model)$bestmodel
-best_deer_lm <- lm(prespawn_survival ~ 1 + gdd_total:max_flow,
+best_deer_lm <- lm(prespawn_survival ~ 1 + water_year_type,
                    data = deer_data)
 avPlots(best_deer_lm)
 
