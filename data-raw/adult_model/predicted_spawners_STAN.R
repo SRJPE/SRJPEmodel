@@ -16,8 +16,9 @@ load(here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
 # prep covariates ---------------------------------------------------------
 full_data_for_input <- adult_data_objects$survival_model_data_raw |>
   mutate(wy_type_std = ifelse(water_year_type == "dry", 0, 1),
+         wy_type_sd = as.vector(scale(wy_type_std)), # TODO double check this. was producing negative b1_surv estimates for wet year types
          max_flow_std = as.vector(scale(max_flow)),
-         gdd_std = as.vector(scale(gdd_total)),
+         gdd_std = -as.vector(scale(gdd_total)),
          min_passage_timing_std = as.vector(scale(min_passage_timing))) |>
   select(year, stream, upstream_count, redd_count, holding_count,
          wy_type_std, max_flow_std, gdd_std, min_passage_timing_std) |>
@@ -35,7 +36,7 @@ predicted_redds <- "
   parameters {
     real <lower = 0> mean_redds_per_spawner;
     real <lower = 0> tau_redds_per_spawner;
-    real logit_redds_per_spawner[N];
+    real log_redds_per_spawner[N];
     //real <lower = 0> redds_per_spawner[N];
     //real <lower = 0> predicted_redds[N];
     real b1_survival;
@@ -43,9 +44,9 @@ predicted_redds <- "
   } model {
 
     // priors
-    mean_redds_per_spawner ~ normal(-0.69, 0.001);
-    tau_redds_per_spawner ~ gamma(0.01, 0.01);
-    b1_survival ~ normal(0, 0.001);
+    //mean_redds_per_spawner ~ normal(-0.69, 0.001);
+    //tau_redds_per_spawner ~ gamma(0.01, 0.01);
+    //b1_survival ~ normal(0, 0.001);
 
     // transform parameter
     real sigma_redds_per_spawner = pow(tau_redds_per_spawner, -0.5);
@@ -59,15 +60,15 @@ predicted_redds <- "
     for(i in 1:N) {
 
       // predicted survival rate
-      logit_redds_per_spawner[i] ~ normal(mean_redds_per_spawner, tau_redds_per_spawner);
-      survival_rate[i] = inv_logit(logit_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
+      log_redds_per_spawner[i] ~ normal(mean_redds_per_spawner, tau_redds_per_spawner);
+      survival_rate[i] = inv_logit(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
 
-      redds_per_spawner[i] = inv_logit(logit_redds_per_spawner[i]);
+      redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
 
       // predicted redds is product of observed passage * survival rate
       predicted_spawners[i] = observed_passage[i] * survival_rate[i];
 
-      // likelihood of predicted redds | observed redds
+      // likelihood of observed redds | predicted redds
       observed_spawners[i] ~ poisson(predicted_spawners[i]);
 
     }
@@ -78,9 +79,9 @@ predicted_redds <- "
     real redds_per_spawner[N];
 
     for(i in 1:N) {
-      survival_rate[i] = inv_logit(logit_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
+      survival_rate[i] = inv_logit(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
       predicted_spawners[i] = observed_passage[i] * survival_rate[i];
-      redds_per_spawner[i] = inv_logit(logit_redds_per_spawner[i]);
+      redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
     }
 }"
 
@@ -92,13 +93,21 @@ full_battle <- full_data_for_input |>
 battle_data_list <- list("N" = length(unique(full_battle$year)),
                          "observed_passage" = full_battle$upstream_count,
                          "observed_spawners" = full_battle$redd_count,
-                         "environmental_covar" = full_battle$wy_type_std)
+                         "environmental_covar" = as.vector(scale(full_battle$wy_type_std)))
 
 battle_pred_redd <- stan(model_code = predicted_redds,
                        data = battle_data_list,
                        chains = 3, iter = 20000*2, seed = 84735)
 
-mcmc_trace(battle_pred_redd, pars = c("b1_survival"))
+loo(battle_pred_redd)
+
+summary(battle_pred_redd)$summary[, 1:4]
+
+summary(battle_pred_redd)$summary[str_detect(rownames(summary(battle_pred_redd)$summary), "predicted_spawners"), 1:4] |> round(4)
+summary(battle_pred_redd)$summary[rownames(summary(battle_pred_redd)$summary) == "b1_survival", 1:10] |> round(4)
+
+mcmc_areas(battle_pred_redd, pars = c("b1_survival"))
+mcmc_dens_overlay(battle_pred_redd, pars = c("redds_per_spawner[15]"))
 mcmc_areas(battle_pred_redd, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a"))
 mcmc_dens_overlay(battle_pred_redd, pars = c("mu_k", "sigma_k",  "mu_a", "sigma_a")) # should be indistinguishable
 neff_ratio(battle_pred_redd, pars = c("mu_k", "sigma_k", "mu_a", "sigma_a")) # should be >0.1
