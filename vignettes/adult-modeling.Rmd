@@ -161,7 +161,8 @@ adult_data_objects$survival_model_data_raw |>
   ggplot(aes(x = year, y = diff)) + 
   geom_line() +
   facet_wrap(~stream) +
-  xlab("Year") + ylab("Difference between median and mean passage timing")
+  xlab("Year") + ylab("Difference between median and mean passage timing") + 
+  theme_minimal()
 ```
 
 We decided upon median passage timing over mean passage timing as it performed better in automated model selection.
@@ -178,7 +179,8 @@ adult_data_objects$survival_model_data_raw |>
   geom_point() +
   facet_wrap(~stream, scales = "free") + 
   xlab("Year") + ylab("Prespawn Survival")  + 
-  ggtitle("Prespawn survival by water year type")
+  ggtitle("Prespawn survival by water year type") +
+  theme_minimal()
 ```
 
 #### Statistical Importance of Covariates
@@ -220,8 +222,8 @@ The model is coded in `rstan`, a langauge used for implementing models in a baye
 The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$battle_pred |> filter(par_names == "b1_survival") |> pull(mean)`
 
 ```{r}
-x_vals <- adult_data_objects$survival_model_data |> 
-  filter(stream == "battle creek") |> 
+x_vals <- adult_data_objects$battle_data |> 
+  drop_na(water_year_type) |> 
   pull(year)
 
 model_fit_summaries$battle_pred |> 
@@ -239,8 +241,7 @@ model_fit_summaries$battle_pred |>
 The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$clear_pred |> filter(par_names == "b1_survival") |> pull(mean)`
 
 ```{r}
-x_vals <- adult_data_objects$survival_model_data |> 
-  filter(stream == "clear creek") |> 
+x_vals <- adult_data_objects$clear_data |> 
   drop_na(max_flow) |> 
   pull(year)
 
@@ -260,8 +261,7 @@ model_fit_summaries$clear_pred |>
 The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$mill_pred |> filter(par_names == "b1_survival") |> pull(mean)`
 
 ```{r}
-x_vals <- adult_data_objects$survival_model_data |> 
-  filter(stream == "mill creek") |> 
+x_vals <- adult_data_objects$mill_data |> 
   drop_na(gdd_total) |> 
   pull(year)
 
@@ -280,8 +280,7 @@ model_fit_summaries$mill_pred |>
 The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$deer_pred |> filter(par_names == "b1_survival") |> pull(mean)`
 
 ```{r}
-x_vals <- adult_data_objects$survival_model_data |> 
-  filter(stream == "deer creek") |> 
+x_vals <- adult_data_objects$deer_data |> 
   drop_na(water_year_type) |> 
   pull(year)
 
@@ -298,7 +297,7 @@ model_fit_summaries$deer_pred |>
 
 ### Method 2: Carcass data
 
-Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use, though estimates of uncertainty around these values are needed.
+Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use.
 
 ```{r}
 adult_data_objects$butte_data |>
@@ -310,6 +309,9 @@ adult_data_objects$butte_data |>
 ```
 
 Feather River provided adult spawner abundance as estimated by CJS.
+```{r}
+# TODO pull in feather carcass estimates and plot
+```
 
 ### Method 3: Upstream Passage Data
 
@@ -322,4 +324,22 @@ adult_data_objects$yuba_data |>
   xlab("Year") + ylab("Spawner estimate") +
   ggtitle("Yuba river spawner estimates (Upstream passage)") +
   theme_minimal()
+```
+
+
+## All spawner counts
+
+After modeling, the stock-recruit model will be fed a table of spawner counts by stream and year. These are either `modeled_spawners` for Battle, Clear, Mill, and Deer Creeks; `upstream_passage_estimate` for Yuba River; or `carcass_cjs_estimate` for Butte Creek and Feather River. 
+
+```{r}
+read.csv(here::here("data-raw", "adult_model", "adult_data_all_streams.csv")) |> 
+  ggplot(aes(x = year, y = spawner_count, color = data_type)) + 
+  geom_line() +
+  scale_fill_manual("Spawner count method", values = c("CJS applied to carcass survey", "Spawners modeled via STAN", "Upstream Passage Estimate")) +
+  xlab("Year") + ylab("Spawner count") +
+  ggtitle("Spawner counts by method") +
+  scale_color_discrete(name = "Spawner count method", 
+                       labels = c("CJS applied to carcass survey", "Spawners modeled via STAN", "Upstream Passage Estimate")) +
+  theme_minimal() +
+  facet_wrap(~stream, scales = "free")
 ```
