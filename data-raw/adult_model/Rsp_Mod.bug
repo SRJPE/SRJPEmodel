@@ -1,0 +1,38 @@
+model{
+
+muRsP~dnorm(-0.69,1.0E-03)	#
+
+#Prior for precision in redds/spawner (variation across years)
+tauRsP~dgamma(0.01,0.01)	#precision of RsP[iyr] (initialize at tauRsP=1)
+sdRsP<-pow(tauRsP,-0.5)	#convert precition to standard deviation for output
+
+#prior for paramter predicting passage-redd survival rate in logit space
+b1_surv~dnorm(0,1.0E-03)
+
+for(iyr in 1:Nyrs){
+	
+	#Redds per Spawner for current year (note can be > 1)
+	#lgRsP[iyr]~dnorm(muRsP,tauRsP) #in log space
+	#RsP[iyr]<-exp(lgRsP[iyr])	#transformed so can't be negative
+	
+	
+	#Predicted logit survival rate, convereted to linear space
+	#logit(surv[iyr])<-b0_surv + b1_surv*X[iyr]
+	logit_RsP[iyr]~dnorm(muRsP,tauRsP)
+	logit(surv[iyr])<-logit_RsP[iyr] + b1_surv*X[iyr]
+	
+	logit(RsP[iyr])<-logit_RsP[iyr]
+	
+	
+	#predicted redds is product of # of upstream passage fish * survival rate * ReddsPerSpawner
+	#pred_redd[iyr]<-obs_passage[iyr]*surv[iyr]*RsP[iyr]
+	pred_redd[iyr]<-obs_passage[iyr]*surv[iyr]#*RsP
+	
+	
+	#likelihood of # of observed redds. tauObs is hardwired observation error in redd count (set to high #
+	#obs_redd[iyr]~dnorm(pred_redd[iyr],tauObs)
+	obs_redd[iyr]~dpois(pred_redd[iyr])
+	
+}
+	
+}
