@@ -1,0 +1,325 @@
+---
+title: "Adult Modeling"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Adult Modeling}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(tidybayes)
+
+load(here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
+load(here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
+load(here::here("data-raw", "adult_model", "model_fit_summaries.Rdata"))
+```
+
+
+## Spawning Adult Abundance in the JPE
+
+The JPE requires an estimate of number of spawning adults for each tributary with associated uncertainty. These estimates will be passed into the spawn-recruit submodel which connects spawning adults to juvenile production within each tributary.
+
+There are three main methods of getting an estimate for spawning adult abundance:
+
+1. Predicting spawner abundance as a function of upstream passage and pre-spawn survival
+2. Cormack Jolly-Seber model applied to carcass surveys
+3. Adult upstream passage counts with modeled uncertainty via spline
+
+Method 1 was the default approach, but several tributaries did not have the data to support the model. Data completeness, quality, and availability varied across streams (outlined in the Adult Data Report) and were used to decide which streams could be applied to Method 1. 
+
+Battle Creek, Clear Creek, Mill Creek, and Deer Creek could all be modeled using approach 1 because they had robust spawner count data (redd surveys for Battle, Clear, and Mill; holding surveys for Deer) and upstream passage data.
+
+Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using approach 2.
+
+Yuba River has upstream passage data and performs carcass surveys but only has CJS estimates for four years (2014, 2015, 2019, and 2020). Because of these limitations, Yuba River spawner abundances were modeled using approach 3.
+
+
+### Method 1: Adult Upstream Passage and Prespawn Mortality
+
+#### Data Sources 
+
+Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into one dataset where `spawner_count` represented the survey associated with spawning adults (either `redd_count` or `holding_count`) and `upstream_count` represented the counts of adults passing through the video stations. These counts were summarized by year.
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
+  mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
+  ggplot(aes(x = year, y = spawner_count, color = "spawner count")) + 
+  geom_line() +
+  geom_line(aes(x = year, y = upstream_count, color = "upstream passage")) +
+  facet_wrap(~stream) + 
+  theme_minimal() +
+  xlab("Year") + ylab("Spawner Count") + ggtitle("Spawner Count by Stream")
+```
+
+Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. There were several years for each stream (except Battle) where `spawner count` exceeded `upstream count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in our upstream passage counts in the model. 
+
+#### Calculating Prespawn Survival
+
+Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. When we were using redd counts as `upstream_count`, we modified that equation to be `upstream_count / (spawner_count * 0.5)` to assume a 50/50 sex ratio. 
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
+  ggplot(aes(x = year, y = prespawn_survival, color = stream)) +
+  geom_line() +
+  theme_minimal() +
+  xlab("Year") + ylab("Prespawn Survival") + ggtitle("Prespawn Survival by Stream")
+```
+
+### Environmental Covariates 
+
+To better understand the relationship between `upstream count` and `spawner count` - i.e. `prespawn survival` - environmental covariates were investigated from the following categories:
+
+* flow
+* temperature
+* upstream passage timing
+* water year type (wet or dry)
+
+We identified environmental covariates driving prespawn survival to decide on which to incorporate into the spawning adult abundance model. When performing these analyses, there were several points to consider:
+
+* temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories.
+* Collinearity needed to be accounted for among the predictor variables.
+
+#### Flow 
+
+We considered two approaches for summarizing flow in cubic feet per second (cfs):
+
+1. Mean flow
+2. Maximum flow
+
+Maximum flow was considered to more effectively capture one-off large flow events that would theoretically support migration events. Additionally, upon inspection of the data source across multiple years, average maximum flow over the migratory and holding months (March-May and May-August, respectively) was more representative of the fluctuations in flow over the entire year. We decided to use maximum flow based on those criteria. 
+
+
+#### Temperature
+
+Several approaches were considered for summarizing temperature: 
+
+1. proportion of days where the temperature surpassed a threshold of 20 degrees Celsius [(source)](https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf) 
+2. Growing degree days (GDD) with a base temperature of 0 degrees Celsius [(source)](https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study and input from MAT team)  
+3. Degree Day 20 (DD20), where cumulative degree days are calculated against a threshold of 20 degrees Celsius [(source)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204274) 
+
+For each metric approach, we calculated the metric for migration months (March - May) in the Sacramento River and holding months (May - August) in each tributary. We tested both the individual effects of migratory and holding temperatures as well as a cumulative metric (summed migratory and holding temperatures).
+
+We visually inspected regressions of prespawn survival against each of the three temperature metrics. Metrics 1 and 2 did not show a consistent relationship across streams, and in particular metric 1 was not considered to sufficiently capture the relationship between temperature, time exposed to high temperatures, and the cumulative effect of exposure to high temperatures on stress. We decided on metric 3 (DD20).
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |>  
+  filter(stream != "mill creek") |> 
+  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, color = stream)) + 
+  geom_smooth(method = "lm") + 
+  ggtitle("Proportion of days exceeding threshold as predictor variable") +
+  ylab("Prespawn Survival") + xlab("Proportion of days exceeding threshold")
+```
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
+  filter(stream != "mill creek") |> 
+  ggplot(aes(x = gdd_total, y = prespawn_survival, color = stream)) + 
+  geom_smooth(method = "lm") + 
+  ggtitle("Degree days (20) as predictor variable") + 
+  ylab("Prespawn survival") + xlab("DD20")
+```
+
+
+
+#### Passage Timing 
+
+We calculated the passage timing metric at a weekly granularity for streams where such data was available. 
+
+We considered the following metrics for passage timing: 
+
+1. Median passage timing 
+2. Mean passage timing 
+3. Minimum passage timing 
+
+We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing. Because some years were not available for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
+
+Minimum passage timing could theoretically capture not only passage timing but also how long fish were exposed to higher temperatures (i.e. the earlier the first passage timing, the less time exposed to high temperatures later in the year), inspection of plots of passage counts by year and stream showed that the bulk of the fish were not being captured by the minimum passage metric.
+
+Median and mean passage timing were very similar across years, rarely differing by more than 2 weeks:
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
+  mutate(diff = median_passage_timing - mean_passage_timing) |> 
+  ggplot(aes(x = year, y = diff)) + 
+  geom_line() +
+  facet_wrap(~stream) +
+  xlab("Year") + ylab("Difference between median and mean passage timing")
+```
+
+We decided upon median passage timing over mean passage timing as it performed better in automated model selection.
+
+#### Water Year Type 
+
+To account for year effects, we used the `waterYearType` package to pull water year assignments as a categorical covariate. Because for some streams we had very few data points (i.e. for Mill Creek, only three years were considered dependable), we simplified all potential categories of water year type into either dry (`Dry`, `Below Normal`, `Critical`) or wet (`Wet`, `Above Normal`).
+
+```{r}
+adult_data_objects$survival_model_data_raw |> 
+  filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
+  ggplot(aes(x = year, y = prespawn_survival, 
+             color = water_year_type)) +
+  geom_point() +
+  facet_wrap(~stream, scales = "free") + 
+  xlab("Year") + ylab("Prespawn Survival")  + 
+  ggtitle("Prespawn survival by water year type")
+```
+
+#### Statistical Importance of Covariates
+
+We developed the following methods for identifying key environmental covariates for each stream individually: 
+
+1. Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of `0.65`, and using variation inflation factor (VIF) analysis to eliminate highly correlated variables. 
+2. Use information in step 1 to remove any confounding variables. 
+3. Use the package `glmulti` to select the best combination of remaining variables in a linear regression based on AIC.
+
+We only looked for univariate models (i.e. did not consider interactions and focused on identifying one predictor variable) in the linear regressions due to limited data: several streams had a sample size of less than `10` which was not enough statistical power to fit interaction terms. 
+
+The selected coefficients for each stream were: 
+
+Battle: `r coef(best_adult_models$best_battle_lm)[2]`
+Clear: `r coef(best_adult_models$best_clear_lm)[2]`
+Mill: `r coef(best_adult_models$best_mill_lm)[2]`
+Deer: `r coef(best_adult_models$best_deer_lm)[2]`
+
+
+#### Predicted Redd bayesian model
+
+Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of Dauphin et al. (2010).
+
+The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmetnal covariates were standardized so that scale would not impact the results of the model. 
+
+The model calculates survival from upstream passage to spawning `survival_rate` as a function of the impact of the environmental coviarate on survival `b1_survival`, the environmental covariate `environmental_covar`, and `redds_per_spawner`. `redds_per_spawner` is estimated on a log scale so it is restricted to be positive but can exceed 1. The model then predicts spawner count `predicted_spawners` as a function of `observed_passage` and `survival_rate`. The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predicted_spawners`. 
+
+The model is coded in `rstan`, a langauge used for implementing models in a bayesian framework. The model results were assessed using the following diagnostics:
+
+* N eff ratio 
+* Traceplots 
+* Density overlay plots 
+* Rhat 
+* Autocorrelation
+
+### Battle
+
+The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$battle_pred |> filter(par_names == "b1_survival") |> pull(mean)`
+
+```{r}
+x_vals <- adult_data_objects$survival_model_data |> 
+  filter(stream == "battle creek") |> 
+  pull(year)
+
+model_fit_summaries$battle_pred |> 
+  filter(par_names != "b1_survival") |> 
+  ggplot(aes(x = x_vals)) +
+  geom_line(aes(x = x_vals, y = mean)) +
+  geom_ribbon(aes(ymax = `97.5%`,
+                  ymin = `2.5%`), alpha = 0.2) +
+  xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
+  ggtitle("Battle Creek Predicted Spawner Count with uncertainty")
+```
+
+### Clear
+
+The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$clear_pred |> filter(par_names == "b1_survival") |> pull(mean)`
+
+```{r}
+x_vals <- adult_data_objects$survival_model_data |> 
+  filter(stream == "clear creek") |> 
+  drop_na(max_flow) |> 
+  pull(year)
+
+model_fit_summaries$clear_pred |> 
+  filter(par_names != "b1_survival") |> 
+  ggplot(aes(x = x_vals)) +
+  geom_line(aes(x = x_vals, y = mean)) +
+  geom_ribbon(aes(ymax = `97.5%`,
+                  ymin = `2.5%`), alpha = 0.2) +
+  xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
+  ggtitle("Clear Creek Predicted Spawner Count with uncertainty")
+```
+
+
+### Mill
+
+The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$mill_pred |> filter(par_names == "b1_survival") |> pull(mean)`
+
+```{r}
+x_vals <- adult_data_objects$survival_model_data |> 
+  filter(stream == "mill creek") |> 
+  drop_na(gdd_total) |> 
+  pull(year)
+
+model_fit_summaries$mill_pred |> 
+  filter(par_names != "b1_survival") |> 
+  ggplot(aes(x = x_vals)) +
+  geom_line(aes(x = x_vals, y = mean)) +
+  geom_ribbon(aes(ymax = `97.5%`,
+                  ymin = `2.5%`), alpha = 0.2) +
+  xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
+  ggtitle("Mill Creek Predicted Spawner Count with uncertainty")
+```
+
+### Deer
+
+The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries$deer_pred |> filter(par_names == "b1_survival") |> pull(mean)`
+
+```{r}
+x_vals <- adult_data_objects$survival_model_data |> 
+  filter(stream == "deer creek") |> 
+  drop_na(water_year_type) |> 
+  pull(year)
+
+model_fit_summaries$deer_pred |> 
+  filter(par_names != "b1_survival") |> 
+  ggplot(aes(x = x_vals)) +
+  geom_line(aes(x = x_vals, y = mean)) +
+  geom_ribbon(aes(ymax = `97.5%`,
+                  ymin = `2.5%`), alpha = 0.2) +
+  xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
+  ggtitle("Deer Creek Predicted Spawner Count with uncertainty")
+```
+
+
+### Method 2: Carcass data
+
+Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use, though estimates of uncertainty around these values are needed.
+
+```{r}
+adult_data_objects$butte_data |>
+  ggplot(aes(x = year, y = spawner_estimate)) +
+  geom_line() +
+  xlab("Year") + ylab("Spawner estimate") +
+  ggtitle("Butte creek spawner estimates (CJS)") +
+  theme_minimal()
+```
+
+Feather River provided adult spawner abundance as estimated by CJS.
+
+### Method 3: Upstream Passage Data
+
+Yuba River provided upstream passage estimates. 
+
+```{r}
+adult_data_objects$yuba_data |>
+  ggplot(aes(x = year, y = passage_estimate)) +
+  geom_line() +
+  xlab("Year") + ylab("Spawner estimate") +
+  ggtitle("Yuba river spawner estimates (Upstream passage)") +
+  theme_minimal()
+```
