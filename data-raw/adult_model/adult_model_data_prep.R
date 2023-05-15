@@ -366,8 +366,9 @@ print_cors <- function(data, cor_threshold) {
 # theory - GDD is the standard. stronger than total_prop_days
 # 5. use glmuli to look for the best model (by AIC) - including interactions
 
-battle_data <- survival_model_data |>
-  filter(stream == "battle creek") |>
+battle_data_full <- survival_model_data |>
+  filter(stream == "battle creek")
+battle_data <- battle_data_full |>
   select(-c(year, stream))
 ggpairs(battle_data |> drop_na())
 print_cors(battle_data, 0.65) # gdd total correlated with each other; mean passage timing correlated with each other
@@ -394,8 +395,9 @@ summary(best_battle_model)$bestmodel
 # clear had lots of points where prespawn_survival > 1 (filtered earlier). This gets rid
 # of any years with different water year types, so we exclude this as a consideration although
 # as data availability increases we may want to include water year type
-clear_data <- survival_model_data |>
-  filter(stream == "clear creek") |>
+clear_data_full <- survival_model_data |>
+  filter(stream == "clear creek")
+clear_data <- clear_data_full |>
   select(-c(stream,  year))
 ggpairs(clear_data |> drop_na()) # lots of NAs for median_passage
 print_cors(clear_data, 0.65)
@@ -424,8 +426,9 @@ summary(best_clear_model)$bestmodel
 # of any years with different water year types, so we exclude this as a consideration although
 # as data availability increases we may want to include water year type.
 # currently only 3 data points for mill...this is not a lot of statistical power
-mill_data <- survival_model_data |>
-  filter(stream == "mill creek") |>
+mill_data_full <- survival_model_data |>
+  filter(stream == "mill creek")
+mill_data <- mill_data_full |>
   select(-c(year, stream))
 
 ggpairs(mill_data)
@@ -451,8 +454,9 @@ best_mill_model <- glmulti(y = "prespawn_survival",
 summary(best_mill_model)$bestmodel
 
 # deer
-deer_data <- survival_model_data |>
-  filter(stream == "deer creek") |>
+deer_data_full <- survival_model_data |>
+  filter(stream == "deer creek")
+deer_data <- deer_data_full |>
   select(-c(year, stream))
 ggpairs(deer_data)
 print_cors(deer_data, 0.65) # gdd trib is correlated w/ max flow & median passage
@@ -514,10 +518,10 @@ butte_data <- carcass_estimates |>
 
 adult_data_objects <- list("survival_model_data_raw" = survival_model_data_raw,
                            "survival_model_data" = survival_model_data,
-                           "battle_data" = battle_data,
-                           "clear_data" = clear_data,
-                           "mill_data" = mill_data,
-                           "deer_data" = deer_data,
+                           "battle_data" = battle_data_full,
+                           "clear_data" = clear_data_full,
+                           "mill_data" = mill_data_full,
+                           "deer_data" = deer_data_full,
                            "yuba_data" = yuba_data,
                            "butte_data" = butte_data)
 

@@ -18,7 +18,7 @@ full_data_for_input <- adult_data_objects$survival_model_data_raw |>
   mutate(wy_type_std = ifelse(water_year_type == "dry", 0, 1),
          wy_type_std = as.vector(scale(wy_type_std)), # TODO double check this. was producing negative b1_surv estimates for wet year types
          max_flow_std = as.vector(scale(max_flow)),
-         gdd_std = -as.vector(scale(gdd_total)),
+         gdd_std = as.vector(scale(gdd_total)),
          min_passage_timing_std = as.vector(scale(min_passage_timing))) |>
   select(year, stream, upstream_count, redd_count, holding_count,
          wy_type_std, max_flow_std, gdd_std, min_passage_timing_std) |>
@@ -153,7 +153,7 @@ deer_pred_redd <- stan(model_code = predicted_redds,
 
 # get results -------------------------------------------------------------
 # define function to pull out predicted spawners
-get_predicted_spawners <- function(model_fit) {
+get_pars_of_interest <- function(model_fit) {
   par_results <- summary(model_fit)$summary
   results_tibble <- as.data.frame(par_results) |>
     rownames_to_column("par_names") |>
@@ -169,10 +169,10 @@ get_predicted_spawners <- function(model_fit) {
 }
 
 # save as object ----------------------------------------------------------
-model_fit_summaries <- list("battle_pred" = get_predicted_spawners(battle_pred_redd),
-                            "clear_pred" = get_predicted_spawners(clear_pred_redd),
-                            "mill_pred" = get_predicted_spawners(mill_pred_redd),
-                            "deer_pred" = get_predicted_spawners(deer_pred_redd))
+model_fit_summaries <- list("battle_pred" = get_pars_of_interest(battle_pred_redd),
+                            "clear_pred" = get_pars_of_interest(clear_pred_redd),
+                            "mill_pred" = get_pars_of_interest(mill_pred_redd),
+                            "deer_pred" = get_pars_of_interest(deer_pred_redd))
 
 save(model_fit_summaries, file = here::here("data-raw", "adult_model",
                                        "model_fit_summaries.Rdata"))
