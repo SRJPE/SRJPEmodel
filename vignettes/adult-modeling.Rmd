@@ -57,12 +57,16 @@ Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into on
 adult_data_objects$survival_model_data_raw |> 
   filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
   mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
-  ggplot(aes(x = year, y = spawner_count, color = "spawner count")) + 
+  ggplot(aes(x = year, y = spawner_count, color = "Spawner count (redd/holding)")) + 
   geom_line() +
-  geom_line(aes(x = year, y = upstream_count, color = "upstream passage")) +
-  facet_wrap(~stream) + 
+  geom_line(aes(x = year, y = upstream_count, color = "Upstream passage")) +
+  facet_wrap(~stream, scales = "free_y") + 
+  xlab("Year") + ylab("Spawner Count") + 
+  ggtitle("Spawner Count by Stream") +
   theme_minimal() +
-  xlab("Year") + ylab("Spawner Count") + ggtitle("Spawner Count by Stream")
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom") +
+  scale_color_discrete(name = "Adult data type")
 ```
 
 Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. There were several years for each stream (except Battle) where `spawner count` exceeded `upstream count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in our upstream passage counts in the model. 
@@ -76,8 +80,11 @@ adult_data_objects$survival_model_data_raw |>
   filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
   ggplot(aes(x = year, y = prespawn_survival, color = stream)) +
   geom_line() +
+  xlab("Year") + ylab("Prespawn Survival") + 
+  ggtitle("Prespawn Survival by Stream") +
   theme_minimal() +
-  xlab("Year") + ylab("Prespawn Survival") + ggtitle("Prespawn Survival by Stream")
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom")
 ```
 
 ### Environmental Covariates 
@@ -123,7 +130,10 @@ adult_data_objects$survival_model_data_raw |>
   ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, color = stream)) + 
   geom_smooth(method = "lm") + 
   ggtitle("Proportion of days exceeding threshold as predictor variable") +
-  ylab("Prespawn Survival") + xlab("Proportion of days exceeding threshold")
+  ylab("Prespawn Survival") + xlab("Proportion of days exceeding threshold") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom")
 ```
 
 ```{r}
@@ -133,7 +143,10 @@ adult_data_objects$survival_model_data_raw |>
   ggplot(aes(x = gdd_total, y = prespawn_survival, color = stream)) + 
   geom_smooth(method = "lm") + 
   ggtitle("Degree days (20) as predictor variable") + 
-  ylab("Prespawn survival") + xlab("DD20")
+  ylab("Prespawn survival") + xlab("DD20") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom")
 ```
 
 
@@ -160,6 +173,7 @@ adult_data_objects$survival_model_data_raw |>
   mutate(diff = median_passage_timing - mean_passage_timing) |> 
   ggplot(aes(x = year, y = diff)) + 
   geom_line() +
+  geom_hline(aes(yintercept = 0), color = "red", linetype = "dashed") +
   facet_wrap(~stream) +
   xlab("Year") + ylab("Difference between median and mean passage timing") + 
   theme_minimal()
@@ -178,9 +192,11 @@ adult_data_objects$survival_model_data_raw |>
              color = water_year_type)) +
   geom_point() +
   facet_wrap(~stream, scales = "free") + 
-  xlab("Year") + ylab("Prespawn Survival")  + 
+  xlab("Year") + ylab("Prespawn survival")  + 
   ggtitle("Prespawn survival by water year type") +
-  theme_minimal()
+  theme_minimal() +
+  scale_color_discrete(name = "Water year type", 
+                       labels = c("Dry", "Wet")) 
 ```
 
 #### Statistical Importance of Covariates
@@ -233,7 +249,7 @@ model_fit_summaries$battle_pred |>
   geom_ribbon(aes(ymax = `97.5%`,
                   ymin = `2.5%`), alpha = 0.2) +
   xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
-  ggtitle("Battle Creek Predicted Spawner Count with uncertainty")
+  ggtitle("Battle Creek predicted spawner count with uncertainty")
 ```
 
 ### Clear
@@ -252,7 +268,7 @@ model_fit_summaries$clear_pred |>
   geom_ribbon(aes(ymax = `97.5%`,
                   ymin = `2.5%`), alpha = 0.2) +
   xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
-  ggtitle("Clear Creek Predicted Spawner Count with uncertainty")
+  ggtitle("Clear Creek predicted spawner count with uncertainty")
 ```
 
 
@@ -272,7 +288,7 @@ model_fit_summaries$mill_pred |>
   geom_ribbon(aes(ymax = `97.5%`,
                   ymin = `2.5%`), alpha = 0.2) +
   xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
-  ggtitle("Mill Creek Predicted Spawner Count with uncertainty")
+  ggtitle("Mill Creek predicted spawner count with uncertainty")
 ```
 
 ### Deer
@@ -291,7 +307,7 @@ model_fit_summaries$deer_pred |>
   geom_ribbon(aes(ymax = `97.5%`,
                   ymin = `2.5%`), alpha = 0.2) +
   xlab("Year") + ylab("Predicted spawner count") + theme_minimal() + 
-  ggtitle("Deer Creek Predicted Spawner Count with uncertainty")
+  ggtitle("Deer Creek predicted spawner count with uncertainty")
 ```
 
 
@@ -335,11 +351,13 @@ After modeling, the stock-recruit model will be fed a table of spawner counts by
 read.csv(here::here("data-raw", "adult_model", "adult_data_all_streams.csv")) |> 
   ggplot(aes(x = year, y = spawner_count, color = data_type)) + 
   geom_line() +
-  scale_fill_manual("Spawner count method", values = c("CJS applied to carcass survey", "Spawners modeled via STAN", "Upstream Passage Estimate")) +
   xlab("Year") + ylab("Spawner count") +
   ggtitle("Spawner counts by method") +
   scale_color_discrete(name = "Spawner count method", 
-                       labels = c("CJS applied to carcass survey", "Spawners modeled via STAN", "Upstream Passage Estimate")) +
+                       labels = c("CJS estimates", "Modeled spawners", "Passage estimates")) +
   theme_minimal() +
-  facet_wrap(~stream, scales = "free")
+  facet_wrap(~stream, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom")
+  
 ```
