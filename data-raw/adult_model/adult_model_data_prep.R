@@ -520,6 +520,46 @@ feather_data <- carcass_estimates |>
   glimpse()
 
 
+# write data objects to bucket -------------------------------------------------------
+f <- function(input, output) write_csv(input, file = output)
+
+gcs_upload(survival_model_data_raw,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/survival_model_data_raw.csv")
+gcs_upload(survival_model_data,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/survival_model_data.csv")
+gcs_upload(battle_data_full,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/battle_data.csv")
+gcs_upload(clear_data_full,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/clear_data.csv")
+gcs_upload(deer_data_full,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/deer_data.csv")
+gcs_upload(mill_data_full,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/mill_data.csv")
+gcs_upload(yuba_data,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/yuba_data.csv")
+gcs_upload(feather_data,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/feather_data.csv")
+gcs_upload(butte_data,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/butte_data.csv")
+
 # save data objects -------------------------------------------------------
 
 adult_data_objects <- list("survival_model_data_raw" = survival_model_data_raw,

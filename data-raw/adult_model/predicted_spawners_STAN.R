@@ -6,15 +6,25 @@ library(rstan)
 library(rstanarm)
 library(bayesplot)
 library(tidybayes)
+library(googleCloudStorageR)
 
-
-# pull in data prep -------------------------------------------------------
-load(here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
-load(here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
+# pull in data from google cloud ------------------------------------------
+gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
+# Set global bucket
+gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
+# save data as csv
+survival_model_data_raw <- gcs_get_object(object_name = "jpe-model-data/adult-model/survival_model_data_raw.csv",
+                                          bucket = gcs_get_global_bucket(),
+                                          saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+                                                                  "survival_model_data_raw.csv"),
+                                          overwrite = TRUE)
+# read csvs
+survival_model_data_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                               "survival_model_data_raw.csv"))
 
 
 # prep covariates ---------------------------------------------------------
-full_data_for_input <- adult_data_objects$survival_model_data_raw |>
+full_data_for_input <- survival_model_data_raw |>
   mutate(wy_type_std = ifelse(water_year_type == "dry", 0, 1),
          wy_type_std = as.vector(scale(wy_type_std)), # TODO double check this. was producing negative b1_surv estimates for wet year types
          max_flow_std = as.vector(scale(max_flow)),
@@ -153,7 +163,7 @@ deer_pred_redd <- stan(model_code = predicted_spawners,
 
 # get results -------------------------------------------------------------
 # define function to pull out predicted spawners
-get_pars_of_interest <- function(model_fit) {
+get_pars_of_interest <- function(model_fit, stream_name) {
   par_results <- summary(model_fit)$summary
   results_tibble <- as.data.frame(par_results) |>
     rownames_to_column("par_names") |>
@@ -163,55 +173,73 @@ get_pars_of_interest <- function(model_fit) {
     rownames_to_column("par_names") |>
     filter(par_names == "b1_survival")
 
-  results_tibble <- bind_rows(results_tibble, b1_survival_val)
+  results_tibble <- bind_rows(results_tibble, b1_survival_val) |>
+    mutate(stream = stream_name)
 
   return(results_tibble)
 }
 
-# save as object ----------------------------------------------------------
-model_fit_summaries <- list("battle_pred" = get_pars_of_interest(battle_pred_redd),
-                            "clear_pred" = get_pars_of_interest(clear_pred_redd),
-                            "mill_pred" = get_pars_of_interest(mill_pred_redd),
-                            "deer_pred" = get_pars_of_interest(deer_pred_redd))
 
-save(model_fit_summaries, file = here::here("data-raw", "adult_model",
-                                       "model_fit_summaries.Rdata"))
+# write model summaries ---------------------------------------------------
+model_fit_summaries <- bind_rows(get_pars_of_interest(battle_pred_redd, "battle creek"),
+                                 get_pars_of_interest(clear_pred_redd, "clear creek"),
+                                 get_pars_of_interest(mill_pred_redd, "mill creek"),
+                                 get_pars_of_interest(deer_pred_redd, "deer creek")) |>
+  glimpse()
 
-pred_redd_fits <- list("battle_pred_redd" = battle_pred_redd,
-                       "clear_pred_redd" = clear_pred_redd,
-                       "mill_pred_redd" = mill_pred_redd,
-                       "deer_pred_redd" = deer_pred_redd)
+# save to google cloud ----------------------------------------------------
+f <- function(input, output) write_csv(input, file = output)
 
-save(pred_redd_fits, file = here::here("data-raw", "adult_model",
-                                       "pred_redd_fits.Rdata"))
+gcs_upload(model_fit_summaries,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/model_fit_summaries.csv")
+
+# # save as object ----------------------------------------------------------
+# model_fit_summaries <- list("battle_pred" = get_pars_of_interest(battle_pred_redd, "battle creek"),
+#                             "clear_pred" = get_pars_of_interest(clear_pred_redd),
+#                             "mill_pred" = get_pars_of_interest(mill_pred_redd),
+#                             "deer_pred" = get_pars_of_interest(deer_pred_redd))
+#
+# save(model_fit_summaries, file = here::here("data-raw", "adult_model",
+#                                        "model_fit_summaries.Rdata"))
 
 
-# function to get par name ------------------------------------------------
-get_par_names <- function(data_list) {
-  N <- data_list$N
 
-  names <- c()
-  for(i in 1:N) {
-    names[i] <- paste0("predicted_spawners[", i, "]")
-  }
-  #names[N+1] <- "b1_survival"
-  return(names)
-}
+# scratch ------------------------------------------------
+# pred_redd_fits <- list("battle_pred_redd" = battle_pred_redd,
+#                        "clear_pred_redd" = clear_pred_redd,
+#                        "mill_pred_redd" = mill_pred_redd,
+#                        "deer_pred_redd" = deer_pred_redd)
+#
+# save(pred_redd_fits, file = here::here("data-raw", "adult_model",
+#                                        "pred_redd_fits.Rdata"))
 
-get_par_names(battle_data_list)
+# get_par_names <- function(data_list) {
+#   N <- data_list$N
+#
+#   names <- c()
+#   for(i in 1:N) {
+#     names[i] <- paste0("predicted_spawners[", i, "]")
+#   }
+#   #names[N+1] <- "b1_survival"
+#   return(names)
+# }
+#
+# get_par_names(battle_data_list)
 
 # diagnostics -------------------------------------------------------------
 
-summary(battle_pred_redd)$summary[, 1:4]
-
-summary(battle_pred_redd)$summary[str_detect(rownames(summary(battle_pred_redd)$summary), "predicted_spawners"), 1:4] |> round(4)
-summary(battle_pred_redd)$summary[rownames(summary(battle_pred_redd)$summary) == "b1_survival", 1:10] |> round(4)
-
-mcmc_trace(battle_pred_redd, pars = get_par_names(battle_data_list))
-mcmc_dens_overlay(battle_pred_redd, pars = get_par_names(battle_data_list))
-mcmc_dens_overlay(battle_pred_redd, pars = "b1_survival")
-mcmc_areas(battle_pred_redd, pars = get_par_names(battle_data_list))
-neff_ratio(battle_pred_redd, pars = get_par_names(battle_data_list)) # should be >0.1
-mcmc_acf(battle_pred_redd, pars = get_par_names(battle_data_list)) # should drop to be low
-rhat(battle_pred_redd, get_par_names(battle_data_list)) # should be close to 1
+# summary(battle_pred_redd)$summary[, 1:4]
+#
+# summary(battle_pred_redd)$summary[str_detect(rownames(summary(battle_pred_redd)$summary), "predicted_spawners"), 1:4] |> round(4)
+# summary(battle_pred_redd)$summary[rownames(summary(battle_pred_redd)$summary) == "b1_survival", 1:10] |> round(4)
+#
+# mcmc_trace(battle_pred_redd, pars = get_par_names(battle_data_list))
+# mcmc_dens_overlay(battle_pred_redd, pars = get_par_names(battle_data_list))
+# mcmc_dens_overlay(battle_pred_redd, pars = "b1_survival")
+# mcmc_areas(battle_pred_redd, pars = get_par_names(battle_data_list))
+# neff_ratio(battle_pred_redd, pars = get_par_names(battle_data_list)) # should be >0.1
+# mcmc_acf(battle_pred_redd, pars = get_par_names(battle_data_list)) # should drop to be low
+# rhat(battle_pred_redd, get_par_names(battle_data_list)) # should be close to 1
 
