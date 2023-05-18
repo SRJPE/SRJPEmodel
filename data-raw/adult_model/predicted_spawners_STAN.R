@@ -26,7 +26,7 @@ full_data_for_input <- adult_data_objects$survival_model_data_raw |>
 
 # stan model --------------------------------------------------------------
 
-predicted_redds <- "
+predicted_spawners <- "
   data {
     int N;
     int observed_passage[N];
@@ -97,7 +97,7 @@ battle_data_list <- list("N" = length(unique(full_battle$year)),
                          "observed_spawners" = full_battle$redd_count,
                          "environmental_covar" = as.vector(scale(full_battle$wy_type_std)))
 
-battle_pred_redd <- stan(model_code = predicted_redds,
+battle_pred_redd <- stan(model_code = predicted_spawners,
                        data = battle_data_list,
                        chains = 3, iter = 20000*2, seed = 84735)
 
@@ -113,7 +113,7 @@ clear_data_list <- list("N" = length(unique(full_clear$year)),
                          "observed_spawners" = full_clear$redd_count,
                          "environmental_covar" = as.vector(scale(full_clear$max_flow_std)))
 
-clear_pred_redd <- stan(model_code = predicted_redds,
+clear_pred_redd <- stan(model_code = predicted_spawners,
                          data = clear_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 
@@ -129,7 +129,7 @@ mill_data_list <- list("N" = length(unique(full_mill$year)),
                          "observed_spawners" = full_mill$redd_count,
                          "environmental_covar" = as.vector(scale(full_mill$gdd_std)))
 
-mill_pred_redd <- stan(model_code = predicted_redds,
+mill_pred_redd <- stan(model_code = predicted_spawners,
                          data = mill_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 
@@ -145,7 +145,7 @@ deer_data_list <- list("N" = length(unique(full_deer$year)),
                          "observed_spawners" = full_deer$holding_count,
                          "environmental_covar" = as.vector(scale(full_deer$wy_type_std)))
 
-deer_pred_redd <- stan(model_code = predicted_redds,
+deer_pred_redd <- stan(model_code = predicted_spawners,
                          data = deer_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 

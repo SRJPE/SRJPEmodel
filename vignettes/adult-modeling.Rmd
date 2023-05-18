@@ -28,9 +28,9 @@ load(here::here("data-raw", "adult_model", "model_fit_summaries.Rdata"))
 ```
 
 
-## Spawning Adult Abundance in the JPE
+## Spawning Adult Abundance in the Spring Run JPE
 
-The JPE requires an estimate of number of spawning adults for each tributary with associated uncertainty. These estimates will be passed into the spawn-recruit submodel which connects spawning adults to juvenile production within each tributary.
+The Spring run JPE requires an estimate of number of spring-run Chinook salmon spawning adults for each tributary with associated uncertainty. These estimates will be passed into the spawn-recruit submodel which connects spawning adults to juvenile production within each tributary.
 
 There are three main methods of getting an estimate for spawning adult abundance:
 
@@ -42,7 +42,9 @@ Method 1 was the default approach, but several tributaries did not have the data
 
 Battle Creek, Clear Creek, Mill Creek, and Deer Creek could all be modeled using approach 1 because they had robust spawner count data (redd surveys for Battle, Clear, and Mill; holding surveys for Deer) and upstream passage data.
 
-Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using approach 2.
+Methods 2 and 3 are conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly. Methods can be found for Yuba (Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR.), [(Butte)](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx), and [(Feather)](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf).
+
+Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using approach 2. 
 
 Yuba River has upstream passage data and performs carcass surveys but only has CJS estimates for four years (2014, 2015, 2019, and 2020). Because of these limitations, Yuba River spawner abundances were modeled using approach 3.
 
@@ -51,7 +53,7 @@ Yuba River has upstream passage data and performs carcass surveys but only has C
 
 #### Data Sources 
 
-Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into one dataset where `spawner_count` represented the survey associated with spawning adults (either `redd_count` or `holding_count`) and `upstream_count` represented the counts of adults passing through the video stations. These counts were summarized by year.
+Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into one dataset where `spawner_count` represented the survey associated with spawning adults (either `redd_count` or `holding_count`) and `upstream_count` represented the counts of adults passing through the video stations. Upstream passage counts are estimates unless explicitly stated otherwise.
 
 ```{r}
 adult_data_objects$survival_model_data_raw |> 
@@ -73,7 +75,7 @@ Generally, `upstream count` exceeded `spawner count`, indicating that some level
 
 #### Calculating Prespawn Survival
 
-Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. When we were using redd counts as `upstream_count`, we modified that equation to be `upstream_count / (spawner_count * 0.5)` to assume a 50/50 sex ratio. 
+Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. When we were using redd counts as `spawner_count`, we modified that equation to be `upstream_count / (spawner_count * 0.5)` to assume a 50/50 sex ratio. Generally, one redd per female is a reasonable assumption although we left the possibility open for more than one redd per female [(source)](https://www.researchgate.net/publication/233231658_The_Number_of_Redds_Constructed_per_Female_Spring_Chinook_Salmon_in_the_Wenatchee_River_Basin).
 
 ```{r}
 adult_data_objects$survival_model_data_raw |> 
@@ -121,7 +123,7 @@ Several approaches were considered for summarizing temperature:
 
 For each metric approach, we calculated the metric for migration months (March - May) in the Sacramento River and holding months (May - August) in each tributary. We tested both the individual effects of migratory and holding temperatures as well as a cumulative metric (summed migratory and holding temperatures).
 
-We visually inspected regressions of prespawn survival against each of the three temperature metrics. Metrics 1 and 2 did not show a consistent relationship across streams, and in particular metric 1 was not considered to sufficiently capture the relationship between temperature, time exposed to high temperatures, and the cumulative effect of exposure to high temperatures on stress. We decided on metric 3 (DD20).
+We visually inspected regressions of prespawn survival against each of the three temperature metrics. Metrics 1 and 2 did not show a consistent relationship across streams, and in particular metric 1 was not considered to sufficiently capture the relationship between temperature, time exposed to high temperatures, and the cumulative effect of exposure to high temperatures on stress. We decided on metric 3 and used the summed approach (DD20) across migration and holding months.
 
 ```{r}
 adult_data_objects$survival_model_data_raw |> 
@@ -217,15 +219,28 @@ Mill: `r coef(best_adult_models$best_mill_lm)[2]`
 Deer: `r coef(best_adult_models$best_deer_lm)[2]`
 
 
-#### Predicted Redd bayesian model
+#### Predicted Redd Bayesian model
 
-Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of Dauphin et al. (2010).
+Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of [(Dauphin et al. (2010))](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub).
 
-The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmetnal covariates were standardized so that scale would not impact the results of the model. 
+The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates were standardized so that scale would not impact the results of the model. 
 
 The model calculates survival from upstream passage to spawning `survival_rate` as a function of the impact of the environmental coviarate on survival `b1_survival`, the environmental covariate `environmental_covar`, and `redds_per_spawner`. `redds_per_spawner` is estimated on a log scale so it is restricted to be positive but can exceed 1. The model then predicts spawner count `predicted_spawners` as a function of `observed_passage` and `survival_rate`. The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predicted_spawners`. 
 
-The model is coded in `rstan`, a langauge used for implementing models in a bayesian framework. The model results were assessed using the following diagnostics:
+
+$\log(rps_{y}) \sim {\sf Normal}(\mu_{rps}, \tau_{rps})$
+
+$logit(survrate_{y}) = \log(rps_{y}) + b1survival * environmental_{y}$
+
+$rps_{y} = \exp(\log(rps_{y}))$
+
+$predspawners_{y} = observedpassage_{y} * survrate_{y}$
+
+$observedspawners_{y} \sim {\sf Poisson} (predspawners_{y})$
+
+
+
+The model is coded in `rstan`, a language used for implementing models in a Bayesian framework. The model results were assessed using the following diagnostics:
 
 * N eff ratio 
 * Traceplots 
@@ -326,12 +341,17 @@ adult_data_objects$butte_data |>
 
 Feather River provided adult spawner abundance as estimated by CJS.
 ```{r}
-# TODO pull in feather carcass estimates and plot
+adult_data_objects$feather_data |> 
+  ggplot(aes(x = year, y = spawner_estimate)) +
+  geom_line() +
+  xlab("Year") + ylab("Spawner estimate") +
+  ggtitle("Feather River spawner estimates (CJS)") +
+  theme_minimal()
 ```
 
 ### Method 3: Upstream Passage Data
 
-Yuba River provided upstream passage estimates. 
+Yuba River provided upstream passage estimates. This method assumes that `upstream_count` is a proxy for `spawner_count`, but we believe this is a reasonable assumption because anecdotally prespawn mortality is minimal on the Yuba. 
 
 ```{r}
 adult_data_objects$yuba_data |>
