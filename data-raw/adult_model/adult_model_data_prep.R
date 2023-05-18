@@ -171,7 +171,7 @@ standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/sta
 
 # prespawn survival -------------------------------------------------------
 
-carcass_streams <- c("yuba river", "butte creek") # feather
+carcass_streams <- c("butte creek", "feather river")
 
 prespawn_survival <- left_join(upstream_passage_estimates |>
                                  select(-passage_estimate),
@@ -189,10 +189,8 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
          prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
                                        stream %in% carcass_streams ~ carcass_count / upstream_count,
                                        TRUE ~ redd_count / female_upstream)) |>
-  filter(prespawn_survival != Inf) |>
-  # TODO resave this dataset without filtering prespawn_survival
-  # filter(prespawn_survival <= 1,
-  #        prespawn_survival != Inf) |> # this excludes a lot of data points
+  filter(prespawn_survival != Inf,
+         stream != "butte creek") |>
   glimpse()
 
 
@@ -514,6 +512,14 @@ butte_data <- carcass_estimates |>
   glimpse()
 
 
+# feather data ------------------------------------------------------------
+
+feather_data <- carcass_estimates |>
+  filter(stream == "feather river") |>
+  select(year, spawner_estimate = carcass_spawner_estimate) |>
+  glimpse()
+
+
 # save data objects -------------------------------------------------------
 
 adult_data_objects <- list("survival_model_data_raw" = survival_model_data_raw,
@@ -523,7 +529,8 @@ adult_data_objects <- list("survival_model_data_raw" = survival_model_data_raw,
                            "mill_data" = mill_data_full,
                            "deer_data" = deer_data_full,
                            "yuba_data" = yuba_data,
-                           "butte_data" = butte_data)
+                           "butte_data" = butte_data,
+                           "feather_data" = feather_data)
 
 save(adult_data_objects, file = here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
 

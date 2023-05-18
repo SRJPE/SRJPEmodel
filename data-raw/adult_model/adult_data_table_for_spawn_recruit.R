@@ -57,6 +57,10 @@ adult_data_all_streams <- bind_rows(model_fit_summaries$battle_pred |>
                                         mutate(stream = "yuba river",
                                                data_type = "upstream_passage_estimate") |>
                                         rename(spawner_count = passage_estimate),
+                                    adult_data_objects$feather_data |>
+                                      mutate(stream = "feather river",
+                                             data_type = "carcass_cjs_estimate") |>
+                                      rename(spawner_count = spawner_estimate),
                                     adult_data_objects$butte_data |>
                                         mutate(stream = "butte creek",
                                                data_type = "carcass_cjs_estimate") |>
