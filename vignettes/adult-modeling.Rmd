@@ -74,7 +74,7 @@ Method 1 was the default approach, but several tributaries did not have the data
 
 Battle Creek, Clear Creek, Mill Creek, and Deer Creek could all be modeled using approach 1 because they had robust spawner count data (redd surveys for Battle, Clear, and Mill; holding surveys for Deer) and upstream passage data.
 
-Methods 2 and 3 are conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly. Methods can be found for Yuba (Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR.), [(Butte)](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx), and [(Feather)](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf).
+Methods 2 and 3 are conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly. Methods can be found for Yuba (Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR.), [Butte](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx), and [Feather](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf).
 
 Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using approach 2. 
 
@@ -103,7 +103,7 @@ survival_model_data_raw |>
   scale_color_discrete(name = "Adult data type")
 ```
 
-Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. There were several years for each stream (except Battle) where `spawner count` exceeded `upstream count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in our upstream passage counts in the model. 
+Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. There were several years for each stream (except Battle) where `spawner count` exceeded `upstream count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in the model. 
 
 #### Calculating Prespawn Survival
 
@@ -132,7 +132,7 @@ To better understand the relationship between `upstream count` and `spawner coun
 
 We identified environmental covariates driving prespawn survival to decide on which to incorporate into the spawning adult abundance model. When performing these analyses, there were several points to consider:
 
-* temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories.
+* Temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories.
 * Collinearity needed to be accounted for among the predictor variables.
 
 #### Flow 
@@ -149,7 +149,7 @@ Maximum flow was considered to more effectively capture one-off large flow event
 
 Several approaches were considered for summarizing temperature: 
 
-1. proportion of days where the temperature surpassed a threshold of 20 degrees Celsius [(source)](https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf) 
+1. Proportion of days where the temperature surpassed a threshold of 20 degrees Celsius [(source)](https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf) 
 2. Growing degree days (GDD) with a base temperature of 0 degrees Celsius [(source)](https://www.researchgate.net/publication/279930331_Fish_growth_and_degree-days_I_Selecting_a_base_temperature_for_a_within-population_study and input from MAT team)  
 3. Degree Day 20 (DD20), where cumulative degree days are calculated against a threshold of 20 degrees Celsius [(source)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0204274) 
 
@@ -245,31 +245,25 @@ We only looked for univariate models (i.e. did not consider interactions and foc
 
 The selected coefficients for each stream were: 
 
-Battle: `r coef(best_adult_models$best_battle_lm)[2]`
-Clear: `r coef(best_adult_models$best_clear_lm)[2]`
-Mill: `r coef(best_adult_models$best_mill_lm)[2]`
-Deer: `r coef(best_adult_models$best_deer_lm)[2]`
+* Battle: `r c(names(coef(best_adult_models$best_battle_lm))[2],coef(best_adult_models$best_battle_lm)[2])`
+* Clear: `r c(names(coef(best_adult_models$best_clear_lm))[2],coef(best_adult_models$best_clear_lm)[2])` 
+* Mill: `r c(names(coef(best_adult_models$best_mill_lm))[2],coef(best_adult_models$best_mill_lm)[2])` 
+* Deer: `r c(names(coef(best_adult_models$best_deer_lm))[2],coef(best_adult_models$best_deer_lm)[2])`
 
 
-#### Predicted Redd Bayesian model
+### Predicted Redd Bayesian model
 
-Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of [(Dauphin et al. (2010))](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub).
+Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of [Dauphin et al. (2010)](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub).
 
 The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates were standardized so that scale would not impact the results of the model. 
 
-The model calculates survival from upstream passage to spawning `survival_rate` as a function of the impact of the environmental coviarate on survival `b1_survival`, the environmental covariate `environmental_covar`, and `redds_per_spawner`. `redds_per_spawner` is estimated on a log scale so it is restricted to be positive but can exceed 1. The model then predicts spawner count `predicted_spawners` as a function of `observed_passage` and `survival_rate`. The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predicted_spawners`. 
+The model calculates survival on a logit scale. The survival rate in a year (`survrate(y)`), referring to survival from upstream passage to spawning, is a function of the selected environmental covariate `environmental(y)`, the parameter `b1survival`, and log-scale parameter redds-per-spawner (`rps`) (Equation 2). `rps` is calculated on a log scale to restrict to positive values but allow for values over 1 (Equations 1 and 2). The model then predicts spawner count in a year (`predspawners(y)`) as a function of `observed_passage` and `survrate` (Equation 4). The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predspawners(y)` for each year and the estimated effect of the environmental covariate, captured in the parameter `b1survival`. 
 
-
-$\log(rps_{y}) \sim {\sf Normal}(\mu_{rps}, \tau_{rps})$
-
-$logit(survrate_{y}) = \log(rps_{y}) + b1survival * environmental_{y}$
-
-$rps_{y} = \exp(\log(rps_{y}))$
-
-$predspawners_{y} = observedpassage_{y} * survrate_{y}$
-
-$observedspawners_{y} \sim {\sf Poisson} (predspawners_{y})$
-
+(1) $\log(rps_{y}) \sim {\sf Normal}(\mu_{rps}, \tau_{rps})$
+(2) $logit(survrate_{y}) = \log(rps_{y}) + b1survival * environmental_{y}$
+(3) $rps_{y} = \exp(\log(rps_{y}))$
+(4) $predspawners_{y} = observedpassage_{y} * survrate_{y}$
+(5) $observedspawners_{y} \sim {\sf Poisson} (predspawners_{y})$
 
 
 The model is coded in `rstan`, a language used for implementing models in a Bayesian framework. The model results were assessed using the following diagnostics:
@@ -280,7 +274,7 @@ The model is coded in `rstan`, a language used for implementing models in a Baye
 * Rhat 
 * Autocorrelation
 
-### Battle
+#### Results: Battle
 
 The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "battle creek", par_names == "b1_survival") |> pull(mean)`
 
@@ -300,7 +294,7 @@ model_fit_summaries |>
   ggtitle("Battle Creek predicted spawner count with uncertainty")
 ```
 
-### Clear
+#### Results: Clear
 
 The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "clear creek", par_names == "b1_survival") |> pull(mean)`
 
@@ -321,7 +315,7 @@ model_fit_summaries |>
 ```
 
 
-### Mill
+#### Results: Mill
 
 The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "mill creek", par_names == "b1_survival") |> pull(mean)`
 
@@ -341,7 +335,7 @@ model_fit_summaries |>
   ggtitle("Mill Creek predicted spawner count with uncertainty")
 ```
 
-### Deer
+#### Results: Deer
 
 The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "deer creek", par_names == "b1_survival") |> pull(mean)`
 
@@ -364,6 +358,8 @@ model_fit_summaries |>
 
 ### Method 2: Carcass data
 
+#### Butte Creek
+
 Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use.
 
 ```{r}
@@ -374,6 +370,8 @@ butte_data |>
   ggtitle("Butte creek spawner estimates (CJS)") +
   theme_minimal()
 ```
+
+#### Feather River
 
 Feather River provided adult spawner abundance as estimated by CJS.
 ```{r}
@@ -386,6 +384,8 @@ feather_data |>
 ```
 
 ### Method 3: Upstream Passage Data
+
+#### Yuba River
 
 Yuba River provided upstream passage estimates. This method assumes that `upstream_count` is a proxy for `spawner_count`, but we believe this is a reasonable assumption because anecdotally prespawn mortality is minimal on the Yuba. 
 
