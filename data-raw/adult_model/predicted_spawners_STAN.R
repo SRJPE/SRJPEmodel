@@ -54,9 +54,6 @@ predicted_spawners <- "
   } model {
 
     // priors
-    //mean_redds_per_spawner ~ normal(-0.69, 0.001);
-    //tau_redds_per_spawner ~ gamma(0.01, 0.01);
-    //b1_survival ~ normal(0, 0.001);
 
     // transform parameter
     real sigma_redds_per_spawner = pow(tau_redds_per_spawner, -0.5);
@@ -71,8 +68,7 @@ predicted_spawners <- "
 
       // predicted survival rate
       log_redds_per_spawner[i] ~ normal(mean_redds_per_spawner, tau_redds_per_spawner);
-      survival_rate[i] = inv_logit(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
-
+      survival_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
       redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
 
       // predicted redds is product of observed passage * survival rate
@@ -89,7 +85,7 @@ predicted_spawners <- "
     real redds_per_spawner[N];
 
     for(i in 1:N) {
-      survival_rate[i] = inv_logit(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
+      survival_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
       predicted_spawners[i] = observed_passage[i] * survival_rate[i];
       redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
     }
@@ -107,7 +103,7 @@ battle_data_list <- list("N" = length(unique(full_battle$year)),
                          "observed_spawners" = full_battle$redd_count,
                          "environmental_covar" = as.vector(scale(full_battle$wy_type_std)))
 
-battle_pred_redd <- stan(model_code = predicted_spawners,
+battle_pred_spawners <- stan(model_code = predicted_spawners,
                        data = battle_data_list,
                        chains = 3, iter = 20000*2, seed = 84735)
 
@@ -123,7 +119,7 @@ clear_data_list <- list("N" = length(unique(full_clear$year)),
                          "observed_spawners" = full_clear$redd_count,
                          "environmental_covar" = as.vector(scale(full_clear$max_flow_std)))
 
-clear_pred_redd <- stan(model_code = predicted_spawners,
+clear_pred_spawners <- stan(model_code = predicted_spawners,
                          data = clear_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 
@@ -139,7 +135,7 @@ mill_data_list <- list("N" = length(unique(full_mill$year)),
                          "observed_spawners" = full_mill$redd_count,
                          "environmental_covar" = as.vector(scale(full_mill$gdd_std)))
 
-mill_pred_redd <- stan(model_code = predicted_spawners,
+mill_pred_spawners <- stan(model_code = predicted_spawners,
                          data = mill_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 
@@ -155,7 +151,7 @@ deer_data_list <- list("N" = length(unique(full_deer$year)),
                          "observed_spawners" = full_deer$holding_count,
                          "environmental_covar" = as.vector(scale(full_deer$wy_type_std)))
 
-deer_pred_redd <- stan(model_code = predicted_spawners,
+deer_pred_spawners <- stan(model_code = predicted_spawners,
                          data = deer_data_list,
                          chains = 3, iter = 20000*2, seed = 84735)
 
@@ -163,7 +159,7 @@ deer_pred_redd <- stan(model_code = predicted_spawners,
 
 # get results -------------------------------------------------------------
 # define function to pull out predicted spawners
-get_pars_of_interest <- function(model_fit, stream_name) {
+get_report_pars <- function(model_fit, stream_name) {
   par_results <- summary(model_fit)$summary
   results_tibble <- as.data.frame(par_results) |>
     rownames_to_column("par_names") |>
@@ -181,10 +177,10 @@ get_pars_of_interest <- function(model_fit, stream_name) {
 
 
 # write model summaries ---------------------------------------------------
-model_fit_summaries <- bind_rows(get_pars_of_interest(battle_pred_redd, "battle creek"),
-                                 get_pars_of_interest(clear_pred_redd, "clear creek"),
-                                 get_pars_of_interest(mill_pred_redd, "mill creek"),
-                                 get_pars_of_interest(deer_pred_redd, "deer creek")) |>
+model_fit_summaries <- bind_rows(get_report_pars(battle_pred_spawners, "battle creek"),
+                                 get_report_pars(clear_pred_spawners, "clear creek"),
+                                 get_report_pars(mill_pred_spawners, "mill creek"),
+                                 get_report_pars(deer_pred_spawners, "deer creek")) |>
   glimpse()
 
 # save to google cloud ----------------------------------------------------
