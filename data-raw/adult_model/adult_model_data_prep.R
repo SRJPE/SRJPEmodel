@@ -49,7 +49,7 @@ upstream_passage_estimates <- read_csv(gcs_get_object(object_name = "standard-fo
 
 # holding
 holding <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_holding.csv",
-                                   bucket = gcs_get_global_bucket()))|>
+                                   bucket = gcs_get_global_bucket())) |>
   group_by(year, stream) |>
   summarise(count = sum(count, na.rm = T)) |>
   ungroup() |>

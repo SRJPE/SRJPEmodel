@@ -72,6 +72,3 @@ other_pars |>
 # plot year-specific random effects (log_redds_per_spawner[y])
 # a big portion of the variation in predicted survival_rate[y] comes from b1_survival * environmental_covar[y]
 # and not random effects
-
-
-
