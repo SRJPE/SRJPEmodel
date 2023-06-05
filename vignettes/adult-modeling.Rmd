@@ -1,6 +1,9 @@
 ---
 title: "Adult Modeling"
 output: rmarkdown::html_vignette
+#output: rmarkdown::word_document
+author:
+  - Liz Stebbins, Ashley Vizek, Erin Cain, Josh Korman
 vignette: >
   %\VignetteIndexEntry{Adult Modeling}
   %\VignetteEngine{knitr::rmarkdown}
@@ -55,6 +58,8 @@ feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data
 model_fit_summaries <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                     "model_fit_summaries.csv")) |> 
   rename(`2.5` = "X2.5.", `25` = "X25.", `50` = "X50.", `75` = "X75.", `97.5` = "X97.5.")
+diagnostic_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                       "model_fit_diagnostic_pars.csv"))
 adult_data_for_spawn_recruit <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                     "adult_data_for_spawn_recruit.csv"))
 ```
@@ -416,4 +421,73 @@ adult_data_for_spawn_recruit |>
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
         legend.position = "bottom")
   
+```
+
+## Appendix: diagnostics for STAN model
+
+The STAN model is a mixed-effects model and as such is expected to produce predicted spawner counts that closely match observed spawner counts, with either the fixed effect or random effects absorbing much of the error. To assess the suitability of the model's fixed effect (which can be forecasted using environmental covariate data), we looked at the predicted vs. spawner counts for each stream, looked at the R squared value of that relationship, and plotted the survival rate (which incorporates the fixed effect) and log redds-per-spawner parameter estimate (which are the random effects) for each year and stream to assess their magnitude. 
+
+### Predicted vs. observed spawner counts
+
+```{r, echo = FALSE}
+# prep more data for plots
+full_data_for_input <- survival_model_data_raw |>
+  mutate(wy_type_std = ifelse(water_year_type == "dry", 0, 1),
+         wy_type_std = as.vector(scale(wy_type_std)), # TODO double check this. was producing negative b1_surv estimates for wet year types
+         max_flow_std = as.vector(scale(max_flow)),
+         gdd_std = as.vector(scale(gdd_total)),
+         min_passage_timing_std = as.vector(scale(min_passage_timing))) |>
+  select(year, stream, upstream_count, redd_count, holding_count,
+         wy_type_std, max_flow_std, gdd_std, min_passage_timing_std)
+
+diagnostics <- model_fit_summaries |>
+  filter(par_names != "b1_survival") |>
+  select(par_names, mean, sd, stream)
+
+obsv_data <- full_data_for_input |>
+  mutate(obsv_spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+  select(year, stream, obsv_spawner_count)
+
+years_to_join <- c(full_data_for_input |> filter(stream == "battle creek") |> drop_na(wy_type_std) |> pull(year),
+                   full_data_for_input |> filter(stream == "clear creek") |> drop_na(max_flow_std) |> pull(year),
+                   full_data_for_input |> filter(stream == "deer creek") |> drop_na(wy_type_std) |> pull(year),
+                   full_data_for_input |> filter(stream == "mill creek") |> drop_na(gdd_std) |> pull(year))
+
+diagnostics_with_year <- diagnostics |>
+  arrange(stream) |>
+  mutate(year = years_to_join) |>
+  select(-par_names) |>
+  rename(pred_spawner_count = mean) |>
+  left_join(obsv_data, by = c("year", "stream"))
+```
+
+The predicted spawner counts very closely matched the observed spawner counts. The R squared of a linear regression of predicted vs. observed spawner counts was `r summary(lm(pred_spawner_count ~ obsv_spawner_count, data = diagnostics_with_year))$r.squared`. 
+
+```{r}
+# plot
+diagnostics_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
+  geom_point() + geom_smooth(method = "lm") + facet_wrap(~stream, scales = "free") +
+  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count")
+```
+
+### Random vs. fixed effects
+
+For Battle Creek, the magnitude of the random effects were much greater than those of the fixed effect parameters. 
+
+```{r}
+diagnostic_pars |>
+  filter(str_detect(par_names, "log_redds_per_spawner") |
+         str_detect(par_names, "survival_rate")) |>
+  mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "survival")) |>
+  arrange(par_name) |>
+  mutate(year = rep(years_to_join, 2)) |>
+  ggplot(aes(x = year, y = mean, color = par_name)) +
+  geom_point() +
+  scale_color_discrete(name = "Parameter name",
+                       labels = c("Log redds/spawner (RE)",
+                                  "Predicted survival rate")) +
+  facet_wrap(~stream, scales = "free") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  xlab("Year") + ylab("Mean estimated value") + theme_minimal()  +
+  theme(legend.position = "bottom")
 ```
