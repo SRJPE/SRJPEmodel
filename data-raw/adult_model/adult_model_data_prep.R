@@ -181,16 +181,15 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
   left_join(holding |>
               rename(holding_count = count),
             by = c("year", "stream")) |>
-  # TODO use carcass counts or carcass estimates for prespawn survival exploration?
-  left_join(carcass |>
-              rename(carcass_count = count),
+  left_join(carcass_estimates |>
+              rename(carcass_estimate = carcass_spawner_estimate),
             by = c("year", "stream")) |>
   mutate(female_upstream = upstream_count * 0.5,
          prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
-                                       stream %in% carcass_streams ~ carcass_count / upstream_count,
+                                       stream %in% carcass_streams ~ carcass_estimate / upstream_count,
                                        TRUE ~ redd_count / female_upstream)) |>
-  filter(prespawn_survival != Inf,
-         stream != "butte creek") |>
+  filter(prespawn_survival != Inf) |>
+#         stream != "butte creek") |>
   glimpse()
 
 

@@ -76,7 +76,8 @@ diagnostics_with_year <- diagnostics |>
 
 diagnostics_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
   geom_point() + geom_smooth(method = "lm") + facet_wrap(~stream, scales = "free") +
-  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count")
+  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count") +
+  ggtitle("Predicted vs. Observed Spawner Count")
 
 # look at R2
 summary(lm(pred_spawner_count ~ obsv_spawner_count, data = diagnostics_with_year))
