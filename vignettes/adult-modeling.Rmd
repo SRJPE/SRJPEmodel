@@ -75,15 +75,15 @@ There are three main methods of getting an estimate for spawning adult abundance
 2. Cormack Jolly-Seber model applied to carcass surveys
 3. Adult upstream passage counts with modeled uncertainty via spline
 
-Method 1 was the default approach, but several tributaries did not have the data to support the model. Data completeness, quality, and availability varied across streams (outlined in the Adult Data Report) and were used to decide which streams could be applied to Method 1. 
+Method 1 was the default approach, but several tributaries did not have the data to support the model. Data completeness, quality, and availability varied across streams (outlined in the Adult Data Report) and were used to decide to which streams Method 1 could be applied. 
 
-Battle Creek, Clear Creek, Mill Creek, and Deer Creek could all be modeled using approach 1 because they had robust spawner count data (redd surveys for Battle, Clear, and Mill; holding surveys for Deer) and upstream passage data.
+Battle Creek, Clear Creek, Mill Creek, and Deer Creek could all be modeled using Method 1 because they had robust spawner count data (redd surveys for Battle, Clear, and Mill; holding surveys for Deer) and upstream passage data.
 
-Methods 2 and 3 are conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly. Methods can be found for Yuba (Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR.), [Butte](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx), and [Feather](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf).
+Methods 2 and 3 were conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly for Butte Creek, Feather River, and Yuba River. The specific methods applied in these streams are available ([Butte](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx) and [Feather](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf): unpublished reports; Yuba: Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR). 
 
-Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using approach 2. 
+Butte Creek and Feather River both had high quality carcass surveys and spawner abundances were modeled using Method 2- (CJS).
 
-Yuba River has upstream passage data and performs carcass surveys but only has CJS estimates for four years (2014, 2015, 2019, and 2020). Because of these limitations, Yuba River spawner abundances were modeled using approach 3.
+Yuba River had upstream passage data and performs carcass surveys but only had CJS estimates for four years (2014, 2015, 2019, and 2020). Because of these limitations, Yuba River spawner abundances were modeled using Method 3.
 
 
 ### Method 1: Adult Upstream Passage and Prespawn Mortality
@@ -108,11 +108,11 @@ survival_model_data_raw |>
   scale_color_discrete(name = "Adult data type")
 ```
 
-Generally, `upstream count` exceeded `spawner count`, indicating that some level of prespawn mortality is occurring. There were several years for each stream (except Battle) where `spawner count` exceeded `upstream count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in the model. 
+Generally, `upstream_count` exceeded `spawner_count`, indicating that some level of prespawn mortality occurred. There were several years for each stream (except Battle) where `spawner_count` exceeded `upstream_count`. While these data were not biologically feasible, we did not remove them from the dataset and instead accounted for this in the model, as described below.
 
 #### Calculating Prespawn Survival
 
-Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. When we were using redd counts as `spawner_count`, we modified that equation to be `upstream_count / (spawner_count * 0.5)` to assume a 50/50 sex ratio. Generally, one redd per female is a reasonable assumption although we left the possibility open for more than one redd per female [(source)](https://www.researchgate.net/publication/233231658_The_Number_of_Redds_Constructed_per_Female_Spring_Chinook_Salmon_in_the_Wenatchee_River_Basin).
+Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_count / spawner_count`. When we were using redd counts as `spawner_count`, our model assumed a 50/50 sex ratio and modified that equation to be `upstream_count / (spawner_count * 0.5)`,. Generally, one redd per female is a reasonable assumption although our model left the possibility open for more than one redd per female [(source)](https://www.researchgate.net/publication/233231658_The_Number_of_Redds_Constructed_per_Female_Spring_Chinook_Salmon_in_the_Wenatchee_River_Basin).
 
 ```{r}
 survival_model_data_raw |> 
@@ -128,26 +128,18 @@ survival_model_data_raw |>
 
 ### Environmental Covariates 
 
-To better understand the relationship between `upstream count` and `spawner count` - i.e. `prespawn survival` - environmental covariates were investigated from the following categories:
+To better understand the relationship between `upstream_count` and `spawner_count` (i.e. `prespawn survival`), we explored  the relationship with four environmental covariates that we hypothesized could influence prespawn mortalitiy rates:
 
 * flow
 * temperature
 * upstream passage timing
 * water year type (wet or dry)
 
-We identified environmental covariates driving prespawn survival to decide on which to incorporate into the spawning adult abundance model. When performing these analyses, there were several points to consider:
-
-* Temperature, passage timing, and flow could be summarized several different ways, and so different summarization methods needed to be compared within those categories.
-* Collinearity needed to be accounted for among the predictor variables.
+Temperature, passage timing, and flow could be summarized in several different ways, and so different summarization methods were considered for each. We investigated potential collinearity between these covariates.
 
 #### Flow 
 
-We considered two approaches for summarizing flow in cubic feet per second (cfs):
-
-1. Mean flow
-2. Maximum flow
-
-Maximum flow was considered to more effectively capture one-off large flow events that would theoretically support migration events. Additionally, upon inspection of the data source across multiple years, average maximum flow over the migratory and holding months (March-May and May-August, respectively) was more representative of the fluctuations in flow over the entire year. We decided to use maximum flow based on those criteria. 
+While mean flow is useful for comparing across streams, we decided maximum flow more effectively captured the high flow events that would support migration speed and passage to upstream holding areas. Additionally, upon inspection of the data source across multiple years average maximum flow over the migratory and holding months (March-May and May-August, respectively) was more representative of the fluctuations in flow over the entire year. We decided to use maximum flow based on those criteria.
 
 
 #### Temperature
@@ -192,15 +184,15 @@ survival_model_data_raw |>
 
 #### Passage Timing 
 
-We calculated the passage timing metric at a weekly granularity for streams where such data was available. 
+We summed passage at weekly intervals for streams where such data was available. 
 
 We considered the following metrics for passage timing: 
 
-1. Median passage timing 
-2. Mean passage timing 
-3. Minimum passage timing 
+1. Minimum passage timing 
+2. Median passage timing 
+3. Mean passage timing 
 
-We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing. Because some years were not available for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
+We used upstream passage estimates instead of raw counts to calculate prespawn survival, but used raw upstream passage counts to calculate passage timing because passage estimates were summarized by year. Because some years were not available for raw counts in Clear Creek, some years have prespawn survival and no passage timing (2000-2012).
 
 Minimum passage timing could theoretically capture not only passage timing but also how long fish were exposed to higher temperatures (i.e. the earlier the first passage timing, the less time exposed to high temperatures later in the year), inspection of plots of passage counts by year and stream showed that the bulk of the fish were not being captured by the minimum passage metric.
 
@@ -222,6 +214,8 @@ We decided upon median passage timing over mean passage timing as it performed b
 
 #### Water Year Type 
 
+To account for the influence of large scale interannual climate variability, we investigated water year type as a covariate as described by the [California Department of Water Resources](https://cdec.water.ca.gov/reportapp/javareports?name=WSIHIST) and available in the [waterYearType package in R](https://cloud.r-project.org/web/packages/waterYearType/index.html). Because for some streams we had very few years of complete data for all variables (i.e. for Mill Creek, only seven years were available), we simplified all potential categories of water year type into either dry (Dry, Below Normal, Critical) or wet (Wet, Above Normal) to reduce the number of parameters that needed to be estimated.
+
 To account for year effects, we used the `waterYearType` package to pull water year assignments as a categorical covariate. Because for some streams we had very few data points (i.e. for Mill Creek, only seven years were considered dependable), we simplified all potential categories of water year type into either dry (`Dry`, `Below Normal`, `Critical`) or wet (`Wet`, `Above Normal`).
 
 ```{r}
@@ -240,7 +234,7 @@ survival_model_data_raw |>
 
 #### Statistical Importance of Covariates
 
-We developed the following methods for identifying key environmental covariates for each stream individually: 
+We used the following approach for identifying key environmental covariates for each individual stream:
 
 1. Look for correlation among predictor variables - visual inspection of a pairs plot, ruling out correlations above a threshold of `0.65`, and using variation inflation factor (VIF) analysis to eliminate highly correlated variables. 
 2. Use information in step 1 to remove any confounding variables. 
@@ -250,17 +244,17 @@ We only looked for univariate models (i.e. did not consider interactions and foc
 
 The selected coefficients for each stream were: 
 
-* Battle: `r c(names(coef(best_adult_models$best_battle_lm))[2],coef(best_adult_models$best_battle_lm)[2])`
-* Clear: `r c(names(coef(best_adult_models$best_clear_lm))[2],coef(best_adult_models$best_clear_lm)[2])` 
-* Mill: `r c(names(coef(best_adult_models$best_mill_lm))[2],coef(best_adult_models$best_mill_lm)[2])` 
-* Deer: `r c(names(coef(best_adult_models$best_deer_lm))[2],coef(best_adult_models$best_deer_lm)[2])`
+* Battle: `r c(names(coef(best_adult_models$best_battle_lm))[2], round(coef(best_adult_models$best_battle_lm)[2], 3))`
+* Clear: `r c(names(coef(best_adult_models$best_clear_lm))[2], round(coef(best_adult_models$best_clear_lm)[2], 3))` 
+* Mill: `r c(names(coef(best_adult_models$best_mill_lm))[2], round(coef(best_adult_models$best_mill_lm)[2], 3))` 
+* Deer: `r c(names(coef(best_adult_models$best_deer_lm))[2], round(coef(best_adult_models$best_deer_lm)[2], 3))`
 
 
 ### Predicted Redd Bayesian model
 
-Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based off of [Dauphin et al. (2010)](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub).
+Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model based on [Dauphin et al. (2010)](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub).
 
-The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates were standardized so that scale would not impact the results of the model. 
+The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates were standardized and centered so that scale would not impact the results of the model. 
 
 The model calculates survival on a logit scale. The survival rate in a year (`survrate(y)`), referring to survival from upstream passage to spawning, is a function of the selected environmental covariate `environmental(y)`, the parameter `b1survival`, and log-scale parameter redds-per-spawner (`rps`) (Equation 2). `rps` is calculated on a log scale to restrict to positive values but allow for values over 1 (Equations 1 and 2). The model then predicts spawner count in a year (`predspawners(y)`) as a function of `observed_passage` and `survrate` (Equation 4). The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predspawners(y)` for each year and the estimated effect of the environmental covariate, captured in the parameter `b1survival`. 
 
@@ -271,7 +265,7 @@ The model calculates survival on a logit scale. The survival rate in a year (`su
 (5) $observedspawners_{y} \sim {\sf Poisson} (predspawners_{y})$
 
 
-The model is coded in `rstan`, a language used for implementing models in a Bayesian framework. The model results were assessed using the following diagnostics:
+The model was coded in `rstan`, a language used for implementing models in a Bayesian framework. The model results were assessed using the following diagnostics:
 
 * N eff ratio 
 * Traceplots 
@@ -281,7 +275,7 @@ The model is coded in `rstan`, a language used for implementing models in a Baye
 
 #### Results: Battle
 
-The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "battle creek", par_names == "b1_survival") |> pull(mean)`
+The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "battle creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(mean, 3)`
 
 ```{r}
 x_vals <- battle_data |> 
@@ -301,7 +295,7 @@ model_fit_summaries |>
 
 #### Results: Clear
 
-The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "clear creek", par_names == "b1_survival") |> pull(mean)`
+The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "clear creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)`
 
 ```{r}
 x_vals <- clear_data |> 
@@ -322,7 +316,7 @@ model_fit_summaries |>
 
 #### Results: Mill
 
-The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "mill creek", par_names == "b1_survival") |> pull(mean)`
+The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "mill creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)`
 
 ```{r}
 x_vals <- mill_data |> 
@@ -342,7 +336,7 @@ model_fit_summaries |>
 
 #### Results: Deer
 
-The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "deer creek", par_names == "b1_survival") |> pull(mean)`
+The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r model_fit_summaries |> filter(stream == "deer creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)`
 
 ```{r}
 x_vals <- deer_data |> 
@@ -392,7 +386,7 @@ feather_data |>
 
 #### Yuba River
 
-Yuba River provided upstream passage estimates. This method assumes that `upstream_count` is a proxy for `spawner_count`, but we believe this is a reasonable assumption because anecdotally prespawn mortality is minimal on the Yuba. 
+Yuba River provided upstream passage estimates. This method assumes that `upstream_count` is a proxy for `spawner_count`, and we believe this is a reasonable assumption because anecdotally prespawn mortality is minimal on the Yuba. 
 
 ```{r}
 yuba_data |>
@@ -425,7 +419,7 @@ adult_data_for_spawn_recruit |>
 
 ## Appendix: diagnostics for STAN model
 
-The STAN model is a mixed-effects model and as such is expected to produce predicted spawner counts that closely match observed spawner counts, with either the fixed effect or random effects absorbing much of the error. To assess the suitability of the model's fixed effect (which can be forecasted using environmental covariate data), we looked at the predicted vs. spawner counts for each stream, looked at the R squared value of that relationship, and plotted the survival rate (which incorporates the fixed effect) and log redds-per-spawner parameter estimate (which are the random effects) for each year and stream to assess their magnitude. 
+The STAN model is a mixed-effects model and as such is expected to produce predicted spawner counts that closely match observed spawner counts, with either the fixed effect or random effects absorbing much of the error. To assess the suitability of the model’s fixed effect (which can be forecasted using environmental covariate data), we looked at the predicted vs. spawner counts for each stream and the R squared value of that relationship, and we plotted the survival rate (which incorporates the fixed effect) and log redds-per-spawner parameter estimate (which are the random effects) for each year and stream to assess their magnitude.
 
 ### Predicted vs. observed spawner counts
 
@@ -461,7 +455,7 @@ diagnostics_with_year <- diagnostics |>
   left_join(obsv_data, by = c("year", "stream"))
 ```
 
-The predicted spawner counts very closely matched the observed spawner counts. The R squared of a linear regression of predicted vs. observed spawner counts was `r summary(lm(pred_spawner_count ~ obsv_spawner_count, data = diagnostics_with_year))$r.squared`. 
+The predicted spawner counts very closely matched the observed spawner counts. The R squared of a linear regression of predicted vs. observed spawner counts was `r round(summary(lm(pred_spawner_count ~ obsv_spawner_count, data = diagnostics_with_year))$r.squared, 3)`. 
 
 ```{r}
 # plot
