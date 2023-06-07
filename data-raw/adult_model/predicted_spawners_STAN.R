@@ -59,7 +59,7 @@ predicted_spawners <- "
 
   parameters {
     real log_mean_redds_per_spawner; //no lower constraint of 0 since in log space
-    real <lower = 0> tau_redds_per_spawner;
+    real <lower = 0> sigma_redds_per_spawner;
     real b1_survival;
     real log_redds_per_spawner[N];
   }
@@ -69,7 +69,6 @@ predicted_spawners <- "
     real redds_per_spawner[N];
     real predicted_spawners[N];
 
-    real sigma_redds_per_spawner = pow(tau_redds_per_spawner, -0.5);
     real mean_redds_per_spawner=exp(log_mean_redds_per_spawner);
 
     real devre[N];// for R2_fixed computation (amount of variation in survival explained by fixed effect)
@@ -87,7 +86,7 @@ predicted_spawners <- "
   }
 
   model {
-    log_redds_per_spawner ~ normal(log_mean_redds_per_spawner, tau_redds_per_spawner);
+    log_redds_per_spawner ~ normal(log_mean_redds_per_spawner, sigma_redds_per_spawner);
     observed_spawners ~ poisson(predicted_spawners);
   }
 
