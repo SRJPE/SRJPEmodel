@@ -85,6 +85,27 @@ carcass_estimates <- read_csv(gcs_get_object(object_name = "standard-format-data
   rename(carcass_spawner_estimate = spawner_abundance_estimate) |>
   glimpse()
 
+# join all together for raw input -----------------------------------------
+adult_model_input_raw <- full_join(upstream_passage_estimates |>
+                                     select(year, stream,
+                                            upstream_estimate = upstream_count),
+                                   redd |>
+                                     rename(redd_count = count),
+                                   by = c("year", "stream")) |>
+  full_join(holding |>
+              rename(holding_count = count),
+            by = c("year", "stream")) |>
+  full_join(carcass_estimates |>
+              rename(carcass_estimate = carcass_spawner_estimate) |>
+              select(-c(lower, upper, confidence_interval)),
+            by = c("year", "stream")) |>
+  pivot_longer(c(upstream_estimate, redd_count, holding_count, carcass_estimate),
+               values_to = "count",
+               names_to = "data_type") |>
+  filter(!is.na(count)) |>
+  arrange(stream, year) |>
+  glimpse()
+
 
 
 # temperature -------------------------------------------------------------
@@ -182,7 +203,8 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
               rename(holding_count = count),
             by = c("year", "stream")) |>
   left_join(carcass_estimates |>
-              rename(carcass_estimate = carcass_spawner_estimate),
+              rename(carcass_estimate = carcass_spawner_estimate) |>
+              select(-c(upper, lower, confidence_interval)),
             by = c("year", "stream")) |>
   mutate(female_upstream = upstream_count * 0.5,
          prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
@@ -209,8 +231,6 @@ upstream_passage_timing <- read_csv(gcs_get_object(object_name = "standard-forma
   ungroup() |> # TODO look at up-down
   select(-c(count)) |> glimpse()
 
-
-
 # water year --------------------------------------------------------------
 
 water_year_data <- waterYearType::water_year_indices |>
@@ -219,6 +239,27 @@ water_year_data <- waterYearType::water_year_indices |>
                                TRUE ~ Yr_type)) |>
   filter(location == "Sacramento Valley") |>
   dplyr::select(WY, water_year_type) |>
+  glimpse()
+
+
+# standardized covariates -------------------------------------------------
+adult_model_covariates_standard <- full_join(standard_flow,
+                                             gdd,
+                                             by = c("year", "stream")) |>
+  full_join(upstream_passage_timing,
+            by = c("year", "stream")) |>
+  full_join(water_year_data,
+            by = c("year" = "WY")) |>
+  filter(!is.na(stream),
+         stream != "sacramento river") |>
+  select(-c(mean_flow, mean_passage_timing, min_passage_timing,
+            gdd_trib, gdd_sac)) |>
+  mutate(wy_type = ifelse(water_year_type == "dry", 0, 1),
+         max_flow_std = as.vector(scale(max_flow)),
+         gdd_std = as.vector(scale(gdd_total)),
+         median_passage_timing_std = as.vector(scale(median_passage_timing))) |>
+  select(year, stream, wy_type, max_flow_std, gdd_std, median_passage_timing_std) |>
+  arrange(stream, year) |>
   glimpse()
 
 # combine -----------------------------------------------------------------
@@ -518,10 +559,17 @@ feather_data <- carcass_estimates |>
   select(year, spawner_estimate = carcass_spawner_estimate) |>
   glimpse()
 
-
 # write data objects to bucket -------------------------------------------------------
 f <- function(input, output) write_csv(input, file = output)
 
+gcs_upload(adult_model_input_raw,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/adult_data_input_raw.csv")
+gcs_upload(adult_model_covariates_standard,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/adult_model_covariates_standard.csv")
 gcs_upload(survival_model_data_raw,
            object_function = f,
            type = "csv",
