@@ -54,16 +54,16 @@ full_data_for_input <- full_join(adult_data_input_raw,
 
 report_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                    "model_fit_summaries.csv"))
-diagnostic_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+other_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                        "model_fit_diagnostic_pars.csv"))
 
 
 
 # plot predicted spawner estimates against observed spawner values
 
-diagnostics <- report_pars |>
+pred_spawners <- report_pars |>
   filter(par_names != "b1_survival") |>
-  select(par_names, mean, X2.5., X97.5., sd, stream) |>
+  select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
   glimpse()
 
 obsv_data <- full_data_for_input |>
@@ -74,10 +74,9 @@ obsv_data <- full_data_for_input |>
 years_to_join <- c(full_data_for_input |> filter(stream == "battle creek") |> drop_na(upstream_estimate, redd_count, wy_type) |> pull(year),
                    full_data_for_input |> filter(stream == "clear creek") |> drop_na(upstream_estimate, redd_count, max_flow_std) |> pull(year),
                    full_data_for_input |> filter(stream == "deer creek") |> drop_na(upstream_estimate, holding_count, wy_type) |> pull(year),
-                   full_data_for_input |> filter(stream == "mill creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year)) |>
-  glimpse()
+                   full_data_for_input |> filter(stream == "mill creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year))
 
-pred_with_year <- diagnostics |>
+pred_with_year <- pred_spawners |>
   arrange(stream) |>
   mutate(year = years_to_join) |>
   select(-par_names) |>
@@ -94,9 +93,9 @@ pred_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
 summary(lm(pred_spawner_count ~ obsv_spawner_count, data = pred_with_year))
 
 # look at estimated value of sigma redds_per_spawner (mean and sd)
-diagnostic_pars |>
+other_pars |>
   filter(str_detect(par_names, "log_redds_per_spawner") |
-         str_detect(par_names, "survival_rate")) |>
+         str_detect(par_names, "conversion_rate")) |>
   mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "survival")) |>
   arrange(par_name) |>
   mutate(year = rep(years_to_join, 2)) |>
@@ -104,17 +103,17 @@ diagnostic_pars |>
   geom_point() +
   scale_color_discrete(name = "Parameter name",
                        labels = c("Log redds/spawner (RE)",
-                                  "Predicted survival rate")) +
+                                  "Predicted conversion rate")) +
   facet_wrap(~stream, scales = "free") +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   xlab("Year") + ylab("Mean estimated value") + theme_minimal()  +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  ggtitle("Year-specific random effects vs. predicted conversion rate")
 
-# plot year-specific random effects (log_redds_per_spawner[y])
-# a big portion of the variation in predicted survival_rate[y] comes from b1_survival * environmental_covar[y]
-# and not random effects
 
-rps <- diagnostic_pars |>
+# diagnostic plots --------------------------------------------------------
+
+rps <- other_pars |>
   filter(str_detect(par_names, "log_mean_redds_per_spawner")) |>
   mutate(rps = exp(mean),
          lcl = exp(X2.5.),
@@ -131,9 +130,59 @@ obsv_data |>
   geom_abline(aes(intercept = 0, slope = rps)) +
   geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
                   ymax = (0 + obsv_upstream * ucl)),
-              fill = "grey70", alpha = 0.2) +
+              fill = "grey70", alpha = 0.3) +
   facet_wrap(~stream, scale = "free") +
   theme_minimal() +
   xlab("Observed upstream passage") +
   ylab("Observed spawner count (redd or holding)") +
   ggtitle("Model diagnostics")
+
+# write b1_survival stats -------------------------------------------------
+b1_table <- report_pars |>
+  filter(par_names %in% c("b1_survival")) |>
+  select(stream, parameter = par_names, `2.5` = X2.5.,
+         `50` = mean, `97.5` = X97.5.) |>
+  left_join(other_pars |>
+              filter(par_names %in% c("R2_data", "R2_fixed")) |>
+              pivot_wider(id_cols = stream,
+                          names_from = par_names,
+                          values_from = mean),
+            by = "stream")
+
+b1_effect <- obsv_data |>
+  drop_na(obsv_upstream, obsv_spawner_count) |>
+  left_join(b1_table |>
+              select(stream, b1 = `50`), by = "stream") |>
+  left_join(full_data_for_input |>
+              mutate(covar = case_when(stream %in% c("battle creek", "deer creek") ~ wy_type,
+                                       stream == "mill creek" ~ gdd_std,
+                                       stream == "clear creek" ~ max_flow_std)) |>
+              select(year, stream, covar)) |>
+  mutate(b1_effect = obsv_upstream * (b1 * covar))
+
+obsv_data |>
+  filter(!stream %in% c("feather river", "butte creek", "yuba river")) |>
+  drop_na(obsv_upstream) |>
+  left_join(b1_effect |>
+              select(year, stream, b1_effect),
+            by = c("year", "stream")) |>
+  left_join(rps |>
+              select(stream, rps, lcl, ucl), by = c("stream")) |>
+  mutate(b1_effect_pred = (rps * obsv_upstream + b1_effect),
+         random_effect_pred = (rps * obsv_upstream)) |>
+  ggplot(aes(x = obsv_upstream, y = obsv_spawner_count)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  geom_abline(aes(intercept = 0, slope = rps)) +
+  geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
+                  ymax = (0 + obsv_upstream * ucl)),
+              fill = "grey70", alpha = 0.3) +
+  geom_errorbar(aes(ymin = pmin(b1_effect_pred, random_effect_pred),
+                    ymax = pmax(b1_effect_pred, random_effect_pred)),
+                color = "red") +
+  facet_wrap(~stream, scale = "free") +
+  theme_minimal() +
+  xlab("Observed upstream passage") +
+  ylab("Observed spawner count (redd or holding)") +
+  ggtitle("Model diagnostics")
+

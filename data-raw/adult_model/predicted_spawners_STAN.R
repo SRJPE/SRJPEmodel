@@ -112,7 +112,7 @@ predicted_spawners <- "
   }
 
   transformed parameters {
-    real survival_rate[N];
+    real conversion_rate[N];
     real redds_per_spawner[N];
     real predicted_spawners[N];
 
@@ -122,11 +122,11 @@ predicted_spawners <- "
 
     for(i in 1:N) {
 
-      survival_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
+      conversion_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
       redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
 
       // predicted redds is product of observed passage * survival rate
-      predicted_spawners[i] = observed_passage[i] * survival_rate[i];
+      predicted_spawners[i] = observed_passage[i] * conversion_rate[i];
 
       devre[i] = exp(log_redds_per_spawner[i]);
     }
@@ -140,7 +140,7 @@ predicted_spawners <- "
   generated quantities {
 
     // model diagnostics
-    real musurv = mean(survival_rate[]);
+    real musurv = mean(conversion_rate[]);
     real mudevre = mean(devre[]);
 
     real R2_data;
@@ -151,7 +151,7 @@ predicted_spawners <- "
 
     for(i in 1:N){
        nom = nom + (devre[i] - mudevre)^2; //sums of squares on variation in survival rate explained by redds_per_spawner
-       denom = denom + (survival_rate[i] - musurv)^2; //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
+       denom = denom + (conversion_rate[i] - musurv)^2; //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
        SSres = SSres + (observed_spawners[i] - predicted_spawners[i])^2; //residual variation for pearson r2 calculation (R2_data) to compare with R2_fixed
     }
 
