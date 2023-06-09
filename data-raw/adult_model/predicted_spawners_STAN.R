@@ -68,31 +68,6 @@ get_all_pars <- function(model_fit, stream_name) {
   return(results_tibble)
 }
 
-# function for running model
-run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed) {
-
-  stream_data <- data |>
-    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
-    filter(stream == stream_name) |>
-    drop_na(all_of(selected_covar), observed_spawners, upstream_estimate)
-
-  covar <- stream_data |>
-    pull(all_of(selected_covar))
-
-  stream_data_list <- list("N" = length(unique(stream_data$year)),
-                           "observed_passage" = stream_data$upstream_estimate,
-                           "observed_spawners" = stream_data$observed_spawners,
-                           "environmental_covar" = covar,
-                           "SStot" = calculate_ss_tot(stream_data))
-
-  stream_model_fit <- stan(model_code = predicted_spawners,
-                               data = stream_data_list,
-                               chains = 3, iter = 20000*2, seed = seed)
-
-  return(get_all_pars(stream_model_fit, stream_name))
-
-}
-
 # stan model --------------------------------------------------------------
 
 predicted_spawners <- "
@@ -101,7 +76,8 @@ predicted_spawners <- "
     int observed_passage[N];
     int observed_spawners[N]; // this is redd count but also holding count
     real environmental_covar[N];
-    real SStot;
+    real ss_total;
+    real average_upstream_passage;
   }
 
   parameters {
@@ -111,24 +87,22 @@ predicted_spawners <- "
     real log_redds_per_spawner[N];
   }
 
-  transformed parameters {
+  transformed parameters{
+
     real conversion_rate[N];
     real redds_per_spawner[N];
     real predicted_spawners[N];
-
-    real mean_redds_per_spawner=exp(log_mean_redds_per_spawner);
-
-    real devre[N];// for R2_fixed computation (amount of variation in survival explained by fixed effect)
+    real mean_redds_per_spawner = exp(log_mean_redds_per_spawner);
+    real devre[N]; // for R2_fixed computation (amount of variation in survival explained by fixed effect)
 
     for(i in 1:N) {
-
       conversion_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
-      redds_per_spawner[i] = exp(log_redds_per_spawner[i]);
 
-      // predicted redds is product of observed passage * survival rate
+      // predicted redds is product of observed passage * conversion rate
       predicted_spawners[i] = observed_passage[i] * conversion_rate[i];
 
-      devre[i] = exp(log_redds_per_spawner[i]);
+      redds_per_spawner[i] = exp(log_redds_per_spawner[i]); //for ouptut only
+      devre[i] = exp(log_redds_per_spawner[i]); //for R2_fixed calculation
     }
   }
 
@@ -137,30 +111,183 @@ predicted_spawners <- "
     observed_spawners ~ poisson(predicted_spawners);
   }
 
-  generated quantities {
+  generated quantities{
 
     // model diagnostics
-    real musurv = mean(conversion_rate[]);
-    real mudevre = mean(devre[]);
-
+    real mu_surv = mean(conversion_rate[]);
+    real mu_devre = mean(devre[]);
     real R2_data;
     real R2_fixed;
-    real nom=0;
+    real nom = 0;
     real denom = 0;
-    real SSres = 0.0;
+    real ss_res = 0.0;
 
+    // calculate diagnostics: sum of squares / R2
     for(i in 1:N){
-       nom = nom + (devre[i] - mudevre)^2; //sums of squares on variation in survival rate explained by redds_per_spawner
-       denom = denom + (conversion_rate[i] - musurv)^2; //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
-       SSres = SSres + (observed_spawners[i] - predicted_spawners[i])^2; //residual variation for pearson r2 calculation (R2_data) to compare with R2_fixed
+      nom = nom + (devre[i] - mu_devre)^2;               //sums of squares on variation in survival rate explained by redds_per_spawner
+      denom = denom + (conversion_rate[i] - mu_surv)^2;     //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
+      ss_res = ss_res + (observed_spawners[i] - predicted_spawners[i])^2; //residual variation for pearson r2 calculation (R2_data) to compare with R2_fixed
     }
 
+    R2_data = 1.0 - ss_res / ss_total;
     R2_fixed = 1.0 - nom / denom;
-    R2_data = 1.0 - SSres / SStot;
-  }"
+
+    // forecast error in spawner abundance at average upstream passage abundance
+    real spawner_abundance_forecast[2];
+    real rps_forecast = normal_rng(log_mean_redds_per_spawner, sigma_redds_per_spawner);// random draw from hyper
+
+    spawner_abundance_forecast[1] = average_upstream_passage * exp(rps_forecast); //for dummy variable = 0 condition, or at average covariate conditions
+    spawner_abundance_forecast[2] = average_upstream_passage * exp(rps_forecast + b1_survival); //for dummy variable=1 condition, or at 1 SD from mean covariate condition
+  }
+"
+
+# test covariates with bayesian model -------------------------------------
+compare_covars <- function(data, stream_name, seed) {
+  final_results <- tibble("par_names" = "DELETE",
+                          "stream" = "DELETE",
+                          "mean" = 0.0,
+                          "sd" = 0.0,
+                          "covar_considered" = "DELETE")
+
+  # drop NAs for all covariates being considered
+  # makes sure you are using the same dataset for each cycle
+  stream_data <- data |>
+    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+    filter(stream == stream_name) |>
+    drop_na(wy_type, max_flow_std, gdd_std, median_passage_timing_std,
+            observed_spawners, upstream_estimate) |>
+    mutate(null_covar = 0)
+
+  covars_to_consider = c("wy_type", "max_flow_std", "gdd_std",
+                         "median_passage_timing_std", "null_covar")
+
+  # loop through covariates to test
+  for(i in 1:length(covars_to_consider)) {
+
+    selected_covar <- covars_to_consider[i]
+
+    print(selected_covar)
+    print(unique(stream_data$stream))
+
+    covar <- stream_data |>
+      pull(all_of(selected_covar))
+
+    stream_data_list <- list("N" = length(unique(stream_data$year)),
+                             "observed_passage" = stream_data$upstream_estimate,
+                             "observed_spawners" = stream_data$observed_spawners,
+                             "environmental_covar" = covar,
+                             "ss_total" = calculate_ss_tot(stream_data),
+                             "average_upstream_passage" = mean(stream_data$upstream_estimate,
+                                                               na.rm = TRUE))
+
+    stream_model_fit <- stan(model_code = predicted_spawners,
+                             data = stream_data_list,
+                             chains = 3, iter = 20000*2, seed = seed)
+
+    stream_results <- get_all_pars(stream_model_fit, stream_name) |>
+      filter(par_names %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
+                              "b1_survival") |
+               str_detect(par_names, "spawner_abundance_forecast")) |> # TODO add pspawn after it's added to STAN code
+      select(par_names, stream, mean, sd) |>
+      mutate(covar_considered = selected_covar)
+
+    final_results <- bind_rows(final_results, stream_results)
+  }
+
+  final_results <- final_results |>
+    filter(par_names != "DELETE")
+
+  return(final_results)
+}
+
+all_streams <- tibble(par_names = "DELETE",
+                      stream = "DELETE",
+                      mean = 0.0,
+                      sd = 0.0,
+                      covar_considered = "DELETE")
 
 
-# run STAN model ----------------------------------------------------------
+for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
+  stream_results <- compare_covars(full_data_for_input, i, 84735)
+  all_streams <- bind_rows(all_streams, stream_results)
+}
+
+all_streams |>
+  filter(par_names != "DELETE")
+
+# identify best covariate for each trib -----------------------------------
+# The best covariate will have the
+# highest R2_fixed, the
+# largest absolute value of b1_surv, the
+# most precise b1_surv, and the
+# most precise forecast error.
+
+get_rankings <- function(results, stream_name) {
+  results <- results |>
+    filter(stream == stream_name) |>
+    # b1_survival and spawner_forecast[2] not valid for null model
+    mutate(mean = ifelse(covar_considered == "null_covar" &
+                           par_names %in% c("b1_survival", "spawner_abundance_forecast[2]"),
+                         NA, mean),
+           sd = ifelse(covar_considered == "null_covar" &
+                           par_names %in% c("b1_survival", "spawner_abundance_forecast[2]"),
+                         NA, sd))
+
+  return(list("highest_R2_fixed" = results |>
+                filter(par_names == "R2_fixed") |>
+                slice(which.max(mean)) |>
+                pull(covar_considered),
+              "highest_absv_b1_surv" = results |>
+                filter(par_names == "b1_survival") |>
+                       slice(which.max(mean)) |>
+                pull(covar_considered),
+              "b1_surv_precise" = results |>
+                filter(par_names == "b1_survival") |>
+                slice(which.min(sd)) |>
+                pull(covar_considered),
+              "forecast_error_precise" = results |>
+                filter(str_detect(par_names, "spawner_abundance_forecast")) |>
+                slice(which.min(sd)) |>
+                pull(covar_considered)))
+}
+
+all_streams |> get_rankings("battle creek") # water year type
+all_streams |> get_rankings("clear creek") # null model
+all_streams |> get_rankings("deer creek") # water year type
+all_streams |> get_rankings("mill creek") # null model
+
+
+
+# run STAN model with covars identified by previous analysis -------------------------
+# function for running model
+run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed) {
+
+  stream_data <- data |>
+    filter(upstream_estimate > 0) |>
+    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+    filter(stream == stream_name) |>
+    # null covariate
+    mutate(null_covar = 0) |>
+    drop_na(all_of(selected_covar), observed_spawners, upstream_estimate)
+
+  covar <- stream_data |>
+    pull(all_of(selected_covar))
+
+  stream_data_list <- list("N" = length(unique(stream_data$year)),
+                           "observed_passage" = stream_data$upstream_estimate,
+                           "observed_spawners" = stream_data$observed_spawners,
+                           "environmental_covar" = covar,
+                           "ss_total" = calculate_ss_tot(stream_data),
+                           "average_upstream_passage" = mean(stream_data$upstream_estimate, na.rm = TRUE))
+
+  stream_model_fit <- stan(model_code = predicted_spawners,
+                           data = stream_data_list,
+                           chains = 3, iter = 20000*2, seed = seed)
+
+  return(get_all_pars(stream_model_fit, stream_name))
+
+}
+
 battle_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "battle creek",
                                                "wy_type",
@@ -168,17 +295,17 @@ battle_results <- run_passage_to_spawner_model(full_data_for_input,
 
 clear_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "clear creek",
-                                               "max_flow_std",
-                                               84735)
-
-mill_results <- run_passage_to_spawner_model(full_data_for_input,
-                                               "mill creek",
-                                               "gdd_std",
+                                               "null_covar",
                                                84735)
 
 deer_results <- run_passage_to_spawner_model(full_data_for_input,
-                                               "deer creek",
-                                               "wy_type",
+                                             "deer creek",
+                                             "wy_type",
+                                             84735)
+
+mill_results <- run_passage_to_spawner_model(full_data_for_input,
+                                               "mill creek",
+                                               "null_covar",
                                                84735)
 
 
@@ -207,3 +334,5 @@ gcs_upload(model_fit_diagnostics,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv")
+
+
