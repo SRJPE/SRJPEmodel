@@ -57,8 +57,6 @@ report_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data"
 other_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                        "model_fit_diagnostic_pars.csv"))
 
-
-
 # plot predicted spawner estimates against observed spawner values
 
 pred_spawners <- report_pars |>
@@ -112,30 +110,11 @@ other_pars |>
 
 
 # diagnostic plots --------------------------------------------------------
-
 rps <- other_pars |>
   filter(str_detect(par_names, "log_mean_redds_per_spawner")) |>
   mutate(rps = exp(mean),
          lcl = exp(X2.5.),
          ucl = exp(X97.5.))
-
-obsv_data |>
-  filter(!stream %in% c("feather river", "butte creek", "yuba river")) |>
-  drop_na(obsv_upstream) |>
-  left_join(rps |>
-              select(stream, rps, lcl, ucl), by = c("stream")) |>
-  ggplot(aes(x = obsv_upstream, y = obsv_spawner_count)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
-  geom_abline(aes(intercept = 0, slope = rps)) +
-  geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
-                  ymax = (0 + obsv_upstream * ucl)),
-              fill = "grey70", alpha = 0.3) +
-  facet_wrap(~stream, scale = "free") +
-  theme_minimal() +
-  xlab("Observed upstream passage") +
-  ylab("Observed spawner count (redd or holding)") +
-  ggtitle("Model diagnostics")
 
 # write b1_survival stats -------------------------------------------------
 b1_table <- report_pars |>
@@ -149,6 +128,8 @@ b1_table <- report_pars |>
                           values_from = mean),
             by = "stream")
 
+
+# plot contribution of random effects -------------------------------------
 b1_effect <- obsv_data |>
   drop_na(obsv_upstream, obsv_spawner_count) |>
   left_join(b1_table |>
