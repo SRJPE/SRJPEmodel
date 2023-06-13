@@ -93,7 +93,7 @@ predicted_spawners <- "
     real redds_per_spawner[N];
     real predicted_spawners[N];
     real mean_redds_per_spawner = exp(log_mean_redds_per_spawner);
-    real devre[N]; // for R2_fixed computation (amount of variation in survival explained by fixed effect)
+    real deviations_RE[N]; // for R2_fixed computation (amount of variation in survival explained by fixed effect)
 
     for(i in 1:N) {
       conversion_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
@@ -102,7 +102,7 @@ predicted_spawners <- "
       predicted_spawners[i] = observed_passage[i] * conversion_rate[i];
 
       redds_per_spawner[i] = exp(log_redds_per_spawner[i]); //for ouptut only
-      devre[i] = exp(log_redds_per_spawner[i]); //for R2_fixed calculation
+      deviations_RE[i] = exp(log_redds_per_spawner[i]); //for R2_fixed calculation
     }
   }
 
@@ -114,8 +114,8 @@ predicted_spawners <- "
   generated quantities{
 
     // model diagnostics
-    real mu_surv = mean(conversion_rate[]);
-    real mu_devre = mean(devre[]);
+    real mu_conversion_rate = mean(conversion_rate[]);
+    real mu_deviations_RE = mean(deviations_RE[]);
     real R2_data;
     real R2_fixed;
     real nom = 0;
@@ -124,8 +124,8 @@ predicted_spawners <- "
 
     // calculate diagnostics: sum of squares / R2
     for(i in 1:N){
-      nom = nom + (devre[i] - mu_devre)^2;               //sums of squares on variation in survival rate explained by redds_per_spawner
-      denom = denom + (conversion_rate[i] - mu_surv)^2;     //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
+      nom = nom + (deviations_RE[i] - mu_deviations_RE)^2;               //sums of squares on variation in survival rate explained by redds_per_spawner
+      denom = denom + (conversion_rate[i] - mu_conversion_rate)^2;     //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
       ss_res = ss_res + (observed_spawners[i] - predicted_spawners[i])^2; //residual variation for pearson r2 calculation (R2_data) to compare with R2_fixed
     }
 
@@ -231,30 +231,76 @@ get_rankings <- function(results, stream_name) {
                          NA, mean),
            sd = ifelse(covar_considered == "null_covar" &
                            par_names %in% c("b1_survival", "spawner_abundance_forecast[2]"),
-                         NA, sd))
+                         NA, sd)) |>
+    drop_na(mean, sd)
 
-  return(list("highest_R2_fixed" = results |>
-                filter(par_names == "R2_fixed") |>
-                slice(which.max(mean)) |>
-                pull(covar_considered),
-              "highest_absv_b1_surv" = results |>
-                filter(par_names == "b1_survival") |>
-                       slice(which.max(mean)) |>
-                pull(covar_considered),
-              "b1_surv_precise" = results |>
-                filter(par_names == "b1_survival") |>
-                slice(which.min(sd)) |>
-                pull(covar_considered),
-              "forecast_error_precise" = results |>
-                filter(str_detect(par_names, "spawner_abundance_forecast")) |>
-                slice(which.min(sd)) |>
-                pull(covar_considered)))
+
+  # assign rankings
+  max_rankings <- results |>
+    filter(par_names %in% c("R2_fixed", "b1_survival")) |>
+    mutate(mean = ifelse(par_names == "R2_fixed", mean, abs(mean))) |>
+    group_by(par_names) |>
+    mutate(rank = order(order(mean, decreasing = TRUE))) |>
+    arrange(rank)
+
+  min_rankings <- results |>
+    filter(par_names %in% c("b1_survival", "spawner_abundance_forecast[1]", "spawner_abundance_forecast[2]")) |>
+    filter(mean != Inf) |>
+    group_by(par_names) |>
+    mutate(rank = order(order(sd))) |>
+    arrange(rank)
+
+  results_with_rankings <- bind_rows(max_rankings, min_rankings)
+
+  return(results_with_rankings)
+
+  best_covar <- results_with_rankings |>
+    group_by(covar_considered) |>
+    summarise(sum_rank = sum(rank)) |>
+    slice(which.min(sum_rank)) |>
+    pull(covar_considered)
+
+  return(list("best_model" = best_covar,
+              "best_model_values" = results_with_rankings |>
+                filter(covar_considered == best_covar) |>
+                select(-c(stream, covar_considered))))
+
+  # return(list("highest_R2_fixed" = results |>
+  #               filter(par_names == "R2_fixed") |>
+  #               slice(which.max(mean)) |>
+  #               select(covar_considered, mean),
+  #             "highest_absv_b1_surv" = results |>
+  #               filter(par_names == "b1_survival") |>
+  #               mutate(mean = abs(mean)) |>
+  #                      slice(which.max(mean)) |>
+  #               select(covar_considered, mean),
+  #             "b1_surv_precise" = results |>
+  #               filter(par_names == "b1_survival") |>
+  #               slice(which.min(sd)) |>
+  #               select(covar_considered, sd),
+  #             "forecast_error_precise_1" = results |>
+  #               filter(par_names == "spawner_abundance_forecast[1]") |>
+  #               slice(which.min(sd)) |>
+  #               select(covar_considered, sd),
+  #            "forecast_error_precise_2" = results |>
+  #              filter(par_names == "spawner_abundance_forecast[2]") |>
+  #              slice(which.min(sd)) |>
+  #              select(covar_considered, sd)))
 }
+
+all_streams |>
+  filter(stream == "clear creek") |>
+  arrange(par_names, mean) |> print(n=Inf)
 
 all_streams |> get_rankings("battle creek") # water year type
 all_streams |> get_rankings("clear creek") # null model
 all_streams |> get_rankings("deer creek") # water year type
 all_streams |> get_rankings("mill creek") # null model
+
+# TODO assign each covariate considered a ranking from 1 (best)-5 based on how they
+# perform on the diagnostics
+# then sum rankings, pull lowest
+# compare to "1-D" analysis
 
 
 
@@ -295,7 +341,7 @@ battle_results <- run_passage_to_spawner_model(full_data_for_input,
 
 clear_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "clear creek",
-                                               "null_covar",
+                                               "wy_type",
                                                84735)
 
 deer_results <- run_passage_to_spawner_model(full_data_for_input,
