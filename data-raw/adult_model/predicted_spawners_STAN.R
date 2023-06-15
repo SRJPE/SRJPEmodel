@@ -217,25 +217,16 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
   return(final_results)
 }
 
-all_streams_truncated <- tibble(par_names = "DELETE",
+all_streams <- tibble(par_names = "DELETE",
                                 stream = "DELETE",
                                 mean = 0.0,
                                 sd = 0.0,
                                 covar_considered = "DELETE")
 
-all_streams_full <- tibble(par_names = "DELETE",
-                           stream = "DELETE",
-                           mean = 0.0,
-                           sd = 0.0,
-                           covar_considered = "DELETE")
 
-
-#for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
-for(i in c("battle creek", "deer creek", "mill creek")) {
-  truncated_stream_results <- compare_covars(full_data_for_input, i, 84735, TRUE)
-  #full_stream_results <- compare_covars(full_data_for_input, i, 84735, FALSE)
-  all_streams_truncated <- bind_rows(all_streams_truncated, truncated_stream_results)
-  #all_streams_full <- bind_rows(all_streams_full, full_stream_results)
+for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
+  stream_results <- compare_covars(full_data_for_input, i, 84735, TRUE)
+  all_streams <- bind_rows(all_streams, stream_results)
 }
 
 # identify best covariate for each trib -----------------------------------
@@ -281,68 +272,42 @@ get_rankings <- function(results, stream_name) {
 
   min_rankings <- results |>
     filter(par_names %in% c("b1_survival", "spawner_abundance_forecast")) |>
+    mutate(par_names = ifelse(par_names == "b1_survival", "b1_survival_sd", par_names)) |>
     filter(mean != Inf) |>
     group_by(par_names) |>
     mutate(rank = order(order(sd, decreasing = FALSE))) |>
     arrange(rank)
 
   results_with_rankings <- bind_rows(max_rankings, min_rankings)
-  # results_with_rankings_wide <- results_with_rankings |>
-  #   pivot_wider(id_cols = covar_considered,
-  #               names_from = par_names,
-  #               values_from = rank)
-  return(results_with_rankings)
 
-  best_covar <- results_with_rankings |>
-    group_by(covar_considered) |>
-    summarise(sum_rank = sum(rank),
-              mean_rank = mean(rank)) |>
-    #slice(which.min(sum_rank)) |>
-    slice(which.min(mean_rank)) |>
+  results_with_rankings_wide <- results_with_rankings |>
+    pivot_wider(id_cols = c(covar_considered, stream),
+                names_from = par_names,
+                values_from = rank) |>
+    rowwise() |>
+    mutate(mean_rank = mean(c(b1_survival, b1_survival_sd, spawner_abundance_forecast), na.rm = T)) |>
+    arrange(mean_rank)
+
+  best_covar <- results_with_rankings_wide[1, ] |>
+    pull(covar_considered)
+
+  second_best_covar <- results_with_rankings_wide[2, ] |>
     pull(covar_considered)
 
   return(list("best_model" = best_covar,
+              "compare_rankings" = results_with_rankings_wide,
               "best_model_values" = results_with_rankings |>
                 filter(covar_considered == best_covar) |>
-                select(-c(stream, covar_considered))))
-
-  # return(list("highest_R2_fixed" = results |>
-  #               filter(par_names == "R2_fixed") |>
-  #               slice(which.max(mean)) |>
-  #               select(covar_considered, mean),
-  #             "highest_absv_b1_surv" = results |>
-  #               filter(par_names == "b1_survival") |>
-  #               mutate(mean = abs(mean)) |>
-  #                      slice(which.max(mean)) |>
-  #               select(covar_considered, mean),
-  #             "b1_surv_precise" = results |>
-  #               filter(par_names == "b1_survival") |>
-  #               slice(which.min(sd)) |>
-  #               select(covar_considered, sd),
-  #             "forecast_error_precise_1" = results |>
-  #               filter(par_names == "spawner_abundance_forecast[1]") |>
-  #               slice(which.min(sd)) |>
-  #               select(covar_considered, sd),
-  #            "forecast_error_precise_2" = results |>
-  #              filter(par_names == "spawner_abundance_forecast[2]") |>
-  #              slice(which.min(sd)) |>
-  #              select(covar_considered, sd)))
+                select(-c(stream)),
+              "second_best_model_values" = results_with_rankings |>
+                filter(covar_considered == second_best_covar) |>
+                select(-c(stream))))
 }
 
-all_streams |>
-  filter(stream == "clear creek") |>
-  arrange(par_names, mean) |> print(n=Inf)
-
-all_streams_truncated |> get_rankings("battle creek")# water year type
-all_streams_truncated |> get_rankings("clear creek") # null model
-all_streams_truncated |> get_rankings("deer creek") # water year type
-all_streams_truncated |> get_rankings("mill creek") # null model
-
-# TODO assign each covariate considered a ranking from 1 (best)-5 based on how they
-# perform on the diagnostics
-# then sum rankings, pull lowest
-# compare to "1-D" analysis
-
+battle_rankings <- all_streams |> get_rankings("battle creek") # gdd_std
+clear_rankings <- all_streams |> get_rankings("clear creek") # gdd_std model
+deer_rankings <- all_streams |> get_rankings("deer creek") # null model - but doesn't converge. second best is max_flow_std
+mill_rankings <- all_streams |> get_rankings("mill creek") # gdd_std
 
 
 # run STAN model with covars identified by previous analysis -------------------------
@@ -366,7 +331,7 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
                            "environmental_covar" = covar,
                            "ss_total" = calculate_ss_tot(stream_data),
                            "average_upstream_passage" = mean(stream_data$upstream_estimate, na.rm = TRUE))
-
+  print(length(unique(stream_data$year)))
   stream_model_fit <- stan(model_code = predicted_spawners,
                            data = stream_data_list,
                            chains = 3, iter = 20000*2, seed = seed)
@@ -377,26 +342,32 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
 
 battle_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "battle creek",
-                                               "wy_type",
+                                               battle_rankings$best_model,
                                                84735)
 
 clear_results <- run_passage_to_spawner_model(full_data_for_input,
-                                               "clear creek",
-                                               "wy_type",
-                                               84735)
+                                              "clear creek",
+                                              clear_rankings$best_model,
+                                              84735)
 
 deer_results <- run_passage_to_spawner_model(full_data_for_input,
                                              "deer creek",
-                                             "wy_type",
+                                             deer_rankings$second_best_model_values |>
+                                               distinct(covar_considered) |>
+                                               pull(covar_considered),
                                              84735)
 
 mill_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "mill creek",
-                                               "null_covar",
+                                               mill_rankings$best_model,
                                                84735)
 
 
 # write model summaries ---------------------------------------------------
+P2S_model_fits <- bind_rows(battle_results, clear_results,
+                            mill_results, deer_results) |>
+  glimpse()
+
 model_fit_summaries <- bind_rows(battle_results, clear_results,
                                  mill_results, deer_results) |>
                                    filter(str_detect(par_names, "predicted_spawners") |
@@ -412,48 +383,17 @@ model_fit_diagnostics <- bind_rows(battle_results, clear_results,
 # save to google cloud ----------------------------------------------------
 f <- function(input, output) write_csv(input, file = output)
 
-gcs_upload(model_fit_summaries,
+gcs_upload(P2S_model_fits,
            object_function = f,
            type = "csv",
-           name = "jpe-model-data/adult-model/model_fit_summaries.csv")
+           name = "jpe-model-data/adult-model/P2S_model_fits.csv")
 
-gcs_upload(model_fit_diagnostics,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv")
-
-
-
-# scratch to fix R2_fixed -------------------------------------------------
-
-test_1 <- run_passage_to_spawner_model(full_data_for_input,
-                                              "clear creek",
-                                              "wy_type",
-                                              84735)
-test_2 <- run_passage_to_spawner_model(full_data_for_input,
-                                       "clear creek",
-                                       "max_flow_std",
-                                       84735)
-test_3 <- run_passage_to_spawner_model(full_data_for_input,
-                                       "clear creek",
-                                       "gdd_std",
-                                       84735)
-test_4 <- run_passage_to_spawner_model(full_data_for_input,
-                                       "clear creek",
-                                       "null_covar",
-                                       84735)
-
-test <- bind_rows(test_1 |>
-                    mutate(covar_considered = "wy_type") |>
-                    select(par_names, mean, sd, covar_considered),
-                  test_2 |>
-                    mutate(covar_considered = "max_flow_std") |>
-                    select(par_names, mean, sd, covar_considered),
-                  test_3 |>
-                    mutate(covar_considered = "gdd_std") |>
-                    select(par_names, mean, sd, covar_considered),
-                  test_4 |>
-                    mutate(covar_considered = "null_covar") |>
-                    select(par_names, mean, sd, covar_considered))
-
-
+# gcs_upload(model_fit_summaries,
+#            object_function = f,
+#            type = "csv",
+#            name = "jpe-model-data/adult-model/model_fit_summaries.csv")
+#
+# gcs_upload(model_fit_diagnostics,
+#            object_function = f,
+#            type = "csv",
+#            name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv")
