@@ -93,16 +93,13 @@ predicted_spawners <- "
     real redds_per_spawner[N];
     real predicted_spawners[N];
     real mean_redds_per_spawner = exp(log_mean_redds_per_spawner);
-    real deviations_RE[N]; // for R2_fixed computation (amount of variation in survival explained by fixed effect)
 
     for(i in 1:N) {
       conversion_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
 
       // predicted redds is product of observed passage * conversion rate
       predicted_spawners[i] = observed_passage[i] * conversion_rate[i];
-
       redds_per_spawner[i] = exp(log_redds_per_spawner[i]); //for ouptut only
-      deviations_RE[i] = exp(log_redds_per_spawner[i]); //for R2_fixed calculation
     }
   }
 
@@ -111,26 +108,35 @@ predicted_spawners <- "
     observed_spawners ~ poisson(predicted_spawners);
   }
 
-  generated quantities{
+  generated quantities {
 
-    // model diagnostics
-    real mu_conversion_rate = mean(conversion_rate[]);
-    real mu_deviations_RE = mean(deviations_RE[]);
-    real R2_data;
-    real R2_fixed;
-    real nom = 0;
-    real denom = 0;
+    // calculate R2 fixed effects
+    real y_pred[N];
+    real RE_draws[N]; // vector for storing random draws for RE
+    real var_fit = 0;
+    real var_res = 0.0;
     real ss_res = 0.0;
 
-    // calculate diagnostics: sum of squares / R2
-    for(i in 1:N){
-      nom = nom + (deviations_RE[i] - mu_deviations_RE)^2;               //sums of squares on variation in survival rate explained by redds_per_spawner
-      denom = denom + (conversion_rate[i] - mu_conversion_rate)^2;     //sums of squares on total variation in survival (due to variation redds_per_spawner and due to covariate effectd)
-      ss_res = ss_res + (observed_spawners[i] - predicted_spawners[i])^2; //residual variation for pearson r2 calculation (R2_data) to compare with R2_fixed
+    for(i in 1:N) {
+      RE_draws[i] = normal_rng(log_mean_redds_per_spawner, sigma_redds_per_spawner);
+      y_pred[i] = observed_passage[i] * exp(RE_draws[i]);
     }
 
-    R2_data = 1.0 - ss_res / ss_total;
-    R2_fixed = 1.0 - nom / denom;
+    real y_pred_mu = mean(y_pred[]);
+    real R2_data;
+    real R2_fixed;
+
+    // calculate R2_data and R2_fixed
+    for(i in 1:N) {
+      var_fit = var_fit + (y_pred[i] - y_pred_mu)^2;
+      // TODO var_res is actually based off y_pred with full env effects?
+      // TODO and then subtract y_pred from that?
+      var_res = var_res + (observed_spawners[i] - y_pred[i])^2;
+      ss_res = ss_res + (observed_spawners[i] - predicted_spawners[i])^2;
+    }
+
+    R2_data = 1.0 - (ss_res / ss_total);
+    R2_fixed = 1.0 - (var_fit / (var_fit + var_res));
 
     // forecast error in spawner abundance at average upstream passage abundance
     real spawner_abundance_forecast[2];
@@ -142,29 +148,38 @@ predicted_spawners <- "
 "
 
 # test covariates with bayesian model -------------------------------------
-compare_covars <- function(data, stream_name, seed) {
+compare_covars <- function(data, stream_name, seed, truncate_data) {
   final_results <- tibble("par_names" = "DELETE",
                           "stream" = "DELETE",
                           "mean" = 0.0,
                           "sd" = 0.0,
                           "covar_considered" = "DELETE")
 
-  # drop NAs for all covariates being considered
-  # makes sure you are using the same dataset for each cycle
-  stream_data <- data |>
-    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
-    filter(stream == stream_name) |>
-    drop_na(wy_type, max_flow_std, gdd_std, median_passage_timing_std,
-            observed_spawners, upstream_estimate) |>
-    mutate(null_covar = 0)
-
   covars_to_consider = c("wy_type", "max_flow_std", "gdd_std",
-                         "median_passage_timing_std", "null_covar")
+                         "null_covar") # no more "median_passage_timing_std" bc of sample size
 
   # loop through covariates to test
   for(i in 1:length(covars_to_consider)) {
 
     selected_covar <- covars_to_consider[i]
+
+    if(truncate_data == TRUE) {
+      # drop NAs for all covariates being considered
+      # makes sure you are using the same dataset for each cycle
+      stream_data <- data |>
+        mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+        filter(upstream_estimate > 0) |>
+        filter(stream == stream_name) |>
+        drop_na(wy_type, max_flow_std, gdd_std, observed_spawners, upstream_estimate) |>
+        mutate(null_covar = 0)
+    } else if(truncate_data == FALSE) {
+      stream_data <- data |>
+        mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+        filter(upstream_estimate > 0) |>
+        filter(stream == stream_name) |>
+        mutate(null_covar = 0) |>
+        drop_na(observed_spawners, upstream_estimate, all_of(selected_covar))
+    }
 
     print(selected_covar)
     print(unique(stream_data$stream))
@@ -179,6 +194,8 @@ compare_covars <- function(data, stream_name, seed) {
                              "ss_total" = calculate_ss_tot(stream_data),
                              "average_upstream_passage" = mean(stream_data$upstream_estimate,
                                                                na.rm = TRUE))
+
+    print(stream_data_list)
 
     stream_model_fit <- stan(model_code = predicted_spawners,
                              data = stream_data_list,
@@ -200,20 +217,26 @@ compare_covars <- function(data, stream_name, seed) {
   return(final_results)
 }
 
-all_streams <- tibble(par_names = "DELETE",
-                      stream = "DELETE",
-                      mean = 0.0,
-                      sd = 0.0,
-                      covar_considered = "DELETE")
+all_streams_truncated <- tibble(par_names = "DELETE",
+                                stream = "DELETE",
+                                mean = 0.0,
+                                sd = 0.0,
+                                covar_considered = "DELETE")
+
+all_streams_full <- tibble(par_names = "DELETE",
+                           stream = "DELETE",
+                           mean = 0.0,
+                           sd = 0.0,
+                           covar_considered = "DELETE")
 
 
-for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
-  stream_results <- compare_covars(full_data_for_input, i, 84735)
-  all_streams <- bind_rows(all_streams, stream_results)
+#for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
+for(i in c("battle creek", "deer creek", "mill creek")) {
+  truncated_stream_results <- compare_covars(full_data_for_input, i, 84735, TRUE)
+  #full_stream_results <- compare_covars(full_data_for_input, i, 84735, FALSE)
+  all_streams_truncated <- bind_rows(all_streams_truncated, truncated_stream_results)
+  #all_streams_full <- bind_rows(all_streams_full, full_stream_results)
 }
-
-all_streams |>
-  filter(par_names != "DELETE")
 
 # identify best covariate for each trib -----------------------------------
 # The best covariate will have the
@@ -232,32 +255,50 @@ get_rankings <- function(results, stream_name) {
            sd = ifelse(covar_considered == "null_covar" &
                            par_names %in% c("b1_survival", "spawner_abundance_forecast[2]"),
                          NA, sd)) |>
-    drop_na(mean, sd)
-
+    mutate(mean = case_when(covar_considered == "null_covar" &
+                              par_names %in% c("b1_survival", "spawner_abundance_forecast[2]") ~ NA,
+                            covar_considered != "null_covar" &
+                              par_names == "spawner_abundance_forecast[1]" ~ NA,
+                            TRUE ~ mean),
+           sd = case_when(covar_considered == "null_covar" &
+                              par_names %in% c("b1_survival", "spawner_abundance_forecast[2]") ~ NA,
+                            covar_considered != "null_covar" &
+                              par_names == "spawner_abundance_forecast[1]" ~ NA,
+                          TRUE ~ sd)) |>
+    drop_na(mean, sd) |>
+    mutate(par_names = case_when(par_names == "spawner_abundance_forecast[1]" ~ "spawner_abundance_forecast",
+                                 par_names == "spawner_abundance_forecast[2]" ~ "spawner_abundance_forecast",
+                                 TRUE ~ par_names))
 
   # assign rankings
   max_rankings <- results |>
-    filter(par_names %in% c("R2_fixed", "b1_survival")) |>
+    filter(par_names %in% c("b1_survival")) |>
+    #filter(par_names %in% c("R2_fixed", "b1_survival")) |>
     mutate(mean = ifelse(par_names == "R2_fixed", mean, abs(mean))) |>
     group_by(par_names) |>
     mutate(rank = order(order(mean, decreasing = TRUE))) |>
     arrange(rank)
 
   min_rankings <- results |>
-    filter(par_names %in% c("b1_survival", "spawner_abundance_forecast[1]", "spawner_abundance_forecast[2]")) |>
+    filter(par_names %in% c("b1_survival", "spawner_abundance_forecast")) |>
     filter(mean != Inf) |>
     group_by(par_names) |>
-    mutate(rank = order(order(sd))) |>
+    mutate(rank = order(order(sd, decreasing = FALSE))) |>
     arrange(rank)
 
   results_with_rankings <- bind_rows(max_rankings, min_rankings)
-
+  # results_with_rankings_wide <- results_with_rankings |>
+  #   pivot_wider(id_cols = covar_considered,
+  #               names_from = par_names,
+  #               values_from = rank)
   return(results_with_rankings)
 
   best_covar <- results_with_rankings |>
     group_by(covar_considered) |>
-    summarise(sum_rank = sum(rank)) |>
-    slice(which.min(sum_rank)) |>
+    summarise(sum_rank = sum(rank),
+              mean_rank = mean(rank)) |>
+    #slice(which.min(sum_rank)) |>
+    slice(which.min(mean_rank)) |>
     pull(covar_considered)
 
   return(list("best_model" = best_covar,
@@ -292,10 +333,10 @@ all_streams |>
   filter(stream == "clear creek") |>
   arrange(par_names, mean) |> print(n=Inf)
 
-all_streams |> get_rankings("battle creek") # water year type
-all_streams |> get_rankings("clear creek") # null model
-all_streams |> get_rankings("deer creek") # water year type
-all_streams |> get_rankings("mill creek") # null model
+all_streams_truncated |> get_rankings("battle creek")# water year type
+all_streams_truncated |> get_rankings("clear creek") # null model
+all_streams_truncated |> get_rankings("deer creek") # water year type
+all_streams_truncated |> get_rankings("mill creek") # null model
 
 # TODO assign each covariate considered a ranking from 1 (best)-5 based on how they
 # perform on the diagnostics
@@ -380,5 +421,39 @@ gcs_upload(model_fit_diagnostics,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv")
+
+
+
+# scratch to fix R2_fixed -------------------------------------------------
+
+test_1 <- run_passage_to_spawner_model(full_data_for_input,
+                                              "clear creek",
+                                              "wy_type",
+                                              84735)
+test_2 <- run_passage_to_spawner_model(full_data_for_input,
+                                       "clear creek",
+                                       "max_flow_std",
+                                       84735)
+test_3 <- run_passage_to_spawner_model(full_data_for_input,
+                                       "clear creek",
+                                       "gdd_std",
+                                       84735)
+test_4 <- run_passage_to_spawner_model(full_data_for_input,
+                                       "clear creek",
+                                       "null_covar",
+                                       84735)
+
+test <- bind_rows(test_1 |>
+                    mutate(covar_considered = "wy_type") |>
+                    select(par_names, mean, sd, covar_considered),
+                  test_2 |>
+                    mutate(covar_considered = "max_flow_std") |>
+                    select(par_names, mean, sd, covar_considered),
+                  test_3 |>
+                    mutate(covar_considered = "gdd_std") |>
+                    select(par_names, mean, sd, covar_considered),
+                  test_4 |>
+                    mutate(covar_considered = "null_covar") |>
+                    select(par_names, mean, sd, covar_considered))
 
 

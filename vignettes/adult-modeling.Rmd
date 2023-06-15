@@ -249,25 +249,34 @@ The selected coefficients for each stream were:
 
 ### Predicted Redd Bayesian model
 
-Once the environmental variables with the most significant predictive power were selected for each stream, they were implemented in a single stream model motivated by [Dauphin et al. (2010)](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub), which models a redd:passage relationship.
+Once the environmental variables with the most significant predictive power were selected for each stream, they were used to develop a single stream model motivated by [Dauphin et al. (2010)](https://www.sciencedirect.com/science/article/abs/pii/S0165783610001530?via%3Dihub), which models a redd:passage relationship. Once this model was built in a Bayesian framework, the model was run for each stream with each environmental covariate to confirm our previous selections. Criteria for covariate selection under the redd:passage model and results are detailed later.
 
-The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates were standardized and centered so that scale would not impact the results of the model. 
+The model takes in observed upstream passage and observed spawner count, as well as an environmental covariate. All environmental covariates except water year type (a binary variable of 0/1 for dry/wet) were standardized and centered so that scale would not impact the results of the model. 
 
-Our model calculates survival on a logit scale. The survival rate in a year (`survrate(y)`), referring to survival from upstream passage to spawning, is a function of the selected environmental covariate `environmental(y)`, the parameter `b1survival`, and log-scale parameter redds-per-spawner (`rps`) (Equation 2). `rps` is calculated on a log scale to restrict to positive values but allow for values over 1 (Equations 1 and 2). The model then predicts spawner count in a year (`predspawners(y)`) as a function of `observed_passage` and `survrate` (Equation 4). The likelihood compares `predicted_spawners` to `observed_spawners`; the key output of the model is the parameter `predspawners(y)` for each year and the estimated effect of the environmental covariate, captured in the parameter `b1survival`. 
+Our model calculates survival on a logit scale. The conversion rate (of adults passage to spawning adults) in a year (`conversion_rate(y)`) is a function of the selected environmental covariate `environmental(y)`, the parameter `b1_survival`, and log-scale redds-per-spawner (`rps(y)`) (Equation 2). `mean_rps` and `sigma_rps` are the hyper parameters determining the distribution of`rps` across years. `rps(y)` is estimated on a log scale to restrict to positive values but allow for values over 1 (Equations 1 and 2). The model then predicts spawner count in a year (`predspawners(y)`) as a function of `observed_passage(y)` and `conversion_rate(y)` (Equation 4). The likelihood assumes the error between `predicted_spawners` and `observed_spawners` is poisson-distributed and that the distribution of `rps` is lognormal as determined by parameters `mean_rps` and `sigma_rps`. The key output of the model is `predspawners(y)` for each year and the estimated effect of the environmental covariate, captured in the parameter `b1_survival`. 
 
-(1) $\log(rps_{y}) \sim {\sf Normal}(\mu_{rps}, \tau_{rps})$
-(2) $logit(survrate_{y}) = \log(rps_{y}) + b1survival * environmental_{y}$
+(1) $\log(rps_{y}) \sim {\sf Normal}(\mu_{rps}, \sigma_{rps})$
+(2) $conversionrate_{y} = exp(\log(rps_{y}) + \beta_{1}survival * environmental_{y})$
 (3) $rps_{y} = \exp(\log(rps_{y}))$
-(4) $predspawners_{y} = observedpassage_{y} * survrate_{y}$
+(4) $predspawners_{y} = observedpassage_{y} * conversionrate_{y}$
 (5) $observedspawners_{y} \sim {\sf Poisson} (predspawners_{y})$
 
 
 The model was coded in `rstan`, a language used for implementing models in a Bayesian framework. The model results were assessed using the following diagnostics:
 
-* Fit of the model to the data (Pearson R^2)
-* Proportion of interannual variation in passage-spawner survival rate explained by the fixed effect
+* Proportion of variance in predicted spawners explained by fixed effect `$\beta_{1}survival$`
 * Magnitude of the mean of the fixed effect
 * Uncertainty in the fixed effect estimate
+
+### Further exploration of covariate
+
+The above criteria were also used to support our choice of environmental covariate for each stream. Each dataset for a stream was truncated to include the same years where all covariates were available. Then, the Bayesian model was fit and criteria examined. A null model where the environmental covariate was set to 0 for each year was considered.
+Ultimately, we settled upon the following environmental covariates for each stream (instances where the Bayesian-selected covariate and the linear regression-selected variate differ are noted):
+
+* Battle Creek
+* Clear Creek
+* Deer Creek
+* Mill Creek
 
 ```{r, echo = FALSE}
 # prep more data for plots
