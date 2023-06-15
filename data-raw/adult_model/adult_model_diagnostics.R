@@ -11,6 +11,11 @@ gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
 gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
 
 # download input data
+
+gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
+               bucket = gcs_get_global_bucket(),
+               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+                                       "P2S_model_fits.csv"))
 gcs_get_object(object_name = "jpe-model-data/adult-model/adult_data_input_raw.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
@@ -23,16 +28,16 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/adult_model_covariates_
                                        "adult_model_covariates_standard.csv"),
                overwrite = TRUE)
 
-gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
-               bucket = gcs_get_global_bucket(),
-               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                       "model_fit_summaries.csv"),
-               overwrite = TRUE)
-gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv",
-               bucket = gcs_get_global_bucket(),
-               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                       "model_fit_diagnostic_pars.csv"),
-               overwrite = TRUE)
+# gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
+#                bucket = gcs_get_global_bucket(),
+#                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+#                                        "model_fit_summaries.csv"),
+#                overwrite = TRUE)
+# gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv",
+#                bucket = gcs_get_global_bucket(),
+#                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+#                                        "model_fit_diagnostic_pars.csv"),
+#                overwrite = TRUE)
 
 # read data from csvs -----------------------------------------------------
 
@@ -52,26 +57,34 @@ full_data_for_input <- full_join(adult_data_input_raw,
               values_from = count) |>
   glimpse()
 
-report_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                   "model_fit_summaries.csv"))
-other_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                       "model_fit_diagnostic_pars.csv"))
+P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                      "P2S_model_fits.csv")) |>
+  glimpse()
+
+# report_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                    "model_fit_summaries.csv"))
+# other_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                        "model_fit_diagnostic_pars.csv"))
 
 # plot predicted spawner estimates against observed spawner values
-
-pred_spawners <- report_pars |>
-  filter(par_names != "b1_survival") |>
+pred_spawners <- P2S_model_fits |>
+  filter(str_detect(par_names, "predicted_spawners")) |>
   select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
   glimpse()
+
+# pred_spawners <- report_pars |>
+#   filter(par_names != "b1_survival") |>
+#   select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
+#   glimpse()
 
 obsv_data <- full_data_for_input |>
   mutate(obsv_spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |>
   select(year, stream, obsv_spawner_count, obsv_upstream = upstream_estimate) |>
   glimpse()
 
-years_to_join <- c(full_data_for_input |> filter(stream == "battle creek") |> drop_na(upstream_estimate, redd_count, wy_type) |> pull(year),
-                   full_data_for_input |> filter(stream == "clear creek") |> drop_na(upstream_estimate, redd_count, max_flow_std) |> pull(year),
-                   full_data_for_input |> filter(stream == "deer creek") |> drop_na(upstream_estimate, holding_count, wy_type) |> pull(year),
+years_to_join <- c(full_data_for_input |> filter(stream == "battle creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year),
+                   full_data_for_input |> filter(stream == "clear creek", upstream_estimate > 0) |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year),
+                   full_data_for_input |> filter(stream == "deer creek") |> drop_na(upstream_estimate, holding_count, max_flow_std) |> pull(year),
                    full_data_for_input |> filter(stream == "mill creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year))
 
 pred_with_year <- pred_spawners |>
@@ -91,7 +104,7 @@ pred_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
 summary(lm(pred_spawner_count ~ obsv_spawner_count, data = pred_with_year))
 
 # look at estimated value of sigma redds_per_spawner (mean and sd)
-other_pars |>
+P2S_model_fits |>
   filter(str_detect(par_names, "log_redds_per_spawner") |
          str_detect(par_names, "conversion_rate")) |>
   mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "survival")) |>
@@ -110,22 +123,24 @@ other_pars |>
 
 
 # diagnostic plots --------------------------------------------------------
-rps <- other_pars |>
+rps <- P2S_model_fits |>
   filter(str_detect(par_names, "log_mean_redds_per_spawner")) |>
   mutate(rps = exp(mean),
          lcl = exp(X2.5.),
          ucl = exp(X97.5.))
 
 # write b1_survival stats -------------------------------------------------
-b1_table <- report_pars |>
+R2_estimates <- P2S_model_fits |>
+  filter(par_names %in% c("R2_data", "R2_fixed")) |>
+  pivot_wider(id_cols = stream,
+              names_from = par_names,
+              values_from = mean)
+
+b1_table <- P2S_model_fits |>
   filter(par_names %in% c("b1_survival")) |>
   select(stream, parameter = par_names, `2.5` = X2.5.,
          `50` = mean, `97.5` = X97.5.) |>
-  left_join(other_pars |>
-              filter(par_names %in% c("R2_data", "R2_fixed")) |>
-              pivot_wider(id_cols = stream,
-                          names_from = par_names,
-                          values_from = mean),
+  left_join(R2_estimates,
             by = "stream")
 
 
@@ -135,9 +150,11 @@ b1_effect <- obsv_data |>
   left_join(b1_table |>
               select(stream, b1 = `50`), by = "stream") |>
   left_join(full_data_for_input |>
-              mutate(covar = case_when(stream %in% c("battle creek", "deer creek") ~ wy_type,
-                                       stream == "mill creek" ~ gdd_std,
-                                       stream == "clear creek" ~ max_flow_std)) |>
+              mutate(covar = case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ gdd_std,
+                                       stream == "deer creek" ~ max_flow_std)) |>
+              # mutate(covar = case_when(stream %in% c("battle creek", "deer creek") ~ wy_type,
+              #                          stream == "mill creek" ~ gdd_std,
+              #                          stream == "clear creek" ~ max_flow_std)) |>
               select(year, stream, covar)) |>
   mutate(b1_effect = obsv_upstream * (b1 * covar))
 
@@ -166,4 +183,33 @@ obsv_data |>
   xlab("Observed upstream passage") +
   ylab("Observed spawner count (redd or holding)") +
   ggtitle("Model diagnostics")
+
+
+# plot conversion rates ---------------------------------------------------
+conversion_rates <- P2S_model_fits |>
+  filter(str_detect(par_names, "conversion_rate")) |>
+  mutate(lcl = `X2.5.`, ucl = `X97.5.`) |>
+  select(par_names, mean, sd, lcl, ucl, stream) |>
+  glimpse()
+
+conversion_rates_with_year <- conversion_rates |>
+  arrange(stream) |>
+  mutate(year = years_to_join) |>
+  select(-par_names) |>
+  rename(pred_conversion_rate = mean) |>
+  left_join(full_data_for_input |>
+              mutate(covar_used = ifelse(stream == "deer creek", max_flow_std, gdd_std)) |>
+              select(year, stream, covar_used),
+            by = c("year", "stream")) |>
+  glimpse()
+
+conversion_rates_with_year |>
+  ggplot(aes(x = year, y = pred_conversion_rate)) +
+  geom_point() +
+  geom_line(aes(x = year, y = covar_used)) +
+  facet_wrap(~stream, scales = "free") +
+  theme_minimal() + xlab("Year") +
+  ylab("Predicted Conversion Rate") +
+  ggtitle("Conversion Rate of Passage to Spawners")
+
 
