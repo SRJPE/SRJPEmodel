@@ -3,6 +3,7 @@
 library(ggplot2)
 library(googleCloudStorageR)
 library(tidyverse)
+library(wesanderson)
 
 
 # pull in data from google cloud ------------------------------------------
@@ -15,7 +16,8 @@ gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
 gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                       "P2S_model_fits.csv"))
+                                       "P2S_model_fits.csv"),
+               overwrite = TRUE)
 gcs_get_object(object_name = "jpe-model-data/adult-model/adult_data_input_raw.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
@@ -61,21 +63,12 @@ P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_da
                                       "P2S_model_fits.csv")) |>
   glimpse()
 
-# report_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                    "model_fit_summaries.csv"))
-# other_pars <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                        "model_fit_diagnostic_pars.csv"))
 
 # plot predicted spawner estimates against observed spawner values
 pred_spawners <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawners")) |>
   select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
   glimpse()
-
-# pred_spawners <- report_pars |>
-#   filter(par_names != "b1_survival") |>
-#   select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
-#   glimpse()
 
 obsv_data <- full_data_for_input |>
   mutate(obsv_spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |>
@@ -152,10 +145,9 @@ b1_effect <- obsv_data |>
   left_join(full_data_for_input |>
               mutate(covar = case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ gdd_std,
                                        stream == "deer creek" ~ max_flow_std)) |>
-              # mutate(covar = case_when(stream %in% c("battle creek", "deer creek") ~ wy_type,
-              #                          stream == "mill creek" ~ gdd_std,
-              #                          stream == "clear creek" ~ max_flow_std)) |>
               select(year, stream, covar)) |>
+  drop_na(covar) |>
+  #mutate(b1_effect = (b1 * covar))
   mutate(b1_effect = obsv_upstream * (b1 * covar))
 
 obsv_data |>
@@ -175,9 +167,9 @@ obsv_data |>
   geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
                   ymax = (0 + obsv_upstream * ucl)),
               fill = "grey70", alpha = 0.3) +
-  geom_errorbar(aes(ymin = pmin(b1_effect_pred, random_effect_pred),
-                    ymax = pmax(b1_effect_pred, random_effect_pred)),
-                color = "red") +
+  # geom_errorbar(aes(ymin = pmin(b1_effect_pred, random_effect_pred),
+  #                   ymax = pmax(b1_effect_pred, random_effect_pred)),
+  #               color = "red") +
   facet_wrap(~stream, scale = "free") +
   theme_minimal() +
   xlab("Observed upstream passage") +
@@ -198,18 +190,57 @@ conversion_rates_with_year <- conversion_rates |>
   select(-par_names) |>
   rename(pred_conversion_rate = mean) |>
   left_join(full_data_for_input |>
-              mutate(covar_used = ifelse(stream == "deer creek", max_flow_std, gdd_std)) |>
-              select(year, stream, covar_used),
+              mutate(covar_used = ifelse(stream == "deer creek", max_flow_std, gdd_std),
+                     covar_type = ifelse(stream == "deer creek", "Maximum flow", "Temperature index")) |>
+              select(year, stream, covar_used, covar_type),
             by = c("year", "stream")) |>
+  mutate(stream = str_to_title(stream),
+         stream = ifelse(stream == "Deer Creek", paste0(stream, "- Holding"), paste(stream, "- Redd"))) |>
   glimpse()
 
-conversion_rates_with_year |>
+conversion_rate_plot <- conversion_rates_with_year |>
   ggplot(aes(x = year, y = pred_conversion_rate)) +
-  geom_point() +
-  geom_line(aes(x = year, y = covar_used)) +
+  geom_line() +
+  geom_line(aes(x = year, y = covar_used, color = covar_type), linetype = "dashed") +
+  geom_hline(yintercept = 1, linetype = "dotted") +
   facet_wrap(~stream, scales = "free") +
   theme_minimal() + xlab("Year") +
   ylab("Predicted Conversion Rate") +
-  ggtitle("Conversion Rate of Passage to Spawners")
+  ggtitle("Conversion Rate of Passage to Spawners") +
+  labs(color = "Covariate Type") +
+  scale_color_manual(values = wes_palette("GrandBudapest1")[2:3]) +
+  theme(plot.title = element_text(size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10))
 
+ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot.jpg",
+       plot = conversion_rate_plot, width = 12, height = 6)
 
+forecasts <- P2S_model_fits |>
+  filter(str_detect(par_names, "abundance_forecast")) |>
+  mutate(par_names = ifelse(par_names == "spawner_abundance_forecast[1]",
+                            "forecast_avg_conditions",
+                            "forecast_high_conditions"))
+
+conversion_rate_plot_battle <- conversion_rates_with_year |>
+  filter(stream == "Battle Creek - Redd") |>
+  mutate(covar_used_scaled = scales::rescale(covar_used, to = c(0, 0.5))) |>
+  ggplot(aes(x = year, y = pred_conversion_rate)) +
+  geom_line() +
+  geom_line(aes(x = year, y = covar_used_scaled, color = covar_type), linetype = "dashed") +
+  theme_minimal() + xlab("Year") +
+  ylab("Predicted Conversion Rate") +
+  ggtitle("Conversion Rate of Passage to Spawners\nBattle Creek") +
+  scale_color_manual("Covariate type", values = wes_palette("GrandBudapest1")[2:3]) +
+  theme(plot.title = element_text(hjust = 0.5, size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10))
+
+ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot_battle.jpg",
+       plot = conversion_rate_plot_battle, width = 12, height = 7)
