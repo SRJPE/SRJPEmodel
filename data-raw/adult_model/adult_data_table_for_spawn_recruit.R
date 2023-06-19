@@ -58,11 +58,18 @@ feather_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/feather
                                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                                        "feather_data.csv"),
                                overwrite = TRUE)
-model_fit_summaries <- gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
-                               bucket = gcs_get_global_bucket(),
-                               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                       "model_fit_summaries.csv"),
-                               overwrite = TRUE)
+
+# model_fit_summaries <- gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
+#                                  bucket = gcs_get_global_bucket(),
+#                                  saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+#                                                          "model_fit_summaries.csv"),
+#                                  overwrite = TRUE)
+
+gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
+               bucket = gcs_get_global_bucket(),
+               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+                             "P2S_model_fits.csv"),
+               overwrite = TRUE)
 
 survival_model_data_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "survival_model_data_raw.csv"))
@@ -82,18 +89,23 @@ butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "butte_data.csv"))
 feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "feather_data.csv"))
-model_fit_summaries <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                    "model_fit_summaries.csv"))
+# model_fit_summaries <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                     "model_fit_summaries.csv"))
+
+P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                      "P2S_model_fits.csv")) |>
+  glimpse()
 
 
 # pull in predicted values from model -------------------------------------
 battle_years <- survival_model_data |>
   filter(stream == "battle creek") |>
-  drop_na(water_year_type) |>
+  drop_na(gdd_total) |>
   pull(year)
 clear_years <- survival_model_data |>
-  filter(stream == "clear creek") |>
-  drop_na(max_flow) |>
+  filter(stream == "clear creek",
+         year >= 2003) |>
+  drop_na(gdd_total) |>
   pull(year)
 mill_years <- survival_model_data |>
   filter(stream == "mill creek") |>
@@ -101,10 +113,10 @@ mill_years <- survival_model_data |>
   pull(year)
 deer_years <- survival_model_data |>
   filter(stream == "deer creek") |>
-  drop_na(water_year_type) |>
+  drop_na(max_flow) |>
   pull(year)
 
-adult_data_all_streams <- bind_rows(model_fit_summaries |>
+adult_data_all_streams <- bind_rows(P2S_model_fits |>
                                       filter(par_names != "b1_survival",
                                              stream == "battle creek") |>
                                       select(-stream) |>
@@ -112,7 +124,7 @@ adult_data_all_streams <- bind_rows(model_fit_summaries |>
                                              data_type = "modeled_spawners",
                                              stream = "battle creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
-                                    model_fit_summaries |>
+                                    P2S_model_fits |>
                                       filter(par_names != "b1_survival",
                                              stream == "clear creek") |>
                                       select(-stream) |>
@@ -120,7 +132,7 @@ adult_data_all_streams <- bind_rows(model_fit_summaries |>
                                              data_type = "modeled_spawners",
                                              stream = "clear creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
-                                    model_fit_summaries |>
+                                    P2S_model_fits |>
                                       filter(par_names != "b1_survival",
                                              stream == "mill creek") |>
                                       select(-stream) |>
@@ -128,7 +140,7 @@ adult_data_all_streams <- bind_rows(model_fit_summaries |>
                                              data_type = "modeled_spawners",
                                              stream = "mill creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
-                                    model_fit_summaries |>
+                                    P2S_model_fits |>
                                       filter(par_names != "b1_survival",
                                              stream == "deer creek") |>
                                       select(-stream) |>

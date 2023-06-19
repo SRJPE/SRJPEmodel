@@ -219,11 +219,8 @@ conversion_rate_plot <- conversion_rates_with_year |>
 ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot.jpg",
        plot = conversion_rate_plot, width = 12, height = 6)
 
-forecasts <- P2S_model_fits |>
-  filter(str_detect(par_names, "abundance_forecast")) |>
-  mutate(par_names = ifelse(par_names == "spawner_abundance_forecast[1]",
-                            "forecast_avg_conditions",
-                            "forecast_high_conditions"))
+
+# standardized conversion rate plot ---------------------------------------
 
 conversion_rate_plot_battle <- conversion_rates_with_year |>
   filter(stream == "Battle Creek - Redd") |>
@@ -244,3 +241,110 @@ conversion_rate_plot_battle <- conversion_rates_with_year |>
 
 ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot_battle.jpg",
        plot = conversion_rate_plot_battle, width = 12, height = 7)
+
+
+# forecasts ---------------------------------------------------------------
+
+yuba_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                 "yuba_data.csv"))
+butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                  "butte_data.csv"))
+feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                    "feather_data.csv"))
+
+
+forecasts <- P2S_model_fits |>
+  filter(str_detect(par_names, "abundance_forecast")) |>
+  rename(lcl = `X2.5.`, ucl = `X97.5.`) |>
+  mutate(par_names = ifelse(par_names == "spawner_abundance_forecast[1]",
+                            "forecast_avg_conditions",
+                            "forecast_high_conditions"),
+         forecast_type = ifelse(par_names == "forecast_avg_conditions",
+                                "Average", "High")) |>
+  select(stream, forecast_type, adult_count = mean, lcl, ucl) |> glimpse()
+  # pivot_wider(id_cols = c("stream"),
+  #             names_from = "par_names",
+  #             values_from = c("mean", "lcl", "ucl"))
+
+all_data_sources <- P2S_model_fits |>
+  filter(str_detect(par_names, "predicted_spawner")) |>
+  select(stream, adult_count = mean,
+         lcl = `X2.5.`, ucl = `X97.5.`) |>
+  arrange(stream) |>
+  mutate(year = years_to_join,
+         data_type = "P2S spawners estimates") |>
+  bind_rows(yuba_data |>
+              rename(adult_count = passage_estimate) |>
+              mutate(data_type = "passage estimate",
+                     stream = "yuba river"),
+            butte_data |>
+              rename(adult_count = spawner_estimate) |>
+              mutate(data_type = "CJS spawner estimate",
+                     stream = "butte data"),
+            feather_data |>
+              rename(adult_count = spawner_estimate) |>
+              mutate(data_type = "passage estimate",
+                     stream = "feather river")) |>
+  glimpse()
+
+adult_data_source_plot <- all_data_sources |>
+  mutate(stream = str_to_title(stream)) |>
+  ggplot(aes(x = year, y = adult_count)) +
+  geom_line(aes(color = data_type)) +
+  labs(color = "Data Type") +
+  geom_ribbon(aes(x = year, ymin = lcl, ymax = ucl), alpha = 0.2) +
+  facet_wrap(~ stream, scales = "free", nrow = 2) +
+  theme_minimal() +
+  xlab("Year") + ylab("Spawner Count") +
+  ggtitle("Spawner Counts by Method") +
+  scale_color_manual("Covariate type", values = wes_palette("GrandBudapest1")) +
+  theme(plot.title = element_text(hjust = 0.5, size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        axis.text.x = element_text(angle = 45))
+
+ggsave(filename = "/Users/liz/Desktop/all_adult_data_sources.jpg",
+       plot = adult_data_source_plot, width = 12, height = 7)
+
+
+# forecasting plot for one stream -----------------------------------------
+forecasts_battle <- forecasts |>
+  filter(stream == "battle creek") |>
+  mutate(year = 2021,
+         data_type = "forecast")
+
+forecast_plot <- all_data_sources |>
+  filter(stream == "battle creek") |>
+  # bind_rows(forecasts |>
+  #             filter(stream == "battle creek") |>
+  #             mutate(year = 2025,
+  #                    data_type = "forecast")) |>
+  ggplot(aes(x = year, y = adult_count)) +
+  geom_line() +
+  geom_point(aes(x = year, y = adult_count,
+                 shape = forecast_type, size = 0.4),
+             data = forecasts_battle) +
+  geom_ribbon(aes(x = year, ymin = lcl, ymax = ucl), alpha = 0.2) +
+  geom_errorbar(aes(x = year, ymin = lcl, ymax = ucl,
+                    color = forecast_type),
+                data = forecasts_battle) +
+  xlab("Year") + ylab("Predicted Spawner Count") +
+  scale_color_manual("Forecast type",
+                     values = wes_palette("GrandBudapest1")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        axis.text.x = element_text(angle = 45)) +
+  ggtitle("Forecasted Spawners - Battle Creek")
+
+ggsave(filename = "/Users/liz/Desktop/forecast_plot.jpg",
+       plot = forecast_plot, width = 12, height = 7)
+
+
