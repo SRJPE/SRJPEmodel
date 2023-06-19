@@ -325,7 +325,8 @@ forecast_plot <- all_data_sources |>
   ggplot(aes(x = year, y = adult_count)) +
   geom_line() +
   geom_point(aes(x = year, y = adult_count,
-                 shape = forecast_type, size = 0.4),
+                 shape = forecast_type, color = forecast_type,
+                 size = 0.3),
              data = forecasts_battle) +
   geom_ribbon(aes(x = year, ymin = lcl, ymax = ucl), alpha = 0.2) +
   geom_errorbar(aes(x = year, ymin = lcl, ymax = ucl,
@@ -333,7 +334,7 @@ forecast_plot <- all_data_sources |>
                 data = forecasts_battle) +
   xlab("Year") + ylab("Predicted Spawner Count") +
   scale_color_manual("Forecast type",
-                     values = wes_palette("GrandBudapest1")) +
+                     values = wes_palette("GrandBudapest1")[2:3]) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5, size = 15),
         legend.position = "bottom",
