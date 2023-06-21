@@ -12,85 +12,42 @@ library(googleCloudStorageR)
 gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
 # Set global bucket
 gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
-# git data and save as xlsx
-survival_model_data_raw <- gcs_get_object(object_name = "jpe-model-data/adult-model/survival_model_data_raw.csv",
-                                          bucket = gcs_get_global_bucket(),
-                                          saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                                  "survival_model_data_raw.csv"),
-                                          overwrite = TRUE)
-survival_model_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/survival_model_data.csv",
+# get data and save as xlsx
+gcs_get_object(object_name = "jpe-model-data/adult-model/survival_model_data.csv",
                                       bucket = gcs_get_global_bucket(),
                                       saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                                               "survival_model_data.csv"),
                                       overwrite = TRUE)
-battle_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/battle_data.csv",
-                              bucket = gcs_get_global_bucket(),
-                              saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                      "battle_data.csv"),
-                              overwrite = TRUE)
-clear_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/clear_data.csv",
-                             bucket = gcs_get_global_bucket(),
-                             saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                     "clear_data.csv"),
-                             overwrite = TRUE)
-mill_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/mill_data.csv",
-                            bucket = gcs_get_global_bucket(),
-                            saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                    "mill_data.csv"),
-                            overwrite = TRUE)
-deer_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/deer_data.csv",
-                            bucket = gcs_get_global_bucket(),
-                            saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                    "deer_data.csv"),
-                            overwrite = TRUE)
-yuba_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/yuba_data.csv",
+gcs_get_object(object_name = "jpe-model-data/adult-model/yuba_data.csv",
                             bucket = gcs_get_global_bucket(),
                             saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                                     "yuba_data.csv"),
                             overwrite = TRUE)
-butte_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/butte_data.csv",
+gcs_get_object(object_name = "jpe-model-data/adult-model/butte_data.csv",
                              bucket = gcs_get_global_bucket(),
                              saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                                      "butte_data.csv"),
                              overwrite = TRUE)
-feather_data <- gcs_get_object(object_name = "jpe-model-data/adult-model/feather_data.csv",
+gcs_get_object(object_name = "jpe-model-data/adult-model/feather_data.csv",
                                bucket = gcs_get_global_bucket(),
                                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                                        "feather_data.csv"),
                                overwrite = TRUE)
 
-# model_fit_summaries <- gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
-#                                  bucket = gcs_get_global_bucket(),
-#                                  saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-#                                                          "model_fit_summaries.csv"),
-#                                  overwrite = TRUE)
-
-gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
+gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                              "P2S_model_fits.csv"),
                overwrite = TRUE)
 
-survival_model_data_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "survival_model_data_raw.csv"))
 survival_model_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "survival_model_data.csv"))
-battle_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "battle_data.csv"))
-clear_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "clear_data.csv"))
-deer_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "deer_data.csv"))
-mill_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "mill_data.csv"))
 yuba_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "yuba_data.csv"))
 butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "butte_data.csv"))
 feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "feather_data.csv"))
-# model_fit_summaries <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                     "model_fit_summaries.csv"))
 
 P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       "P2S_model_fits.csv")) |>
@@ -100,24 +57,23 @@ P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_da
 # pull in predicted values from model -------------------------------------
 battle_years <- survival_model_data |>
   filter(stream == "battle creek") |>
-  drop_na(gdd_total) |>
+  drop_na(gdd_std) |>
   pull(year)
 clear_years <- survival_model_data |>
-  filter(stream == "clear creek",
-         year >= 2003) |>
-  drop_na(gdd_total) |>
+  filter(stream == "clear creek") |>
+  drop_na(gdd_std) |>
   pull(year)
 mill_years <- survival_model_data |>
   filter(stream == "mill creek") |>
-  drop_na(gdd_total) |>
+  drop_na(gdd_std) |>
   pull(year)
 deer_years <- survival_model_data |>
   filter(stream == "deer creek") |>
-  drop_na(max_flow) |>
+  drop_na(max_flow_std) |>
   pull(year)
 
 adult_data_all_streams <- bind_rows(P2S_model_fits |>
-                                      filter(par_names != "b1_survival",
+                                      filter(str_detect(par_names, "predicted_spawners"),
                                              stream == "battle creek") |>
                                       select(-stream) |>
                                       mutate(year = battle_years,
@@ -125,7 +81,7 @@ adult_data_all_streams <- bind_rows(P2S_model_fits |>
                                              stream = "battle creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
                                     P2S_model_fits |>
-                                      filter(par_names != "b1_survival",
+                                      filter(str_detect(par_names, "predicted_spawners"),
                                              stream == "clear creek") |>
                                       select(-stream) |>
                                       mutate(year = clear_years,
@@ -133,7 +89,7 @@ adult_data_all_streams <- bind_rows(P2S_model_fits |>
                                              stream = "clear creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
                                     P2S_model_fits |>
-                                      filter(par_names != "b1_survival",
+                                      filter(str_detect(par_names, "predicted_spawners"),
                                              stream == "mill creek") |>
                                       select(-stream) |>
                                       mutate(year = mill_years,
@@ -141,7 +97,7 @@ adult_data_all_streams <- bind_rows(P2S_model_fits |>
                                              stream = "mill creek") |>
                                       select(year, spawner_count = mean, data_type, stream),
                                     P2S_model_fits |>
-                                      filter(par_names != "b1_survival",
+                                      filter(str_detect(par_names, "predicted_spawners"),
                                              stream == "deer creek") |>
                                       select(-stream) |>
                                       mutate(year = deer_years,

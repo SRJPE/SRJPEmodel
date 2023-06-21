@@ -11,7 +11,7 @@ gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
 # Set global bucket
 gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
 
-# download input data
+# download (refresh) input data
 
 gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
                bucket = gcs_get_global_bucket(),
@@ -29,17 +29,6 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/adult_model_covariates_
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
                                        "adult_model_covariates_standard.csv"),
                overwrite = TRUE)
-
-# gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_summaries.csv",
-#                bucket = gcs_get_global_bucket(),
-#                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-#                                        "model_fit_summaries.csv"),
-#                overwrite = TRUE)
-# gcs_get_object(object_name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv",
-#                bucket = gcs_get_global_bucket(),
-#                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-#                                        "model_fit_diagnostic_pars.csv"),
-#                overwrite = TRUE)
 
 # read data from csvs -----------------------------------------------------
 
@@ -216,7 +205,8 @@ conversion_rate_plot <- conversion_rates_with_year |>
         legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
 
-ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot.jpg",
+ggsave(filename = here::here("data-raw", "adult_model",
+                             "adult_model_plots", "conversion_rate_plot.jpg"),
        plot = conversion_rate_plot, width = 12, height = 6)
 
 
@@ -239,7 +229,8 @@ conversion_rate_plot_battle <- conversion_rates_with_year |>
         legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
 
-ggsave(filename = "/Users/liz/Desktop/conversion_rate_plot_battle.jpg",
+ggsave(filename = here::here("data-raw", "adult_model",
+                             "adult_model_plots", "conversion_rate_plot_battle.jpg"),
        plot = conversion_rate_plot_battle, width = 12, height = 7)
 
 
@@ -280,10 +271,10 @@ all_data_sources <- P2S_model_fits |>
             butte_data |>
               rename(adult_count = spawner_estimate) |>
               mutate(data_type = "CJS spawner estimate",
-                     stream = "butte data"),
+                     stream = "butte creek"),
             feather_data |>
               rename(adult_count = spawner_estimate) |>
-              mutate(data_type = "passage estimate",
+              mutate(data_type = "CJS spawner estimate",
                      stream = "feather river")) |>
   glimpse()
 
@@ -301,12 +292,13 @@ adult_data_source_plot <- all_data_sources |>
   theme(plot.title = element_text(hjust = 0.5, size = 15),
         legend.position = "bottom",
         strip.text = element_text(size = 12),
-        axis.text = element_text(size = 12),
+        axis.text = element_text(size = 10),
         legend.text = element_text(size = 10),
         legend.title = element_text(size = 10),
         axis.text.x = element_text(angle = 45))
 
-ggsave(filename = "/Users/liz/Desktop/all_adult_data_sources.jpg",
+ggsave(filename = here::here("data-raw", "adult_model",
+                             "adult_model_plots", "all_adult_data_sources.jpg"),
        plot = adult_data_source_plot, width = 12, height = 7)
 
 
@@ -318,10 +310,6 @@ forecasts_battle <- forecasts |>
 
 forecast_plot <- all_data_sources |>
   filter(stream == "battle creek") |>
-  # bind_rows(forecasts |>
-  #             filter(stream == "battle creek") |>
-  #             mutate(year = 2025,
-  #                    data_type = "forecast")) |>
   ggplot(aes(x = year, y = adult_count)) +
   geom_line() +
   geom_point(aes(x = year, y = adult_count,
@@ -340,12 +328,12 @@ forecast_plot <- all_data_sources |>
         legend.position = "bottom",
         strip.text = element_text(size = 12),
         axis.text = element_text(size = 12),
-        legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
         axis.text.x = element_text(angle = 45)) +
   ggtitle("Forecasted Spawners - Battle Creek")
 
-ggsave(filename = "/Users/liz/Desktop/forecast_plot.jpg",
+ggsave(filename = here::here("data-raw", "adult_model",
+                             "adult_model_plots", "forecast_plot.jpg"),
        plot = forecast_plot, width = 12, height = 7)
-
 

@@ -368,17 +368,6 @@ P2S_model_fits <- bind_rows(battle_results, clear_results,
                             mill_results, deer_results) |>
   glimpse()
 
-model_fit_summaries <- bind_rows(battle_results, clear_results,
-                                 mill_results, deer_results) |>
-                                   filter(str_detect(par_names, "predicted_spawners") |
-                                            par_names == "b1_survival") |>
-  glimpse()
-
-model_fit_diagnostics <- bind_rows(battle_results, clear_results,
-                                   mill_results, deer_results) |>
-  filter(!str_detect(par_names, "predicted_spawners")) |>
-  filter(par_names != "b1_survival") |>
-  glimpse()
 
 # save to google cloud ----------------------------------------------------
 f <- function(input, output) write_csv(input, file = output)
@@ -387,13 +376,3 @@ gcs_upload(P2S_model_fits,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/P2S_model_fits.csv")
-
-# gcs_upload(model_fit_summaries,
-#            object_function = f,
-#            type = "csv",
-#            name = "jpe-model-data/adult-model/model_fit_summaries.csv")
-#
-# gcs_upload(model_fit_diagnostics,
-#            object_function = f,
-#            type = "csv",
-#            name = "jpe-model-data/adult-model/model_fit_diagnostic_pars.csv")
