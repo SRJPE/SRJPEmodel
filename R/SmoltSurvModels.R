@@ -1,14 +1,15 @@
 ##%##########################################################################################################%##
 #                                                                                                              #
 #       Survival Analysis for spring-run Chinook through the Sacramento River, Butte Creek and Feather River   #
-#                                                                                                              #  
+#                                                                                                              #
 ##%##########################################################################################################%##
 # Authors: Jeremy Notch and Tom Pham, modified by Flora Cordoleani
 # Script and data info: This script performs survival analysis using CJS model
 # and outputs detection probabilities using RMark
 # Data source: Data extracted from NOAA ERDDAP data server (oceanview)
 
-source('Script/helper_fxt.R')
+#source('Script/helper_fxt.R')
+source(here::here("data-raw", "helper_fxt.R"))
 
 library(here)
 library(reshape2)
@@ -19,12 +20,24 @@ library(gtools)
 library(mapview)
 library(ggpubr)
 
+
+# unzip source data -------------------------------------------------------
+
+unzip(here::here("data-raw", "survival_model_data", "ButteCreekAllYears.zip"),
+      exdir = here::here("data-raw", "survival_model_data"))
+unzip(here::here("data-raw", "survival_model_data", "FeatherRiverAllYears.zip"),
+      exdir = here::here("data-raw", "survival_model_data"))
+unzip(here::here("data-raw", "survival_model_data", "SacRiverAllYears.zip"),
+      exdir = here::here("data-raw", "survival_model_data"))
+
 #################### Sacramento River model ##############################################
 
 ##### Create detection history list for Sac River model  -----------------------------------------------------------------------------------------
 name <- "SacRiverAllYears"
-path <- paste0("./Outputs/", name, "/")
-dir.create(path, showWarnings = FALSE) 
+#path <- paste0("./Outputs/", name, "/")
+
+path <- paste0(here::here("data-raw", "survival_model_data"), "/", name, "/")
+dir.create(path, showWarnings = FALSE)
 
 studyIDs <- c("ColemanFall_2013","ColemanFall_2016","ColemanFall_2017",
               "CNFH_FMR_2019","CNFH_FMR_2020","CNFH_FMR_2021",
@@ -33,20 +46,22 @@ studyIDs <- c("ColemanFall_2013","ColemanFall_2016","ColemanFall_2017",
               "MillCk_Wild_CHK_2013","MillCk_Wild_CHK_2015","MillCk_Wild_CHK_2017")
 
 ## Retrieve ERDDAP detection data saved as csv files
-names <- lapply(studyIDs, function(x) paste0("./Outputs/",name, "/", x, ".csv"))
+#names <- lapply(studyIDs, function(x) paste0("./Outputs/",name, "/", x, ".csv"))
+names <- lapply(studyIDs, function(x) paste0(here::here("data-raw", "survival_model_data"),
+                                             "/", name, "/", x, ".csv"))
 all_detections <- lapply(names, vroom)
 
 # Get list of all receiver GEN
 reach.meta <- get_receiver_GEN(all_detections)
 
 # Manually select receiver locations to use and combine for Sac River study
-reach.meta <- reach.meta %>% 
-  filter(GEN %in% c("BattleCk_CNFH_Rel","RBDD_Rel","RBDD_Rel_Rec","Altube Island","MillCk_RST_Rel", 
+reach.meta <- reach.meta %>%
+  filter(GEN %in% c("BattleCk_CNFH_Rel","RBDD_Rel","RBDD_Rel_Rec","Altube Island","MillCk_RST_Rel",
                     "MillCk2_Rel","DeerCk_RST_Rel","Mill_Ck_Conf",
                     "Abv_WoodsonBr","Blw_Woodson",
-                    "I80-50_Br","TowerBridge", 
+                    "I80-50_Br","TowerBridge",
                     "ToeDrainBase","Hwy84Ferry",
-                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>% 
+                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>%
   mutate(Region = case_when(Region == 'Battle Ck' ~ 'Release',
                             Region == 'DeerCk' ~ 'Release',
                             Region == 'Mill Ck' ~ 'Release',
@@ -58,23 +73,23 @@ reach.meta <- reach.meta %>%
                             Region == 'Carquinez Strait' ~ 'End',
                             TRUE ~ Region))
 
-# Aggregate receiver locations and detections 
+# Aggregate receiver locations and detections
 all_aggregated <- lapply(all_detections, aggregate_GEN_Sac)
 
 # View study reaches in map
-reach.map_agg <- reach.meta.aggregate %>% 
-                filter(GEN != "Releasepoint") %>% 
-                 rbind(c("Battle Creek",517.344,40.39816,-122.1456,"Release"), 
+reach.map_agg <- reach.meta.aggregate %>%
+                filter(GEN != "Releasepoint") %>%
+                 rbind(c("Battle Creek",517.344,40.39816,-122.1456,"Release"),
                        c("RBDD",461.579, 40.15444, -122.2025,'Release'),
                        c("Mill Creek",450.703,40.05479, -122.0321,'Release'),
-                       c('Deer Creek',441.728,39.99740,-121.9677,'Release')) %>% 
+                       c('Deer Creek',441.728,39.99740,-121.9677,'Release')) %>%
                 mutate(GenLat = as.numeric(GenLat),
                        GenLon = as.numeric(GenLon))
-  
+
 (map_receiv_agg <- leaflet(data = reach.map_agg) %>% addTiles() %>%
     addMarkers(~GenLon, ~GenLat, popup = ~as.character(GEN),
                label = ~as.character(GEN),
-               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>% 
+               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>%
     addProviderTiles("Esri.WorldTopoMap")
 )
 
@@ -87,23 +102,24 @@ all_EH <- lapply(all_aggregated, make_EH)
 all.inp <- pmap(list(all_detections,all_EH), create_inp) %>%
   bind_rows()
 
-# Add in fish information to inp file 
-# First add in fish info 
-all.inp <- all.inp %>% 
-  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date, 
+# Add in fish information to inp file
+# First add in fish info
+all.inp <- all.inp %>%
+  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date,
                                   release_location),by = c("FishID" = "fish_id"))
 
-# Rename release location 
+# Rename release location
 all.inp$rl <- all.inp$release_location
 
-# add year 
+# add year
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
 
-write.csv(all.inp,"./Outputs/SacInp.csv", row.names=FALSE)
+write.csv(all.inp, paste0(here::here("data-raw", "survival_model_data"), "/SacInp.csv"))
+#write.csv(all.inp,"./Outputs/SacInp.csv", row.names=FALSE)
 
 # Summarize fish info
-fish_summary <- all.inp %>% 
-                group_by(year) %>% 
+fish_summary <- all.inp %>%
+                group_by(year) %>%
                 summarise(minFL = min(as.numeric(fish_length),na.rm=TRUE),
                           maxFL = max(as.numeric(fish_length),na.rm=TRUE),
                           minweight = min(as.numeric(fish_weight),na.rm=TRUE),
@@ -134,10 +150,12 @@ cml = create.model.list("CJS")
 model.outputs <- mark.wrapper(cml, data=Sac.process, ddl=Sac.ddl) #,adjust=FALSE
 model_table <- model.outputs$model.table
 
-write.csv(model_table,"Outputs/SacSurvmodel_AICtable.csv",row.names = FALSE)
+write.csv(model_table, paste0(here::here("data-raw", "survival_model_data"), "/SacSurvmodel_AICtable.csv"),
+          row.names = FALSE)
+#write.csv(model_table,"Outputs/SacSurvmodel_AICtable.csv",row.names = FALSE)
 
 lfc.Phi.t.x.y.p.t.plus.y <- mark(Sac.process, Sac.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
-                              realvcv = TRUE) 
+                              realvcv = TRUE)
 
 # Reach-specific Survival estimates for Sacramento River model ------------------------------------------------------------
 Phi.t.x.y.p.t.plus.y.means <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$estimate[1:24],3)
@@ -146,26 +164,29 @@ Phi.t.x.y.p.t.plus.y.lcl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$lcl[1:24
 Phi.t.x.y.p.t.plus.y.ucl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$ucl[1:24],3)
 Phi.t.x.y.p.t.plus.y.vcv <- lfc.Phi.t.x.y.p.t.plus.y$results$real.vcv[1:24,1:24]
 
-relwood_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(1,4,7,10,13,16,19,22),] %>% 
+relwood_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(1,4,7,10,13,16,19,22),] %>%
   mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
 
-woodsac_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(2,5,8,11,14,17,20,23),] %>% 
+woodsac_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(2,5,8,11,14,17,20,23),] %>%
   mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
-
-write.csv(relwood_surv,"Outputs/relwood_surv.csv",row.names = FALSE)
-write.csv(woodsac_surv,"Outputs/woodsac_surv.csv",row.names = FALSE)
+write.csv(relwood_surv, paste0(here::here("data-raw", "survival_model_data"), "/relwood_surv.csv"),
+          row.names = FALSE)
+write.csv(woodsac_surv, paste0(here::here("data-raw", "survival_model_data"), "/woodsac_surv.csv"),
+          row.names = FALSE)
+# write.csv(relwood_surv,"Outputs/relwood_surv.csv",row.names = FALSE)
+# write.csv(woodsac_surv,"Outputs/woodsac_surv.csv",row.names = FALSE)
 
 # Per 10km survival for Sacramento River model -----------------------------------------------------------
 # Assign new rounded rkm values that are not average of several receiver locations for reach length calculation
 # we used Battle Creek rkm for release point which is the most upstream release location and Tower Bridge for Sacramento location
-reach.meta.aggregate <- reach.meta.aggregate %>% 
+reach.meta.aggregate <- reach.meta.aggregate %>%
   mutate(GenRKM = case_when(GEN =='Releasepoint' ~ ceiling(517.344),
                             GEN == "WoodsonBridge" ~ ceiling(429.292),
-                            GEN == "Sacramento" ~ ceiling(171.374),  
-                            TRUE ~ ceiling(107.512))) 
+                            GEN == "Sacramento" ~ ceiling(171.374),
+                            TRUE ~ ceiling(107.512)))
 
 # Calculate the reach lengths. Here I divided reach lengths by 10 so that my survival estimates later will be survival per 10km
-KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>% 
+KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>%
   data.frame()
 KM <- KM[,1]
 
@@ -173,12 +194,12 @@ reach_length <- abs(diff(KM))/10
 
 # set up the basic model structure. Here we are using the CJS model for live recaptures
 # we are setting time intervals to reach lenth, which means our reach survival estimates will be on a per 10km scale
-Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year") 
+Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year")
 Sac.ddl10km <- make.design.data(Sac.process10km)
 
 # pull out the survival results from the best model
-lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y), 
-                                       realvcv = TRUE) 
+lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
+                                       realvcv = TRUE)
 
 Phi.t.x.y.p.t.plus.y.per.10km.means <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$estimate[1:24],3)
 Phi.t.x.y.p.t.plus.y.per.10km.se <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$se[1:24],3)
@@ -192,12 +213,12 @@ reach_vec <- c("Release to WoodsonBr","WoodsonBr to Sacramento")
 reach_numb <-length(reach_vec)
 
 ###### 2013
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2013 <- cumprod(Phi.t.x.y.p.t.plus.y.means[1:2])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2013 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[1:2], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2013 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[1:2],
                                        Phi.t.x.y.p.t.plus.y.vcv[1:2,
                                                              1:2])
 
@@ -223,12 +244,12 @@ Cumul_all_2013[,4] <- UCI_2013
 Cumul_all_2013 <- round(Cumul_all_2013,4)
 
 ###### 2015
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2015 <- cumprod(Phi.t.x.y.p.t.plus.y.means[4:5])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2015 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[4:5], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2015 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[4:5],
                                        Phi.t.x.y.p.t.plus.y.vcv[4:5,
                                                              4:5])
 
@@ -253,12 +274,12 @@ Cumul_all_2015[,4] <- UCI_2015
 Cumul_all_2015 <- round(Cumul_all_2015,4)
 
 ###### 2016
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2016 <- cumprod(Phi.t.x.y.p.t.plus.y.means[7:8])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2016 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[7:8], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2016 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[7:8],
                                        Phi.t.x.y.p.t.plus.y.vcv[7:8,
                                                              7:8])
 
@@ -283,12 +304,12 @@ Cumul_all_2016[,4] <- UCI_2016
 Cumul_all_2016 <- round(Cumul_all_2016,4)
 
 ###### 2017
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2017 <- cumprod(Phi.t.x.y.p.t.plus.y.means[10:11])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2017 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[10:11], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2017 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[10:11],
                                        Phi.t.x.y.p.t.plus.y.vcv[10:11,
                                                              10:11])
 
@@ -313,12 +334,12 @@ Cumul_all_2017[,4] <- UCI_2017
 Cumul_all_2017 <- round(Cumul_all_2017,4)
 
 ###### 2018
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2018 <- cumprod(Phi.t.x.y.p.t.plus.y.means[13:14])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2018 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[13:14], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2018 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[13:14],
                                        Phi.t.x.y.p.t.plus.y.vcv[13:14,
                                                              13:14])
 
@@ -343,12 +364,12 @@ Cumul_all_2018[,4] <- UCI_2018
 Cumul_all_2018 <- round(Cumul_all_2018,4)
 
 ###### 2019
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2019 <- cumprod(Phi.t.x.y.p.t.plus.y.means[16:17])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2019 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[16:17], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2019 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[16:17],
                                        Phi.t.x.y.p.t.plus.y.vcv[16:17,
                                                              16:17])
 
@@ -373,12 +394,12 @@ Cumul_all_2019[,4] <- UCI_2019
 Cumul_all_2019 <- round(Cumul_all_2019,4)
 
 ###### 2020
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2020 <- cumprod(Phi.t.x.y.p.t.plus.y.means[19:20])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2020 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[19:20], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2020 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[19:20],
                                        Phi.t.x.y.p.t.plus.y.vcv[19:20,
                                                              19:20])
 
@@ -403,12 +424,12 @@ Cumul_all_2020[,4] <- UCI_2020
 Cumul_all_2020 <- round(Cumul_all_2020,4)
 
 ###### 2021
-## Let's run delta method 
-# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+## Let's run delta method
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream.
 cum.phi_2021 <- cumprod(Phi.t.x.y.p.t.plus.y.means[22:23])
 
-# calculate standard errors for the cumulative product. 
-cum.phi.se_2021 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[22:23], 
+# calculate standard errors for the cumulative product.
+cum.phi.se_2021 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[22:23],
                                        Phi.t.x.y.p.t.plus.y.vcv[22:23,
                                                              22:23])
 
@@ -442,24 +463,24 @@ Cumul_Sac <- Cumul_all_years[c(2,4,6,8,10,12,14,16),]
 
 ##### Create detection history list for Feather River model -----------------------------------------------------------------------------------------
 name <- "FeatherRiverAllYears"
-path <- paste0("./Outputs/", name, "/")
-dir.create(path, showWarnings = FALSE) 
+path <- paste0(here::here("data-raw", "survival_model_data"), "/", name, "/")
+dir.create(path, showWarnings = FALSE)
 
-studyIDs <- c("FR_Spring_2013","FR_Spring_2015","FR_Spring_2019","FR_Spring_2020","FR_Spring_2021") 
+studyIDs <- c("FR_Spring_2013","FR_Spring_2015","FR_Spring_2019","FR_Spring_2020","FR_Spring_2021")
 
 ## Retrieve ERDDAP detection data saved as csv files
-names <- lapply(studyIDs, function(x) paste0("./Outputs/",name, "/", x, ".csv"))
+names <- lapply(studyIDs, function(x) paste0(here::here("data-raw", "survival_model_data"),                                              "/", name, "/", x, ".csv"))
 all_detections <- lapply(names, vroom)
 
 # Get list of all receiver GEN
 reach.meta <- get_receiver_GEN(all_detections)
 
 # Manually select receiver locations to use and combine for Sac River study
-reach.meta <- reach.meta %>% 
+reach.meta <- reach.meta %>%
   filter(GEN %in% c("FR_Gridley_Rel","FR_Boyds_Rel","FR_Boyds_Rel_Rec",
-                    "I80-50_Br","TowerBridge", 
+                    "I80-50_Br","TowerBridge",
                     "ToeDrainBase","Hwy84Ferry",
-                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>% 
+                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>%
   mutate(Region = case_when(Region == 'Yolo Bypass' ~ 'Lower Sac R',
                             Region == 'North Delta' ~ 'Lower Sac R',
                             Region == 'West Delta' ~ 'End',
@@ -471,17 +492,17 @@ reach.meta <- reach.meta %>%
 all_aggregated <- lapply(all_detections, aggregate_GEN_Feather)
 
 # View study reaches in map
-reach.map_agg <- reach.meta.aggregate %>% 
-  filter(GEN != "Releasepoint") %>% 
-  rbind(c("Feather_Gridley",287.387,39.35788,-121.6360,"Feather_R"), 
-        c("Feather_Boyds",240.755,39.05734, -121.6107,"Feather_R")) %>% 
+reach.map_agg <- reach.meta.aggregate %>%
+  filter(GEN != "Releasepoint") %>%
+  rbind(c("Feather_Gridley",287.387,39.35788,-121.6360,"Feather_R"),
+        c("Feather_Boyds",240.755,39.05734, -121.6107,"Feather_R")) %>%
   mutate(GenLat = as.numeric(GenLat),
          GenLon = as.numeric(GenLon))
 
 (map_receiv_agg <- leaflet(data = reach.map_agg) %>% addTiles() %>%
     addMarkers(~GenLon, ~GenLat, popup = ~as.character(GEN),
                label = ~as.character(GEN),
-               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>% 
+               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>%
     addProviderTiles("Esri.WorldTopoMap")
 )
 
@@ -493,23 +514,24 @@ all_EH <- lapply(all_aggregated, make_EH)
 all.inp <- pmap(list(all_detections,all_EH), create_inp) %>%
   bind_rows()
 
-# Add in fish information to inp file 
-# First add in fish info 
-all.inp <- all.inp %>% 
-  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date, 
+# Add in fish information to inp file
+# First add in fish info
+all.inp <- all.inp %>%
+  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date,
                                   release_location),by = c("FishID" = "fish_id"))
 
-# Rename release location 
+# Rename release location
 all.inp$rl <- all.inp$release_location
 
-# add year 
+# add year
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
-
-write.csv(all.inp,"./Outputs/FeatherInp.csv", row.names=FALSE)
+write.csv(all.inp, paste0(here::here("data-raw", "survival_model_data"), "/FeatherInp.csv"),
+          row.names = FALSE)
+#write.csv(all.inp,"./Outputs/FeatherInp.csv", row.names=FALSE)
 
 # Summarize fish info
-fish_summary <- all.inp %>% 
-  group_by(year) %>% 
+fish_summary <- all.inp %>%
+  group_by(year) %>%
   summarise(minFL = min(as.numeric(fish_length),na.rm=TRUE),
             maxFL = max(as.numeric(fish_length),na.rm=TRUE),
             minweight = min(as.numeric(fish_weight),na.rm=TRUE),
@@ -544,10 +566,13 @@ cml = create.model.list("CJS")
 model.outputs <- mark.wrapper(cml, data=Feather.process, ddl=Feather.ddl) #,adjust=FALSE
 model_table <- model.outputs$model.table
 
-write.csv(model_table,"Outputs/FeatherSurvmodel_AICtable.csv",row.names = FALSE)
+write.csv(model_table, paste0(here::here("data-raw", "survival_model_data"),
+                              "/FeatherSurvmodel_AICtable.csv"),
+          row.names = FALSE)
+#write.csv(model_table,"Outputs/FeatherSurvmodel_AICtable.csv",row.names = FALSE)
 
 lfc.Phi.t.x.y.p.dot <- mark(Feather.process,Feather.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.dot),
-                                 realvcv = TRUE) 
+                                 realvcv = TRUE)
 
 # Reach-specific Survival estimates for Feather River model ------------------------------------------------------------
 lfc.Phi.t.x.y.p.dot.means <- round(lfc.Phi.t.x.y.p.dot$results$real$estimate[1:10],3)
@@ -556,22 +581,25 @@ lfc.Phi.t.x.y.p.dot.lcl <- round(lfc.Phi.t.x.y.p.dot$results$real$lcl[1:10],3)
 lfc.Phi.t.x.y.p.dot.ucl <- round(lfc.Phi.t.x.y.p.dot$results$real$ucl[1:10],3)
 
 feather_surv <- lfc.Phi.t.x.y.p.dot$results$real[c(1,3,5,7,9),]
-feather_surv <- feather_surv %>% 
+feather_surv <- feather_surv %>%
   mutate(year = as.factor(c(2013,2015,2019,2020,2021)))
 
-write.csv(feather_surv,"Outputs/feather_surv.csv",row.names = FALSE)
+write.csv(feather_surv, paste0(here::here("data-raw", "survival_model_data"),
+                               "/feather_surv.csv"),
+          row.names = FALSE)
+#write.csv(feather_surv,"Outputs/feather_surv.csv",row.names = FALSE)
 
 # Per 10km survival for Sacramento River model -----------------------------------------------------------
 # Assign new rounded rkm values that are not average of several receiver locations for reach length calculation
 # we used Battle Creek rkm for release point which is the most upstream release location and Tower Bridge for Sacramento location
-reach.meta.aggregate <- reach.meta.aggregate %>% 
+reach.meta.aggregate <- reach.meta.aggregate %>%
   mutate(GenRKM = case_when(GEN =='Releasepoint' ~ ceiling(517.344),
                             GEN == "WoodsonBridge" ~ ceiling(429.292),
-                            GEN == "Sacramento" ~ ceiling(171.374),  
-                            TRUE ~ ceiling(107.512))) 
+                            GEN == "Sacramento" ~ ceiling(171.374),
+                            TRUE ~ ceiling(107.512)))
 
 # Calculate the reach lengths. Here I divided reach lengths by 10 so that my survival estimates later will be survival per 10km
-KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>% 
+KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>%
   data.frame()
 KM <- KM[,1]
 
@@ -579,12 +607,12 @@ reach_length <- abs(diff(KM))/10
 
 # set up the basic model structure. Here we are using the CJS model for live recaptures
 # we are setting time intervals to reach lenth, which means our reach survival estimates will be on a per 10km scale
-Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year") 
+Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year")
 Sac.ddl10km <- make.design.data(Sac.process10km)
 
 # pull out the survival results from the best model
-lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y), 
-                                          realvcv = TRUE) 
+lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
+                                          realvcv = TRUE)
 
 Phi.t.x.y.p.t.plus.y.per.10km.means <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$estimate[1:24],3)
 Phi.t.x.y.p.t.plus.y.per.10km.se <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$se[1:24],3)
@@ -597,27 +625,27 @@ Phi.t.x.y.p.t.plus.y.per.10km.vcv <- lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$r
 
 ##### Create detection history list for Butte Creek model  -----------------------------------------------------------------------------------------
 name <- "ButteCreekAllYears"
-path <- paste0("./Outputs/", name, "/")
-dir.create(path, showWarnings = FALSE) 
+path <- paste0(here::here("data-raw", "survival_model_data"), "/", name, "/")
+dir.create(path, showWarnings = FALSE)
 
 studyIDs <- c("SB_Spring_2015","SB_Spring_2016","SB_Spring_2017","SB_Spring_2018",
               "SB_Spring_2019","Upper_Butte_2019")
 
 
 ## Retrieve ERDDAP detection data saved as csv files
-names <- lapply(studyIDs, function(x) paste0("./Outputs/",name, "/", x, ".csv"))
+names <- lapply(studyIDs, function(x) paste0(here::here("data-raw", "survival_model_data"),                                              "/", name, "/", x, ".csv"))
 all_detections <- lapply(names, vroom)
 
 # Get list of all receiver GEN
 reach.meta <- get_receiver_GEN(all_detections)
 
 # Manually select receiver locations to use and combine for Sac River study
-reach.meta <- reach.meta %>% 
+reach.meta <- reach.meta %>%
   filter(GEN %in% c("UpperButte_RST_Rel","UpperButte_RST","UpperButte_SKWY",
                     "SutterBypass_Weir2_RST_Rel","SutterBypass Weir2 RST",
-                    "I80-50_Br","TowerBridge", 
+                    "I80-50_Br","TowerBridge",
                     "ToeDrainBase","Hwy84Ferry",
-                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>% 
+                    "BeniciaE","BeniciaW","ChippsE","ChippsW"))%>%
   mutate(Region = case_when(Region == 'Sutter Bypass' ~ 'Butte Creek',
                             Region == 'Yolo Bypass' ~ 'Lower Sac R',
                             Region == 'North Delta' ~ 'Lower Sac R',
@@ -630,17 +658,17 @@ reach.meta <- reach.meta %>%
 all_aggregated <- lapply(all_detections, aggregate_GEN_Butte)
 
 # View study reaches in map
-reach.map_agg <- reach.meta.aggregate %>% 
-  filter(GEN != "Releasepoint") %>% 
-  rbind(c("UpperButte", 340.854,39.70936, -121.7506,'Butte Creek'), 
-        c('SutterBypass',249.540,39.10239, -121.7588,'Butte Creek')) %>% 
+reach.map_agg <- reach.meta.aggregate %>%
+  filter(GEN != "Releasepoint") %>%
+  rbind(c("UpperButte", 340.854,39.70936, -121.7506,'Butte Creek'),
+        c('SutterBypass',249.540,39.10239, -121.7588,'Butte Creek')) %>%
   mutate(GenLat = as.numeric(GenLat),
          GenLon = as.numeric(GenLon))
 
 (map_receiv_agg <- leaflet(data = reach.map_agg) %>% addTiles() %>%
     addMarkers(~GenLon, ~GenLat, popup = ~as.character(GEN),
                label = ~as.character(GEN),
-               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>% 
+               labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>%
     addProviderTiles("Esri.WorldTopoMap")
 )
 
@@ -652,21 +680,24 @@ all_EH <- lapply(all_aggregated, make_EH)
 all.inp <- pmap(list(all_detections,all_EH), create_inp) %>%
   bind_rows()
 
-# Add in fish information to inp file 
-# First add in fish info 
-all.inp <- all.inp %>% 
-  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date, 
+# Add in fish information to inp file
+# First add in fish info
+all.inp <- all.inp %>%
+  left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date,
                                   release_location),by = c("FishID" = "fish_id"))
 
-# add year 
+# add year
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
 all.inp$rl <- all.inp$release_location
 
-write.csv(all.inp,"./Outputs/ButteInp.csv", row.names=FALSE)
+write.csv(all.inp, paste0(here::here("data-raw", "survival_model_data"),
+                               "/ButteInp.csv"),
+          row.names = FALSE)
+#write.csv(all.inp,"./Outputs/ButteInp.csv", row.names=FALSE)
 
 # Summarize fish info
-fish_summary <- all.inp %>% 
-  group_by(year) %>% 
+fish_summary <- all.inp %>%
+  group_by(year) %>%
   summarise(minFL = min(as.numeric(fish_length),na.rm=TRUE),
             maxFL = max(as.numeric(fish_length),na.rm=TRUE),
             minweight = min(as.numeric(fish_weight),na.rm=TRUE),
@@ -697,10 +728,13 @@ cml = create.model.list("CJS")
 model.outputs <- mark.wrapper(cml, data=Butte.process, ddl=Butte.ddl) #,adjust=FALSE
 model_table <- model.outputs$model.table
 
-write.csv(model_table,"Outputs/ButteSurvmodel_AICtable.csv",row.names = FALSE)
+write.csv(model_table, paste0(here::here("data-raw", "survival_model_data"),
+                               "/ButteSurvmodel_AICtable.csv"),
+          row.names = FALSE)
+#write.csv(model_table,"Outputs/ButteSurvmodel_AICtable.csv",row.names = FALSE)
 
 lfc.Phi.t.x.y.p.dot <- mark(Butte.process,Butte.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.dot),
-                                 realvcv = TRUE) 
+                                 realvcv = TRUE)
 
 # Reach-specific Survival estimates for Butte Creek model ------------------------------------------------------------
 Phi.t.x.y.p.dot.means <- round(lfc.Phi.t.x.y.p.dot$results$real$estimate[1:10],3)
@@ -708,15 +742,18 @@ Phi.t.x.y.p.dot.se <- round(lfc.Phi.t.x.y.p.dot$results$real$se[1:10],3)
 Phi.t.x.y.p.dot.lcl <- round(lfc.Phi.t.x.y.p.dot$results$real$lcl[1:10],3)
 Phi.t.x.y.p.dot.ucl <- round(lfc.Phi.t.x.y.p.dot$results$real$ucl[1:10],3)
 
-butte_surv <- lfc.Phi.t.x.y.p.dot$results$real[c(1,3,5,7,9),] %>% 
+butte_surv <- lfc.Phi.t.x.y.p.dot$results$real[c(1,3,5,7,9),] %>%
   mutate(year = as.factor(c(2015,2016,2017,2018,2019)))
 
-write.csv(butte_surv,"Outputs/butte_surv.csv",row.names = FALSE)
+write.csv(butte_surv, paste0(here::here("data-raw", "survival_model_data"),
+                               "/butte_surv.csv"),
+          row.names = FALSE)
+#write.csv(butte_surv,"Outputs/butte_surv.csv",row.names = FALSE)
 
 # Figures -----------------------------------------------------------------------
 ### Plot survival from release to Woodson Bridge and Woodson to Sacramento
 (relwoodFig <- ggplot(relwood_surv)+
-    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl), 
+    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=year,y=estimate),size=3)+
     theme_bw()+
@@ -728,7 +765,7 @@ write.csv(butte_surv,"Outputs/butte_surv.csv",row.names = FALSE)
 )
 
 (woodsacFig <- ggplot(woodsac_surv)+
-    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl), 
+    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=year,y=estimate),size=3)+
     theme_bw()+
@@ -747,11 +784,11 @@ ggsave(plot=SacSurvFig, "Figures/ReachSacSurvFig.png", width =10, height = 5)
 
 
 ## Plot cumulative survival from release to Sacramento
-CumulSacdf <- data.frame(Cumul_Sac) %>% 
+CumulSacdf <- data.frame(Cumul_Sac) %>%
   mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
 
 (CumSacSurv <- ggplot(CumulSacdf)+
-    geom_errorbar(aes(x=year, ymin=LCI, ymax=UCI), 
+    geom_errorbar(aes(x=year, ymin=LCI, ymax=UCI),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=year,y=Phi),size=3)+
     theme_bw()+
@@ -767,7 +804,7 @@ ggsave(plot=CumSacSurv, "Figures/CumSacSurvFig.png", width = 8, height = 6)
 
 ### Plot survival from Feather River release to Sacramento
 (feather_surv <- ggplot(feather_surv)+
-    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl), 
+    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=year,y=estimate),size=3)+
     theme_bw()+
@@ -781,7 +818,7 @@ ggsave(plot=feather_surv, "Figures/FeatherSurvFig.png", width =5, height = 4)
 
 ### Plot survival from Butte Creek release to Sacramento
 (butte_surv <- ggplot(butte_surv)+
-    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl), 
+    geom_errorbar(aes(x=year, ymin=ucl, ymax=lcl),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=year,y=estimate),size=3)+
     theme_bw()+
