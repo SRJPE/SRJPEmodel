@@ -93,6 +93,9 @@ all.inp <- all.inp %>%
   left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date, 
                                   release_location),by = c("FishID" = "fish_id"))
 
+# Rename release location 
+all.inp$rl <- all.inp$release_location
+
 # add year 
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
 
@@ -111,7 +114,7 @@ fish_summary <- all.inp %>%
 Sac.inp <- all.inp
 
 ## load the CH file. This is where you specify groups, covariates, etc. time.intervals=reach_length,groups="StudyID")
-Sac.process <- process.data(Sac.inp, model="CJS", begin.time=1, groups="year")
+Sac.process <- process.data(Sac.inp, model="CJS", begin.time=1, groups=c("year"))
 Sac.ddl <- make.design.data(Sac.process)
 
 ## Find what is the best p and phi model
@@ -136,11 +139,12 @@ write.csv(model_table,"Outputs/SacSurvmodel_AICtable.csv",row.names = FALSE)
 lfc.Phi.t.x.y.p.t.plus.y <- mark(Sac.process, Sac.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
                               realvcv = TRUE) 
 
-# Reach-specific Survival estimates for Sac River model ------------------------------------------------------------
-Phi.t.x.y.p.t.x.y.means <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$estimate[1:24],3)
-Phi.t.x.y.p.t.x.y.se <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$se[1:24],3)
-Phi.t.x.y.p.t.x.y.lcl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$lcl[1:24],3)
-Phi.t.x.y.p.t.x.y.ucl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$ucl[1:24],3)
+# Reach-specific Survival estimates for Sacramento River model ------------------------------------------------------------
+Phi.t.x.y.p.t.plus.y.means <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$estimate[1:24],3)
+Phi.t.x.y.p.t.plus.y.se <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$se[1:24],3)
+Phi.t.x.y.p.t.plus.y.lcl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$lcl[1:24],3)
+Phi.t.x.y.p.t.plus.y.ucl <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$ucl[1:24],3)
+Phi.t.x.y.p.t.plus.y.vcv <- lfc.Phi.t.x.y.p.t.plus.y$results$real.vcv[1:24,1:24]
 
 relwood_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(1,4,7,10,13,16,19,22),] %>% 
   mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
@@ -151,10 +155,292 @@ woodsac_surv <- lfc.Phi.t.x.y.p.t.plus.y$results$real[c(2,5,8,11,14,17,20,23),] 
 write.csv(relwood_surv,"Outputs/relwood_surv.csv",row.names = FALSE)
 write.csv(woodsac_surv,"Outputs/woodsac_surv.csv",row.names = FALSE)
 
+# Per 10km survival for Sacramento River model -----------------------------------------------------------
+# Assign new rounded rkm values that are not average of several receiver locations for reach length calculation
+# we used Battle Creek rkm for release point which is the most upstream release location and Tower Bridge for Sacramento location
+reach.meta.aggregate <- reach.meta.aggregate %>% 
+  mutate(GenRKM = case_when(GEN =='Releasepoint' ~ ceiling(517.344),
+                            GEN == "WoodsonBridge" ~ ceiling(429.292),
+                            GEN == "Sacramento" ~ ceiling(171.374),  
+                            TRUE ~ ceiling(107.512))) 
+
+# Calculate the reach lengths. Here I divided reach lengths by 10 so that my survival estimates later will be survival per 10km
+KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>% 
+  data.frame()
+KM <- KM[,1]
+
+reach_length <- abs(diff(KM))/10
+
+# set up the basic model structure. Here we are using the CJS model for live recaptures
+# we are setting time intervals to reach lenth, which means our reach survival estimates will be on a per 10km scale
+Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year") 
+Sac.ddl10km <- make.design.data(Sac.process10km)
+
+# pull out the survival results from the best model
+lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y), 
+                                       realvcv = TRUE) 
+
+Phi.t.x.y.p.t.plus.y.per.10km.means <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$estimate[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.se <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$se[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.lcl <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$lcl[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.ucl <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$ucl[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.vcv <- lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real.vcv[1:24,1:24]
+
+# Cumulative survival estimates for Sacramento River model -----------------------------------------------------------------------------
+# Reach selection
+reach_vec <- c("Release to WoodsonBr","WoodsonBr to Sacramento")
+reach_numb <-length(reach_vec)
+
+###### 2013
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2013 <- cumprod(Phi.t.x.y.p.t.plus.y.means[1:2])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2013 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[1:2], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[1:2,
+                                                             1:2])
+
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2013 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2013[,1] <- cum.phi_2013
+Cumul_all_2013[,2] <- cum.phi.se_2013
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2013 <- expit(logit(cum.phi_2013)-1.96*sqrt(cum.phi.se_2013^2/((exp(logit(cum.phi_2013))/
+                                                                      (1+exp(logit(cum.phi_2013)))^2)^2)))
+UCI_2013 <- expit(logit(cum.phi_2013)+1.96*sqrt(cum.phi.se_2013^2/((exp(logit(cum.phi_2013))/
+                                                                      (1+exp(logit(cum.phi_2013)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2013[,3] <- LCI_2013
+Cumul_all_2013[,4] <- UCI_2013
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2013 <- round(Cumul_all_2013,4)
+
+###### 2015
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2015 <- cumprod(Phi.t.x.y.p.t.plus.y.means[4:5])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2015 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[4:5], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[4:5,
+                                                             4:5])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2015 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2015[,1] <- cum.phi_2015
+Cumul_all_2015[,2] <- cum.phi.se_2015
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2015 <- expit(logit(cum.phi_2015)-1.96*sqrt(cum.phi.se_2015^2/((exp(logit(cum.phi_2015))/
+                                                                      (1+exp(logit(cum.phi_2015)))^2)^2)))
+UCI_2015 <- expit(logit(cum.phi_2015)+1.96*sqrt(cum.phi.se_2015^2/((exp(logit(cum.phi_2015))/
+                                                                      (1+exp(logit(cum.phi_2015)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2015[,3] <- LCI_2015
+Cumul_all_2015[,4] <- UCI_2015
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2015 <- round(Cumul_all_2015,4)
+
+###### 2016
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2016 <- cumprod(Phi.t.x.y.p.t.plus.y.means[7:8])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2016 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[7:8], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[7:8,
+                                                             7:8])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2016 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2016[,1] <- cum.phi_2016
+Cumul_all_2016[,2] <- cum.phi.se_2016
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2016 <- expit(logit(cum.phi_2016)-1.96*sqrt(cum.phi.se_2016^2/((exp(logit(cum.phi_2016))/
+                                                                      (1+exp(logit(cum.phi_2016)))^2)^2)))
+UCI_2016 <- expit(logit(cum.phi_2016)+1.96*sqrt(cum.phi.se_2016^2/((exp(logit(cum.phi_2016))/
+                                                                      (1+exp(logit(cum.phi_2016)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2016[,3] <- LCI_2016
+Cumul_all_2016[,4] <- UCI_2016
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2016 <- round(Cumul_all_2016,4)
+
+###### 2017
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2017 <- cumprod(Phi.t.x.y.p.t.plus.y.means[10:11])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2017 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[10:11], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[10:11,
+                                                             10:11])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2017 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2017[,1] <- cum.phi_2017
+Cumul_all_2017[,2] <- cum.phi.se_2017
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2017 <- expit(logit(cum.phi_2017)-1.96*sqrt(cum.phi.se_2017^2/((exp(logit(cum.phi_2017))/
+                                                                      (1+exp(logit(cum.phi_2017)))^2)^2)))
+UCI_2017 <- expit(logit(cum.phi_2017)+1.96*sqrt(cum.phi.se_2017^2/((exp(logit(cum.phi_2017))/
+                                                                      (1+exp(logit(cum.phi_2017)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2017[,3] <- LCI_2017
+Cumul_all_2017[,4] <- UCI_2017
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2017 <- round(Cumul_all_2017,4)
+
+###### 2018
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2018 <- cumprod(Phi.t.x.y.p.t.plus.y.means[13:14])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2018 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[13:14], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[13:14,
+                                                             13:14])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2018 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2018[,1] <- cum.phi_2018
+Cumul_all_2018[,2] <- cum.phi.se_2018
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2018 <- expit(logit(cum.phi_2018)-1.96*sqrt(cum.phi.se_2018^2/((exp(logit(cum.phi_2018))/
+                                                                      (1+exp(logit(cum.phi_2018)))^2)^2)))
+UCI_2018 <- expit(logit(cum.phi_2018)+1.96*sqrt(cum.phi.se_2018^2/((exp(logit(cum.phi_2018))/
+                                                                      (1+exp(logit(cum.phi_2018)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2018[,3] <- LCI_2018
+Cumul_all_2018[,4] <- UCI_2018
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2018 <- round(Cumul_all_2018,4)
+
+###### 2019
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2019 <- cumprod(Phi.t.x.y.p.t.plus.y.means[16:17])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2019 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[16:17], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[16:17,
+                                                             16:17])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2019 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2019[,1] <- cum.phi_2019
+Cumul_all_2019[,2] <- cum.phi.se_2019
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2019 <- expit(logit(cum.phi_2019)-1.96*sqrt(cum.phi.se_2019^2/((exp(logit(cum.phi_2019))/
+                                                                      (1+exp(logit(cum.phi_2019)))^2)^2)))
+UCI_2019 <- expit(logit(cum.phi_2019)+1.96*sqrt(cum.phi.se_2019^2/((exp(logit(cum.phi_2019))/
+                                                                      (1+exp(logit(cum.phi_2019)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2019[,3] <- LCI_2019
+Cumul_all_2019[,4] <- UCI_2019
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2019 <- round(Cumul_all_2019,4)
+
+###### 2020
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2020 <- cumprod(Phi.t.x.y.p.t.plus.y.means[19:20])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2020 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[19:20], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[19:20,
+                                                             19:20])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2020 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2020[,1] <- cum.phi_2020
+Cumul_all_2020[,2] <- cum.phi.se_2020
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2020<- expit(logit(cum.phi_2020)-1.96*sqrt(cum.phi.se_2020^2/((exp(logit(cum.phi_2020))/
+                                                                     (1+exp(logit(cum.phi_2020)))^2)^2)))
+UCI_2020 <- expit(logit(cum.phi_2020)+1.96*sqrt(cum.phi.se_2020^2/((exp(logit(cum.phi_2020))/
+                                                                      (1+exp(logit(cum.phi_2020)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2020[,3] <- LCI_2020
+Cumul_all_2020[,4] <- UCI_2020
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2020 <- round(Cumul_all_2020,4)
+
+###### 2021
+## Let's run delta method 
+# Calculate the cumulative survival, do not use last reach as this is just for better detection efficiency estimation upstream. 
+cum.phi_2021 <- cumprod(Phi.t.x.y.p.t.plus.y.means[22:23])
+
+# calculate standard errors for the cumulative product. 
+cum.phi.se_2021 <- deltamethod.special("cumprod",Phi.t.x.y.p.t.plus.y.means[22:23], 
+                                       Phi.t.x.y.p.t.plus.y.vcv[22:23,
+                                                             22:23])
+
+# Now make another matrix to fill in with cumprod estimates of survival and propagated SE to all reaches
+Cumul_all_2021 <- matrix(0,reach_numb,4, dimnames = list(c(1:2),c("Phi","SE","LCI","UCI")))
+
+# Also put all the phi and SE cumul estimates into the other matrix
+Cumul_all_2021[,1] <- cum.phi_2021
+Cumul_all_2021[,2] <- cum.phi.se_2021
+
+# Also calculate the LCI for UCI for all the reach estimates
+LCI_2021 <- expit(logit(cum.phi_2021)-1.96*sqrt(cum.phi.se_2021^2/((exp(logit(cum.phi_2021))/
+                                                                      (1+exp(logit(cum.phi_2021)))^2)^2)))
+UCI_2021 <- expit(logit(cum.phi_2021)+1.96*sqrt(cum.phi.se_2021^2/((exp(logit(cum.phi_2021))/
+                                                                      (1+exp(logit(cum.phi_2021)))^2)^2)))
+
+# Also plug in the LCI and UCI into the all reach matrix
+Cumul_all_2021[,3] <- LCI_2021
+Cumul_all_2021[,4] <- UCI_2021
+
+# Now round both matrices to 3 decimal places
+Cumul_all_2021 <- round(Cumul_all_2021,4)
+
+########## All years combined
+Cumul_all_years <- rbind(Cumul_all_2013,Cumul_all_2015,Cumul_all_2016,Cumul_all_2017,Cumul_all_2018,
+                         Cumul_all_2019,Cumul_all_2020,Cumul_all_2021)
+
+Cumul_Sac <- Cumul_all_years[c(2,4,6,8,10,12,14,16),]
 
 #################### Feather River model ##############################################
 
-##### Create detection history list  for Feather River model -----------------------------------------------------------------------------------------
+##### Create detection history list for Feather River model -----------------------------------------------------------------------------------------
 name <- "FeatherRiverAllYears"
 path <- paste0("./Outputs/", name, "/")
 dir.create(path, showWarnings = FALSE) 
@@ -213,6 +499,9 @@ all.inp <- all.inp %>%
   left_join(TaggedFish %>% select(fish_id, fish_length, fish_weight, fish_type,fish_release_date, 
                                   release_location),by = c("FishID" = "fish_id"))
 
+# Rename release location 
+all.inp$rl <- all.inp$release_location
+
 # add year 
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
 
@@ -230,8 +519,12 @@ fish_summary <- all.inp %>%
 # Run RMark Feather River model ----------------------------------------------------------
 Feather.inp <- all.inp
 
+#remove previously saved lists
+rm(list = ls()[grep('Phi.', ls())])
+rm(list = ls()[grep('p.', ls())])
+
 ## load the CH file. This is where you specify groups, covariates, etc. time.intervals=reach_length,groups="StudyID")
-Feather.process <- process.data(Feather.inp, model="CJS", begin.time=1, groups="year")
+Feather.process <- process.data(Feather.inp, model="CJS", begin.time=1, groups=c("year"))
 Feather.ddl <- make.design.data(Feather.process)
 
 ## Find what is the best p and phi model
@@ -267,6 +560,37 @@ feather_surv <- feather_surv %>%
   mutate(year = as.factor(c(2013,2015,2019,2020,2021)))
 
 write.csv(feather_surv,"Outputs/feather_surv.csv",row.names = FALSE)
+
+# Per 10km survival for Sacramento River model -----------------------------------------------------------
+# Assign new rounded rkm values that are not average of several receiver locations for reach length calculation
+# we used Battle Creek rkm for release point which is the most upstream release location and Tower Bridge for Sacramento location
+reach.meta.aggregate <- reach.meta.aggregate %>% 
+  mutate(GenRKM = case_when(GEN =='Releasepoint' ~ ceiling(517.344),
+                            GEN == "WoodsonBridge" ~ ceiling(429.292),
+                            GEN == "Sacramento" ~ ceiling(171.374),  
+                            TRUE ~ ceiling(107.512))) 
+
+# Calculate the reach lengths. Here I divided reach lengths by 10 so that my survival estimates later will be survival per 10km
+KM <- reach.meta.aggregate[order(reach.meta.aggregate$GenRKM, decreasing= TRUE),2] %>% 
+  data.frame()
+KM <- KM[,1]
+
+reach_length <- abs(diff(KM))/10
+
+# set up the basic model structure. Here we are using the CJS model for live recaptures
+# we are setting time intervals to reach lenth, which means our reach survival estimates will be on a per 10km scale
+Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year") 
+Sac.ddl10km <- make.design.data(Sac.process10km)
+
+# pull out the survival results from the best model
+lfc.Phi.t.x.y.p.t.plus.y.per.10km <- mark(Sac.process10km, Sac.ddl10km, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y), 
+                                          realvcv = TRUE) 
+
+Phi.t.x.y.p.t.plus.y.per.10km.means <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$estimate[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.se <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$se[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.lcl <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$lcl[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.ucl <- round(lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real$ucl[1:24],3)
+Phi.t.x.y.p.t.plus.y.per.10km.vcv <- lfc.Phi.t.x.y.p.t.plus.y.per.10km$results$real.vcv[1:24,1:24]
 
 
 #################### Butte Creek model ##############################################
@@ -336,6 +660,7 @@ all.inp <- all.inp %>%
 
 # add year 
 all.inp$year <- as.factor(year(as.Date(all.inp$fish_release_date,format="%m/%d/%Y")))
+all.inp$rl <- all.inp$release_location
 
 write.csv(all.inp,"./Outputs/ButteInp.csv", row.names=FALSE)
 
@@ -352,7 +677,7 @@ fish_summary <- all.inp %>%
 Butte.inp <- all.inp
 
 ## load the CH file. This is where you specify groups, covariates, etc. time.intervals=reach_length,groups="StudyID")
-Butte.process <- process.data(Butte.inp, model="CJS", begin.time=1, groups="year")
+Butte.process <- process.data(Butte.inp, model="CJS", begin.time=1, groups=c("year"))
 Butte.ddl <- make.design.data(Butte.process)
 
 ## Find what is the best p and phi model
@@ -418,7 +743,27 @@ write.csv(butte_surv,"Outputs/butte_surv.csv",row.names = FALSE)
                         labels =c('A','B'))
 )
 
-ggsave(plot=SacSurvFig, "Figures/SacSurvFig.png", width =10, height = 5)
+ggsave(plot=SacSurvFig, "Figures/ReachSacSurvFig.png", width =10, height = 5)
+
+
+## Plot cumulative survival from release to Sacramento
+CumulSacdf <- data.frame(Cumul_Sac) %>% 
+  mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
+
+(CumSacSurv <- ggplot(CumulSacdf)+
+    geom_errorbar(aes(x=year, ymin=LCI, ymax=UCI), 
+                  width=0.2, size=1, color="blue")+
+    geom_point(aes(x=year,y=Phi),size=3)+
+    theme_bw()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"),
+          text = element_text(size=18),axis.text.x = element_text(angle = 45, hjust = 1))+
+    #  scale_y_continuous(limits=c(0.05,0.35), breaks=seq(0.05,0.35,0.05))+
+    xlab("")+ylab("Survival rate")
+)
+
+ggsave(plot=CumSacSurv, "Figures/CumSacSurvFig.png", width = 8, height = 6)
+
 
 ### Plot survival from Feather River release to Sacramento
 (feather_surv <- ggplot(feather_surv)+
