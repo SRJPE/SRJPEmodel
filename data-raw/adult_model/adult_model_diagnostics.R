@@ -50,13 +50,14 @@ full_data_for_input <- full_join(adult_data_input_raw,
 
 P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       "P2S_model_fits.csv")) |>
+  separate(par_names, into = c("par_names", "year_index"), sep = "\\[") |>
+  mutate(year_index = str_remove(year_index, "\\]")) |>
   glimpse()
 
 
 # plot predicted spawner estimates against observed spawner values
 pred_spawners <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawners")) |>
-  separate(par_names, into = c("par_names", "year_index"), sep = 18) |>
   select(par_names, mean, year_index, lcl = X2.5., ucl = X97.5., sd, stream) |>
   glimpse()
 
@@ -67,7 +68,6 @@ obsv_data <- full_data_for_input |>
 
 years_to_join <- P2S_model_fits |>
   filter(str_detect(par_names, "year")) |>
-  separate(par_names, into = c("par_names", "year_index"), sep = 5) |>
   select(year = mean, stream, year_index) |>
   glimpse()
 
@@ -91,8 +91,7 @@ P2S_model_fits |>
   filter(str_detect(par_names, "log_redds_per_spawner") |
          str_detect(par_names, "conversion_rate")) |>
   mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "survival")) |>
-  arrange(par_name) |>
-  mutate(year = rep(years_to_join, 2)) |>
+  left_join(years_to_join, by = c("year_index", "stream")) |>
   ggplot(aes(x = year, y = mean, color = par_name)) +
   geom_point() +
   scale_color_discrete(name = "Parameter name",
@@ -133,8 +132,9 @@ b1_effect <- obsv_data |>
   left_join(b1_table |>
               select(stream, b1 = `50`), by = "stream") |>
   left_join(full_data_for_input |>
-              mutate(covar = case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ gdd_std,
-                                       stream == "deer creek" ~ max_flow_std)) |>
+              mutate(covar = wy_type) |>
+              # mutate(covar = case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ gdd_std,
+              #                          stream == "deer creek" ~ max_flow_std)) |>
               select(year, stream, covar)) |>
   drop_na(covar) |>
   #mutate(b1_effect = (b1 * covar))
@@ -171,17 +171,18 @@ obsv_data |>
 conversion_rates <- P2S_model_fits |>
   filter(str_detect(par_names, "conversion_rate")) |>
   mutate(lcl = `X2.5.`, ucl = `X97.5.`) |>
-  select(par_names, mean, sd, lcl, ucl, stream) |>
+  select(par_names, mean, sd, lcl, ucl, stream, year_index) |>
   glimpse()
 
 conversion_rates_with_year <- conversion_rates |>
-  arrange(stream) |>
-  mutate(year = years_to_join) |>
-  select(-par_names) |>
+  left_join(years_to_join, by = c("year_index", "stream")) |>
+  select(-c(par_names, year_index)) |>
   rename(pred_conversion_rate = mean) |>
   left_join(full_data_for_input |>
-              mutate(covar_used = ifelse(stream == "deer creek", max_flow_std, gdd_std),
-                     covar_type = ifelse(stream == "deer creek", "Maximum flow", "Temperature index")) |>
+              mutate(covar_used = wy_type,
+                     covar_type = "Water year type") |>
+              # mutate(covar_used = ifelse(stream == "deer creek", max_flow_std, gdd_std),
+              #        covar_type = ifelse(stream == "deer creek", "Maximum flow", "Temperature index")) |>
               select(year, stream, covar_used, covar_type),
             by = c("year", "stream")) |>
   mutate(stream = str_to_title(stream),
@@ -248,11 +249,16 @@ feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data
 forecasts <- P2S_model_fits |>
   filter(str_detect(par_names, "abundance_forecast")) |>
   rename(lcl = `X2.5.`, ucl = `X97.5.`) |>
-  mutate(par_names = ifelse(par_names == "spawner_abundance_forecast[1]",
-                            "forecast_avg_conditions",
-                            "forecast_high_conditions"),
-         forecast_type = ifelse(par_names == "forecast_avg_conditions",
-                                "Average", "High")) |>
+  mutate(par_names = ifelse(year_index == "1",
+                            "forecast_dry_year",
+                            "forecast_wet_year"),
+  # mutate(par_names = ifelse(par_names == "spawner_abundance_forecast[1]",
+  #                           "forecast_avg_conditions",
+  #                           "forecast_high_conditions"),
+         forecast_type = ifelse(par_names == "forecast_dry_year",
+                                "Dry", "Wet")) |>
+         # forecast_type = ifelse(par_names == "forecast_avg_conditions",
+         #                        "Average", "High")) |>
   select(stream, forecast_type, adult_count = mean, lcl, ucl) |> glimpse()
   # pivot_wider(id_cols = c("stream"),
   #             names_from = "par_names",
@@ -260,11 +266,10 @@ forecasts <- P2S_model_fits |>
 
 all_data_sources <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawner")) |>
+  left_join(years_to_join, by = c("year_index", "stream")) |>
   select(stream, adult_count = mean,
-         lcl = `X2.5.`, ucl = `X97.5.`) |>
-  arrange(stream) |>
-  mutate(year = years_to_join,
-         data_type = "P2S spawners estimates") |>
+         lcl = `X2.5.`, ucl = `X97.5.`, year) |>
+  mutate(data_type = "P2S spawners estimates") |>
   bind_rows(yuba_data |>
               rename(adult_count = passage_estimate) |>
               mutate(data_type = "passage estimate",
