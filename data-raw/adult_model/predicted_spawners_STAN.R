@@ -73,6 +73,7 @@ get_all_pars <- function(model_fit, stream_name) {
 predicted_spawners <- "
   data {
     int N;
+    int input_years[N];
     int observed_passage[N];
     int observed_spawners[N]; // this is redd count but also holding count
     real environmental_covar[N];
@@ -110,6 +111,9 @@ predicted_spawners <- "
 
   generated quantities {
 
+    // report years for ease later
+    int years[N];
+
     // calculate R2 fixed effects
     real y_pred[N];
     real RE_draws[N]; // vector for storing random draws for RE
@@ -118,6 +122,7 @@ predicted_spawners <- "
     real ss_res = 0.0;
 
     for(i in 1:N) {
+      years[i] = input_years[i];
       RE_draws[i] = normal_rng(log_mean_redds_per_spawner, sigma_redds_per_spawner);
       y_pred[i] = observed_passage[i] * exp(RE_draws[i]);
     }
@@ -188,6 +193,7 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
       pull(all_of(selected_covar))
 
     stream_data_list <- list("N" = length(unique(stream_data$year)),
+                             "input_years" = unique(stream_data$year),
                              "observed_passage" = stream_data$upstream_estimate,
                              "observed_spawners" = stream_data$observed_spawners,
                              "environmental_covar" = covar,
@@ -326,6 +332,7 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
     pull(all_of(selected_covar))
 
   stream_data_list <- list("N" = length(unique(stream_data$year)),
+                           "input_years" = unique(stream_data$year),
                            "observed_passage" = stream_data$upstream_estimate,
                            "observed_spawners" = stream_data$observed_spawners,
                            "environmental_covar" = covar,
@@ -342,25 +349,29 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
 
 battle_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "battle creek",
-                                               battle_rankings$best_model,
+                                               "wy_type",
+                                               #battle_rankings$best_model,
                                                84735)
 
 clear_results <- run_passage_to_spawner_model(full_data_for_input,
                                               "clear creek",
-                                              clear_rankings$best_model,
+                                              "wy_type",
+                                              #clear_rankings$best_model,
                                               84735)
 
 deer_results <- run_passage_to_spawner_model(full_data_for_input,
                                              "deer creek",
-                                             deer_rankings$second_best_model_values |>
-                                               distinct(covar_considered) |>
-                                               pull(covar_considered),
+                                             "wy_type",
+                                             # deer_rankings$second_best_model_values |>
+                                             #   distinct(covar_considered) |>
+                                             #   pull(covar_considered),
                                              84735)
 
 mill_results <- run_passage_to_spawner_model(full_data_for_input,
-                                               "mill creek",
-                                               mill_rankings$best_model,
-                                               84735)
+                                             "mill creek",
+                                             "wy_type",
+                                             #mill_rankings$best_model,
+                                             84735)
 
 
 # write model summaries ---------------------------------------------------

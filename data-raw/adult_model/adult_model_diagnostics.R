@@ -56,7 +56,8 @@ P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_da
 # plot predicted spawner estimates against observed spawner values
 pred_spawners <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawners")) |>
-  select(par_names, mean, lcl = X2.5., ucl = X97.5., sd, stream) |>
+  separate(par_names, into = c("par_names", "year_index"), sep = 18) |>
+  select(par_names, mean, year_index, lcl = X2.5., ucl = X97.5., sd, stream) |>
   glimpse()
 
 obsv_data <- full_data_for_input |>
@@ -64,15 +65,15 @@ obsv_data <- full_data_for_input |>
   select(year, stream, obsv_spawner_count, obsv_upstream = upstream_estimate) |>
   glimpse()
 
-years_to_join <- c(full_data_for_input |> filter(stream == "battle creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year),
-                   full_data_for_input |> filter(stream == "clear creek", upstream_estimate > 0) |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year),
-                   full_data_for_input |> filter(stream == "deer creek") |> drop_na(upstream_estimate, holding_count, max_flow_std) |> pull(year),
-                   full_data_for_input |> filter(stream == "mill creek") |> drop_na(upstream_estimate, redd_count, gdd_std) |> pull(year))
+years_to_join <- P2S_model_fits |>
+  filter(str_detect(par_names, "year")) |>
+  separate(par_names, into = c("par_names", "year_index"), sep = 5) |>
+  select(year = mean, stream, year_index) |>
+  glimpse()
 
 pred_with_year <- pred_spawners |>
-  arrange(stream) |>
-  mutate(year = years_to_join) |>
-  select(-par_names) |>
+  left_join(years_to_join, by = c("year_index", "stream")) |>
+  select(-c(par_names, year_index)) |>
   rename(pred_spawner_count = mean) |>
   left_join(obsv_data, by = c("year", "stream")) |>
   glimpse()
