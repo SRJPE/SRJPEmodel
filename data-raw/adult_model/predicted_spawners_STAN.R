@@ -157,6 +157,7 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
   final_results <- tibble("par_names" = "DELETE",
                           "stream" = "DELETE",
                           "mean" = 0.0,
+                          "median" = 0.0,
                           "sd" = 0.0,
                           "covar_considered" = "DELETE")
 
@@ -211,7 +212,8 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
       filter(par_names %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
                               "b1_survival") |
                str_detect(par_names, "spawner_abundance_forecast")) |> # TODO add pspawn after it's added to STAN code
-      select(par_names, stream, mean, sd) |>
+      select(par_names, stream, mean, median = `50%`, sd, lcl = `2.5%`, ucl = `97.5%`) |>
+      #select(par_names, stream, mean, sd) |>
       mutate(covar_considered = selected_covar)
 
     final_results <- bind_rows(final_results, stream_results)
@@ -224,16 +226,24 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
 }
 
 all_streams <- tibble(par_names = "DELETE",
-                                stream = "DELETE",
-                                mean = 0.0,
-                                sd = 0.0,
-                                covar_considered = "DELETE")
+                      stream = "DELETE",
+                      mean = 0.0,
+                      median = 0.0,
+                      sd = 0.0,
+                      lcl = 0.0,
+                      ucl = 0.0,
+                      covar_considered = "DELETE")
 
 
 for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
   stream_results <- compare_covars(full_data_for_input, i, 84735, TRUE)
   all_streams <- bind_rows(all_streams, stream_results)
 }
+
+write.csv(all_streams |> filter(par_names != "DELETE"),
+          here::here("data-raw", "adult_model", "adult_model_data",
+                     "covar_compare_with_null.csv"),
+          row.names = FALSE)
 
 # identify best covariate for each trib -----------------------------------
 # The best covariate will have the
@@ -369,7 +379,8 @@ deer_results <- run_passage_to_spawner_model(full_data_for_input,
 
 mill_results <- run_passage_to_spawner_model(full_data_for_input,
                                              "mill creek",
-                                             "wy_type",
+                                             "max_flow_std",
+                                             #"wy_type",
                                              #mill_rankings$best_model,
                                              84735)
 
