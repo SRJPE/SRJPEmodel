@@ -285,7 +285,8 @@ yuba_data <- upstream_passage_estimates |>
 # butte data --------------------------------------------------------------
 butte_data <- carcass_estimates |>
   filter(stream == "butte creek") |>
-  select(year, spawner_estimate = carcass_spawner_estimate) |>
+  select(year, spawner_estimate = carcass_spawner_estimate,
+         lcl_90 = lower, ucl_90 = upper) |>
   glimpse()
 
 
@@ -293,7 +294,8 @@ butte_data <- carcass_estimates |>
 
 feather_data <- carcass_estimates |>
   filter(stream == "feather river") |>
-  select(year, spawner_estimate = carcass_spawner_estimate) |>
+  select(year, spawner_estimate = carcass_spawner_estimate,
+         lcl_90 = lower, ucl_90 = upper) |>
   glimpse()
 
 # write data objects to bucket -------------------------------------------------------
