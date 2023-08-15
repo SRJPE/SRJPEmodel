@@ -438,7 +438,8 @@ forecast_plot <- function(forecasts, all_data_sources, stream_name_arg) {
                data = forecasts_stream) +
     geom_ribbon(aes(x = year, ymin = lcl, ymax = ucl), alpha = 0.2) +
     geom_errorbar(aes(x = year, ymin = lcl, ymax = ucl,
-                      color = covar_considered),
+                      color = covar_considered,
+                      linetype = forecast_level),
                   data = forecasts_stream) +
     xlab("Year") + ylab("Predicted Spawner Count") +
     scale_color_manual("Forecast type",
@@ -453,13 +454,14 @@ forecast_plot <- function(forecasts, all_data_sources, stream_name_arg) {
           axis.text.x = element_text(angle = 45)) +
     ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
 
+
   ggsave(filename = here::here("data-raw", "adult_model",
                                "adult_model_plots",
                                paste0(stream_name_arg, "_forecast_plot.jpg")),
          plot = forecast_plot, width = 12, height = 7)
 }
 
-forecast_plot(forecasts, all_data_sources, "mill creek")
+forecast_plot(forecasts, all_data_sources, "battle creek")
 
 
 # unmodeled data ----------------------------------------------------------
@@ -474,6 +476,8 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
     filter(stream == stream_name_arg) |>
     ggplot(aes(x = year, y = adult_count)) +
     geom_line() +
+    geom_ribbon(aes(x = year, ymin = lcl_90, ymax = ucl_90),
+                alpha = 0.3) +
     theme_minimal() +
     ggtitle(paste0("Raw Spawner Counts - ",
                    str_to_title(stream_name_arg),
