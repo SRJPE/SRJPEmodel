@@ -554,3 +554,23 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
 }
 
 alternative_forecast_plot(forecasts, "mill creek")
+
+
+# report table ------------------------------------------------------------
+
+compare <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                               "covar_compare_with_null.csv")) |>
+  mutate(covar_considered = case_when(covar_considered == "wy_type" ~ "Water year type",
+                                      covar_considered == "max_flow_std" ~ "Flow",
+                                      covar_considered == "gdd_std" ~ "Temp",
+                                      covar_considered == "null_covar" ~ "Null model"),
+         mean = round(mean, 3),
+         sd = round(sd, 3)) |>
+  select(Stream = stream, Parameter = par_names,
+         `Covariate Considered` = covar_considered,
+         `Est. Mean` = mean, `Est. SD` = sd) |>
+  filter(!str_detect(Parameter, "spawner_abundance_forecast")) |>
+  arrange(Stream, Parameter)
+
+clipr::write_clip(compare)
+#trib, covariate, mean, sd, R2, LOOic, sigma redds per spawner, R2_data, R2_fixed
