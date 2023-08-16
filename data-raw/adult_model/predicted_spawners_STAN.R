@@ -208,13 +208,24 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
                              data = stream_data_list,
                              chains = 3, iter = 20000*2, seed = seed)
 
+    # check rhat
+    rhat_diagnostic <- rhat(stream_model_fit) |> unname()
+    rhat_diagnostic <- rhat_diagnostic[rhat_diagnostic != "NaN"]
+
+    if(length(rhat_diagnostic > 1.05) > 0){
+      convergence_rhat <- FALSE
+    } else {
+      convergence_rhat <- TRUE
+    }
+
     stream_results <- get_all_pars(stream_model_fit, stream_name) |>
       filter(par_names %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
                               "b1_survival") |
                str_detect(par_names, "spawner_abundance_forecast")) |> # TODO add pspawn after it's added to STAN code
       select(par_names, stream, mean, median = `50%`, sd, lcl = `2.5%`, ucl = `97.5%`) |>
       #select(par_names, stream, mean, sd) |>
-      mutate(covar_considered = selected_covar)
+      mutate(covar_considered = selected_covar,
+             convergence_metric = convergence_rhat)
 
     final_results <- bind_rows(final_results, stream_results)
   }
@@ -232,7 +243,8 @@ all_streams <- tibble(par_names = "DELETE",
                       sd = 0.0,
                       lcl = 0.0,
                       ucl = 0.0,
-                      covar_considered = "DELETE")
+                      covar_considered = "DELETE",
+                      convergence_metric = NA)
 
 
 for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
@@ -353,8 +365,19 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
                            data = stream_data_list,
                            chains = 3, iter = 20000*2, seed = seed)
 
-  return(get_all_pars(stream_model_fit, stream_name))
+  # check rhat
+  rhat_diagnostic <- rhat(stream_model_fit) |> unname()
+  rhat_diagnostic <- rhat_diagnostic[rhat_diagnostic != "NaN"]
+  if(sum(rhat_diagnostic > 1.05) > 0){
+    convergence_message <- paste0("not converged: rhat for ", length(rhat_diagnostic > 1.05), " parameter(s) over 1.05")
+  } else {
+    convergence_message <- "success - convergence by Rhat metric"
+  } |>
 
+  message(convergence_message)
+  return(list("full_object" = stream_model_fit,
+              "formatted_pars" = get_all_pars(stream_model_fit, stream_name)))
+  #return(get_all_pars(stream_model_fit, stream_name))
 }
 
 battle_results <- run_passage_to_spawner_model(full_data_for_input,
@@ -386,8 +409,10 @@ mill_results <- run_passage_to_spawner_model(full_data_for_input,
 
 
 # write model summaries ---------------------------------------------------
-P2S_model_fits <- bind_rows(battle_results, clear_results,
-                            mill_results, deer_results) |>
+P2S_model_fits <- bind_rows(battle_results$formatted_pars,
+                            clear_results$formatted_pars,
+                            mill_results$formatted_pars,
+                            deer_results$formatted_pars) |>
   glimpse()
 
 

@@ -171,7 +171,8 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
       left_join(rps |>
                   select(stream, rps, lcl, ucl), by = c("stream")) |>
       left_join(annual_random_effects, by = c("year", "stream")) |>
-      mutate(pred = obsv_upstream * exp(annual_random_effect + b1_effect),
+      mutate(log_rps = log(rps),
+             pred = obsv_upstream * exp(annual_random_effect + b1_effect),
              b1_effect_pred = obsv_upstream * b1_effect) |>
       ggplot(aes(x = obsv_upstream, y = obsv_spawner_count)) +
       geom_point() +
@@ -217,14 +218,16 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
       ggtitle("Model diagnostics")
   }
 
-  ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
-                    paste0("josh_plots_", stream_choice_arg, ".png")),
-         josh_plots,
-         width = 8, height = 6)
+  return(josh_plots)
+
+  # ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
+  #                   paste0("josh_plots_", stream_choice_arg, ".png")),
+  #        josh_plots,
+  #        width = 8, height = 6)
 }
 
 create_josh_plot(obsv_data, b1_effect, rps, annual_random_effects,
-                 "ALL")
+                 "battle creek")
 
 
 # plot conversion rates ---------------------------------------------------
