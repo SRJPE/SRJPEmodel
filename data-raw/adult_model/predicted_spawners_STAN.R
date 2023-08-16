@@ -402,8 +402,7 @@ deer_results <- run_passage_to_spawner_model(full_data_for_input,
 
 mill_results <- run_passage_to_spawner_model(full_data_for_input,
                                              "mill creek",
-                                             "max_flow_std",
-                                             #"wy_type",
+                                             "wy_type",
                                              #mill_rankings$best_model,
                                              84735)
 

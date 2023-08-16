@@ -211,23 +211,23 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
                   fill = "grey70", alpha = 0.3) +
       geom_errorbar(aes(ymin = pmin((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred)),
                         ymax = pmax((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred))),
-                    color = "red") +
+                    color = "#FD6467") +
       theme_minimal() +
       xlab("Observed upstream passage") +
       ylab("Observed spawner count (redd or holding)") +
       ggtitle("Model diagnostics")
   }
 
-  return(josh_plots)
-
-  # ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
-  #                   paste0("josh_plots_", stream_choice_arg, ".png")),
-  #        josh_plots,
-  #        width = 8, height = 6)
+  ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
+                    paste0("josh_plots_", stream_choice_arg, ".png")),
+         josh_plots,
+         width = 8, height = 6)
 }
 
 create_josh_plot(obsv_data, b1_effect, rps, annual_random_effects,
-                 "battle creek")
+                 "deer creek")
+
+
 
 
 # plot conversion rates ---------------------------------------------------
@@ -279,7 +279,7 @@ plot_conversion_rate <- function(conversion_rates_with_year,
       ylab("Predicted Conversion Rate") +
       ggtitle(paste0("Conversion Rate of Passage to Spawners - ", stream_choice_arg)) +
       labs(color = "Covariate Type") +
-      scale_color_manual(values = wes_palette("GrandBudapest1")[2:3]) +
+      scale_color_manual(values = wes_palette("GrandBudapest1")[3:2]) +
       theme(plot.title = element_text(size = 15),
             legend.position = "bottom",
             strip.text = element_text(size = 12),
@@ -301,7 +301,7 @@ plot_conversion_rate <- function(conversion_rates_with_year,
       ylab("Predicted Conversion Rate") +
       ggtitle(paste0("Conversion Rate of Passage to Spawners - ", stream_choice_arg)) +
       labs(color = "Covariate Type") +
-      scale_color_manual(values = wes_palette("GrandBudapest1")[2:3]) +
+      scale_color_manual(values = wes_palette("GrandBudapest1")[3:2]) +
       theme(plot.title = element_text(size = 15),
             legend.position = "bottom",
             strip.text = element_text(size = 12),
@@ -309,6 +309,7 @@ plot_conversion_rate <- function(conversion_rates_with_year,
             legend.text = element_text(size = 10),
             legend.title = element_text(size = 10))
   }
+
   ggsave(filename = here::here("data-raw", "adult_model",
                                "adult_model_plots",
                                paste0("conversion_rate_plot_", stream_choice_arg, ".jpg")),
@@ -316,7 +317,7 @@ plot_conversion_rate <- function(conversion_rates_with_year,
 }
 
 plot_conversion_rate(conversion_rates_with_year,
-                     stream_choice_arg = "battle creek")
+                     stream_choice_arg = "deer creek")
 
 
 
@@ -477,11 +478,20 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
   plot <- all_data_sources |>
     mutate(year = as.integer(year)) |>
     filter(stream == stream_name_arg) |>
+    left_join(waterYearType::water_year_indices |>
+                filter(location == "Sacramento Valley") |>
+                mutate(wy_type = ifelse(Yr_type %in% c("Wet", "Above Normal"), "Wet", "Dry")) |>
+                select(wy_type, year = WY),
+              by = "year") |>
     ggplot(aes(x = year, y = adult_count)) +
     geom_line() +
+    geom_point(aes(x = year, y = adult_count, color = wy_type),
+               size = 4) +
     geom_ribbon(aes(x = year, ymin = lcl_90, ymax = ucl_90),
                 alpha = 0.3) +
     theme_minimal() +
+    scale_color_manual(name = "water year type",
+                       values = wes_palette("GrandBudapest1")[3:2]) +
     ggtitle(paste0("Raw Spawner Counts - ",
                    str_to_title(stream_name_arg),
                    " (", type_for_plot, ")")) +
@@ -494,4 +504,4 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
 
 
 }
-plot_raw_spawners(all_data_sources, "feather river")
+plot_raw_spawners(all_data_sources, "yuba river")
