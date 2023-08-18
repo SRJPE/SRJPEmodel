@@ -512,9 +512,14 @@ plot_raw_spawners(all_data_sources, "yuba river")
 
 alternative_forecast_plot <- function(forecasts, stream_name_arg) {
 
+  if(stream_name_arg == "ALL") {
+    stream_name_choice <- c("battle creek", "clear creek", "deer creek", "mill creek")
+  } else {
+    stream_name_choice <- stream_name_arg
+  }
 
   forecasts_stream <- forecasts |>
-    filter(stream == stream_name_arg,
+    filter(stream %in% stream_name_choice,
            !adult_count %in% c(0, Inf)) |>
     rename(forecast_level = forecast_type) |>
     mutate(data_type = "forecast",
@@ -524,28 +529,49 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
                                         covar_considered == "null_covar" ~ "Null"),
            forecast_level = ifelse(forecast_level == "Dry", "Low", "High"))
 
-  forecast_plot <- forecasts_stream |>
-    filter(stream == stream_name_arg) |>
-    ggplot(aes(x = forecast_level, y = adult_count)) +
-    geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
-                  width = 0.3, alpha = 0.7) +
-    geom_point(aes(x = forecast_level, y = adult_count,
-                   color = forecast_level),
-               size = 4) +
-    facet_wrap(~covar_considered, nrow = 1) +
-    xlab("Forecast Level") + ylab("Predicted Spawner Count") +
-    scale_color_manual("Forecast Level",
-                       values = wes_palette("GrandBudapest1")[2:3]) +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5, size = 15),
-          legend.position = "bottom",
-          strip.text = element_text(size = 12),
-          axis.text = element_text(size = 12),
-          legend.text = element_text(size = 12),
-          legend.title = element_text(size = 12),
-          axis.text.x = element_text(angle = 45)) +
-    ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
-
+  if(stream_name_arg == "ALL") {
+    forecast_plot <- forecasts_stream |>
+      ggplot(aes(x = forecast_level, y = adult_count)) +
+      geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
+                    width = 0.3, alpha = 0.7) +
+      geom_point(aes(x = forecast_level, y = adult_count,
+                     color = forecast_level),
+                 size = 4) +
+      facet_wrap(~stream + covar_considered, scales = "free_y") +
+      xlab("Forecast Level") + ylab("Predicted Spawner Count") +
+      scale_color_manual("Forecast Level",
+                         values = wes_palette("GrandBudapest1")[2:3]) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, size = 15),
+            legend.position = "bottom",
+            strip.text = element_text(size = 12),
+            axis.text = element_text(size = 12),
+            legend.text = element_text(size = 12),
+            legend.title = element_text(size = 12),
+            axis.text.x = element_text(angle = 45)) +
+      ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
+  } else {
+    forecast_plot <- forecasts_stream |>
+      ggplot(aes(x = forecast_level, y = adult_count)) +
+      geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
+                    width = 0.3, alpha = 0.7) +
+      geom_point(aes(x = forecast_level, y = adult_count,
+                     color = forecast_level),
+                 size = 4) +
+      facet_wrap(covar_considered, nrow = 1) +
+      xlab("Forecast Level") + ylab("Predicted Spawner Count") +
+      scale_color_manual("Forecast Level",
+                         values = wes_palette("GrandBudapest1")[2:3]) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, size = 15),
+            legend.position = "bottom",
+            strip.text = element_text(size = 12),
+            axis.text = element_text(size = 12),
+            legend.text = element_text(size = 12),
+            legend.title = element_text(size = 12),
+            axis.text.x = element_text(angle = 45)) +
+      ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
+  }
 
   ggsave(filename = here::here("data-raw", "adult_model",
                                "adult_model_plots",
@@ -553,7 +579,7 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
          plot = forecast_plot, width = 12, height = 7)
 }
 
-alternative_forecast_plot(forecasts, "mill creek")
+alternative_forecast_plot(forecasts, "ALL")
 
 
 # report table ------------------------------------------------------------
