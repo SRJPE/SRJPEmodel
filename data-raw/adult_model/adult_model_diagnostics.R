@@ -568,7 +568,8 @@ compare <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
          sd = round(sd, 3)) |>
   select(Stream = stream, Parameter = par_names,
          `Covariate Considered` = covar_considered,
-         `Est. Mean` = mean, `Est. SD` = sd) |>
+         `Est. Mean` = mean, `Est. SD` = sd,
+         Converged = convergence_metric) |>
   filter(!str_detect(Parameter, "spawner_abundance_forecast")) |>
   arrange(Stream, Parameter)
 

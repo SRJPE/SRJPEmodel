@@ -210,9 +210,13 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
 
     # check rhat
     rhat_diagnostic <- rhat(stream_model_fit) |> unname()
+    hist(rhat_diagnostic)
     rhat_diagnostic <- rhat_diagnostic[rhat_diagnostic != "NaN"]
+    print(rhat_diagnostic)
+    rhats_over_threshold <- sum(rhat_diagnostic > 1.05) > 0
+    print(rhats_over_threshold)
 
-    if(length(rhat_diagnostic > 1.05) > 0){
+    if(rhats_over_threshold){
       convergence_rhat <- FALSE
     } else {
       convergence_rhat <- TRUE
@@ -220,7 +224,7 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
 
     stream_results <- get_all_pars(stream_model_fit, stream_name) |>
       filter(par_names %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
-                              "b1_survival") |
+                              "b1_survival", "sigma_redds_per_spawner") |
                str_detect(par_names, "spawner_abundance_forecast")) |> # TODO add pspawn after it's added to STAN code
       select(par_names, stream, mean, median = `50%`, sd, lcl = `2.5%`, ucl = `97.5%`) |>
       #select(par_names, stream, mean, sd) |>
