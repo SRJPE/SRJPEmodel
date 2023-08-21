@@ -486,8 +486,8 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
     geom_line() +
     geom_point(aes(x = year, y = adult_count, color = wy_type),
                size = 4) +
-    geom_ribbon(aes(x = year, ymin = lcl_90, ymax = ucl_90),
-                alpha = 0.3) +
+    geom_errorbar(aes(x = year, ymin = lcl_90, ymax = ucl_90),
+                alpha = 0.7, width = 0.3) +
     theme_minimal() +
     scale_color_manual(name = "water year type",
                        values = wes_palette("GrandBudapest1")[3:2]) +
@@ -503,7 +503,7 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
 
 
 }
-plot_raw_spawners(all_data_sources, "yuba river")
+plot_raw_spawners(all_data_sources, "feather river")
 
 
 
