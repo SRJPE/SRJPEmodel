@@ -111,7 +111,8 @@ rps <- P2S_model_fits |>
   filter(str_detect(par_names, "log_mean_redds_per_spawner")) |>
   mutate(rps = exp(X50.),
          lcl = exp(X2.5.),
-         ucl = exp(X97.5.))
+         ucl = exp(X97.5.),
+         log_rps = X50.)
 
 annual_random_effects <- P2S_model_fits |>
   filter(str_detect(par_names, "log_redds_per_spawner")) |>
@@ -169,11 +170,8 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
                   select(year, stream, b1_effect),
                 by = c("year", "stream")) |>
       left_join(rps |>
-                  select(stream, rps, lcl, ucl), by = c("stream")) |>
-      left_join(annual_random_effects, by = c("year", "stream")) |>
-      mutate(log_rps = log(rps),
-             pred = obsv_upstream * exp(annual_random_effect + b1_effect),
-             b1_effect_pred = obsv_upstream * b1_effect) |>
+                  select(stream, rps, log_rps, lcl, ucl), by = c("stream")) |>
+      mutate(pred_effect = obsv_upstream * exp(log_rps + b1_effect)) |>
       ggplot(aes(x = obsv_upstream, y = obsv_spawner_count)) +
       geom_point() +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
@@ -181,9 +179,9 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
       geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
                       ymax = (0 + obsv_upstream * ucl)),
                   fill = "grey70", alpha = 0.3) +
-      geom_errorbar(aes(ymin = pmin((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred)),
-                        ymax = pmax((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred))),
-                    color = "red") +
+      geom_errorbar(aes(ymin = pmin((rps * obsv_upstream), pred_effect),
+                        ymax = pmax((rps * obsv_upstream), pred_effect)),
+                    color = "#FD6467") +
       facet_wrap(~stream, scale = "free") +
       theme_minimal() +
       xlab("Observed upstream passage") +
@@ -192,16 +190,13 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
   } else {
     josh_plots <- obsv_data |>
       filter(stream %in% stream_choice) |>
-      #filter(!stream %in% c("feather river", "butte creek", "yuba river")) |>
       drop_na(obsv_upstream, obsv_spawner_count) |>
       left_join(b1_effect |>
                   select(year, stream, b1_effect),
                 by = c("year", "stream")) |>
       left_join(rps |>
-                  select(stream, rps, lcl, ucl), by = c("stream")) |>
-      left_join(annual_random_effects, by = c("year", "stream")) |>
-      mutate(pred = obsv_upstream * exp(annual_random_effect + b1_effect),
-             b1_effect_pred = obsv_upstream * b1_effect) |>
+                  select(stream, rps, log_rps, lcl, ucl), by = c("stream")) |>
+      mutate(pred_effect = obsv_upstream * exp(log_rps + b1_effect)) |>
       ggplot(aes(x = obsv_upstream, y = obsv_spawner_count)) +
       geom_point() +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
@@ -209,9 +204,9 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
       geom_ribbon(aes(ymin = (0 + obsv_upstream * lcl),
                       ymax = (0 + obsv_upstream * ucl)),
                   fill = "grey70", alpha = 0.3) +
-      geom_errorbar(aes(ymin = pmin((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred)),
-                        ymax = pmax((rps * obsv_upstream), (rps * obsv_upstream + b1_effect_pred))),
-                    color = "#FD6467") +
+      geom_errorbar(aes(ymin = pmin((rps * obsv_upstream), pred_effect),
+                          ymax = pmax((rps * obsv_upstream), pred_effect)),
+                      color = "#FD6467") +
       theme_minimal() +
       xlab("Observed upstream passage") +
       ylab("Observed spawner count (redd or holding)") +
@@ -225,7 +220,7 @@ create_josh_plot <- function(obsv_data, b1_effect, rps, annual_random_effects,
 }
 
 create_josh_plot(obsv_data, b1_effect, rps, annual_random_effects,
-                 "deer creek")
+                 "ALL")
 
 
 
@@ -268,6 +263,8 @@ plot_conversion_rate <- function(conversion_rates_with_year,
     conversion_rate_plot <- conversion_rates_with_year |>
       filter(stream %in% stream_choice) |>
       ggplot(aes(x = year, y = pred_conversion_rate)) +
+      geom_errorbar(aes(x = year, ymax = ucl, ymin = lcl),
+                    width = 0.2, alpha = 0.7) +
       geom_line() +
       geom_point(aes(x = year, y = pred_conversion_rate,
                      color = water_year_type_label),
@@ -291,6 +288,8 @@ plot_conversion_rate <- function(conversion_rates_with_year,
     conversion_rate_plot <- conversion_rates_with_year |>
       filter(stream %in% stream_choice) |>
       ggplot(aes(x = year, y = pred_conversion_rate)) +
+      geom_errorbar(aes(x = year, ymax = ucl, ymin = lcl),
+                    width = 0.2, alpha = 0.7) +
       geom_line() +
       geom_point(aes(x = year, y = pred_conversion_rate,
                      color = water_year_type_label),
@@ -311,13 +310,13 @@ plot_conversion_rate <- function(conversion_rates_with_year,
   }
 
   ggsave(filename = here::here("data-raw", "adult_model",
-                               "adult_model_plots",
-                               paste0("conversion_rate_plot_", stream_choice_arg, ".jpg")),
-         plot = conversion_rate_plot, width = 12, height = 6)
+                             "adult_model_plots",
+                             paste0("conversion_rate_plot_", stream_choice_arg, ".jpg")),
+       plot = conversion_rate_plot, width = 12, height = 6)
 }
 
 plot_conversion_rate(conversion_rates_with_year,
-                     stream_choice_arg = "deer creek")
+                     stream_choice_arg = "mill creek")
 
 
 
@@ -527,7 +526,10 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
                                         covar_considered == "max_flow_std" ~ "Flow",
                                         covar_considered == "gdd_std" ~ "Temp",
                                         covar_considered == "null_covar" ~ "Null"),
-           forecast_level = ifelse(forecast_level == "Dry", "Low", "High"))
+           forecast_level = ifelse(forecast_level == "Dry", "Low", "High"),
+           covar_considered_f = factor(covar_considered,
+                                       levels = c("Null", "WY type", "Temp", "Flow"))) |>
+    filter(!(covar_considered == "Null" & forecast_level == "High"))
 
   if(stream_name_arg == "ALL") {
     forecast_plot <- forecasts_stream |>
@@ -537,8 +539,8 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
       geom_point(aes(x = forecast_level, y = adult_count,
                      color = forecast_level),
                  size = 4) +
-      facet_wrap(~stream + covar_considered, scales = "free_y") +
-      xlab("Forecast Level") + ylab("Predicted Spawner Count") +
+      facet_wrap(~stream + covar_considered_f, scales = "free") +
+      xlab("Forecast Level") + ylab("Predicted Spawner Count at Across-year Mean Passage") +
       scale_color_manual("Forecast Level",
                          values = wes_palette("GrandBudapest1")[2:3]) +
       theme_minimal() +
@@ -558,8 +560,8 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
       geom_point(aes(x = forecast_level, y = adult_count,
                      color = forecast_level),
                  size = 4) +
-      facet_wrap(covar_considered, nrow = 1) +
-      xlab("Forecast Level") + ylab("Predicted Spawner Count") +
+      facet_wrap(~covar_considered_f, nrow = 1, scales = "free_x") +
+      xlab("Forecast Level") + ylab("Predicted Spawner Count at Across-year Mean Passage") +
       scale_color_manual("Forecast Level",
                          values = wes_palette("GrandBudapest1")[2:3]) +
       theme_minimal() +
@@ -579,7 +581,7 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
          plot = forecast_plot, width = 12, height = 7)
 }
 
-alternative_forecast_plot(forecasts, "ALL")
+alternative_forecast_plot(forecasts, "mill creek")
 
 
 # report table ------------------------------------------------------------
@@ -592,12 +594,26 @@ compare <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       covar_considered == "null_covar" ~ "Null model"),
          mean = round(mean, 3),
          sd = round(sd, 3)) |>
-  select(Stream = stream, Parameter = par_names,
-         `Covariate Considered` = covar_considered,
-         `Est. Mean` = mean, `Est. SD` = sd,
-         Converged = convergence_metric) |>
-  filter(!str_detect(Parameter, "spawner_abundance_forecast")) |>
-  arrange(Stream, Parameter)
+  mutate(report_vars = paste0(mean, " (", sd, ")"),
+         stream = str_to_title(stream)) |>
+  filter(par_names %in% c("R2_fixed", "mean_redds_per_spawner",
+                          "sigma_redds_per_spawner", "b1_survival")) |>
+  pivot_wider(id_cols = c(stream, covar_considered),
+              names_from = par_names,
+              values_from = report_vars) |>
+  select(Stream = stream, `Covariate` = covar_considered,
+         `Survival (b1)` = b1_survival,
+         `Spawner per passage (mean)` = mean_redds_per_spawner,
+         `Spawner per passage (sd)` = sigma_redds_per_spawner,
+         `R2 (fixed)` = R2_fixed) |>
+  arrange(Stream, Covariate)
+  # select(Stream = stream, Parameter = par_names,
+  #        `Covariate Considered` = covar_considered,
+  #        `Est. Mean` = mean, `Est. SD` = sd,
+  #        Converged = convergence_metric) |>
+  # filter(!str_detect(Parameter, "spawner_abundance_forecast")) |>
+  # arrange(Stream, Parameter)
 
 clipr::write_clip(compare)
+
 #trib, covariate, mean, sd, R2, LOOic, sigma redds per spawner, R2_data, R2_fixed
