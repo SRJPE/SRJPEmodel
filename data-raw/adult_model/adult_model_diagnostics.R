@@ -79,28 +79,43 @@ pred_with_year <- pred_spawners |>
   left_join(obsv_data, by = c("year", "stream")) |>
   glimpse()
 
-pred_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(~stream, scales = "free") +
-  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count") +
+obsv_vs_pred_plot <- pred_with_year |>
+  ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
+  geom_smooth(color = "#FD6467", method = "lm") +
+  geom_point(alpha = 0.8) +
+  facet_wrap(~stream, scales = "free") +
+  theme_minimal() +
+  xlab("Observed Spawner Count") + ylab("Predicted Spawner Count") +
   ggtitle("Predicted vs. Observed Spawner Count")
 
+ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
+                  "obsv_vs_pred_plot.jpg"),
+       obsv_vs_pred_plot,
+       width = 8, height = 6)
+
 # look at R2
-summary(lm(pred_spawner_count ~ obsv_spawner_count, data = pred_with_year))
+summary(lm(pred_spawner_count ~ obsv_spawner_count, data = pred_with_year |>
+             filter(stream == "battle creek")))$r.squared
 
 # look at estimated value of sigma redds_per_spawner (mean and sd)
-P2S_model_fits |>
+fixed_random_effects <- P2S_model_fits |>
   filter(str_detect(par_names, "log_redds_per_spawner") |
          str_detect(par_names, "conversion_rate")) |>
   mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "survival")) |>
   rename(median = X50.) |>
   left_join(years_to_join, by = c("year_index", "stream")) |>
+  mutate(stream = str_to_title(stream)) |>
   ggplot(aes(x = year, y = median, color = par_name)) +
   geom_point() +
-  scale_color_discrete(name = "Parameter name",
-                       labels = c("Log redds/spawner (RE)",
-                                  "Predicted conversion rate")) +
+  # scale_color_discrete(name = "Parameter name",
+  #                      labels = c("Log redds/spawner (RE)",
+  #                                 "Predicted conversion rate")) +
   facet_wrap(~stream, scales = "free") +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  scale_color_manual(values = wes_palette("GrandBudapest1")[3:2],
+                     name = "Parameter name",
+                     labels = c("$$log(\\mu_{\\delta}$$",
+                                "Predicted conversion rate")) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
   xlab("Year") + ylab("Median estimated value") + theme_minimal()  +
   theme(legend.position = "bottom") +
   ggtitle("Year-specific random effects vs. predicted conversion rate")
