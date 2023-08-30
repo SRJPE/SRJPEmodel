@@ -4,6 +4,7 @@ library(ggplot2)
 library(googleCloudStorageR)
 library(tidyverse)
 library(wesanderson)
+library(latex2exp)
 
 
 # pull in data from google cloud ------------------------------------------
@@ -80,6 +81,7 @@ pred_with_year <- pred_spawners |>
   glimpse()
 
 obsv_vs_pred_plot <- pred_with_year |>
+  mutate(stream = str_to_title(stream)) |>
   ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
   geom_smooth(color = "#FD6467", method = "lm") +
   geom_point(alpha = 0.8) +
@@ -107,18 +109,21 @@ fixed_random_effects <- P2S_model_fits |>
   mutate(stream = str_to_title(stream)) |>
   ggplot(aes(x = year, y = median, color = par_name)) +
   geom_point() +
-  # scale_color_discrete(name = "Parameter name",
-  #                      labels = c("Log redds/spawner (RE)",
-  #                                 "Predicted conversion rate")) +
+  geom_line(alpha = 0.5) +
   facet_wrap(~stream, scales = "free") +
   scale_color_manual(values = wes_palette("GrandBudapest1")[3:2],
-                     name = "Parameter name",
-                     labels = c("$$log(\\mu_{\\delta}$$",
-                                "Predicted conversion rate")) +
+                     name = "Parameter",
+                     labels = c(TeX("$log(\\mu_{\\delta})$"),
+                                TeX("$R_{y}$"))) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   xlab("Year") + ylab("Median estimated value") + theme_minimal()  +
   theme(legend.position = "bottom") +
   ggtitle("Year-specific random effects vs. predicted conversion rate")
+
+ggsave(here::here("data-raw", "adult_model", "adult_model_plots",
+                  "random_effects_vs_conversion_rate.jpg"),
+       fixed_random_effects,
+       width = 8, height = 6)
 
 
 # diagnostic plots --------------------------------------------------------
@@ -548,6 +553,7 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
 
   if(stream_name_arg == "ALL") {
     forecast_plot <- forecasts_stream |>
+      mutate(stream = str_to_title(stream)) |>
       ggplot(aes(x = forecast_level, y = adult_count)) +
       geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
                     width = 0.3, alpha = 0.7) +
@@ -569,13 +575,14 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
       ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
   } else {
     forecast_plot <- forecasts_stream |>
+      mutate(stream = str_to_title(stream)) |>
       ggplot(aes(x = forecast_level, y = adult_count)) +
       geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
                     width = 0.3, alpha = 0.7) +
       geom_point(aes(x = forecast_level, y = adult_count,
                      color = forecast_level),
                  size = 4) +
-      facet_wrap(~covar_considered_f, nrow = 1, scales = "free_x") +
+      facet_wrap(~covar_considered_f, nrow = 1, scales = "free") +
       xlab("Forecast Level") + ylab("Predicted Spawner Count at Across-year Mean Passage") +
       scale_color_manual("Forecast Level",
                          values = wes_palette("GrandBudapest1")[2:3]) +
@@ -593,13 +600,13 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
   ggsave(filename = here::here("data-raw", "adult_model",
                                "adult_model_plots",
                                paste0(stream_name_arg, "_alternative_forecast_plot.jpg")),
-         plot = forecast_plot, width = 12, height = 7)
+         plot = forecast_plot, width = 12, height = 8)
 }
 
-alternative_forecast_plot(forecasts, "mill creek")
+alternative_forecast_plot(forecasts, "ALL")
 
 
-# report table ------------------------------------------------------------
+# report tables ------------------------------------------------------------
 
 compare <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                "covar_compare_with_null.csv")) |>
