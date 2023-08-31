@@ -156,6 +156,7 @@ write.csv(model_table, paste0(here::here("data-raw", "survival_model_data"), "/S
 
 lfc.Phi.t.x.y.p.t.plus.y <- mark(Sac.process, Sac.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
                               realvcv = TRUE)
+# TODO why are these survival estimates not producing results?
 
 # Reach-specific Survival estimates for Sacramento River model ------------------------------------------------------------
 Phi.t.x.y.p.t.plus.y.means <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$estimate[1:24],3)
@@ -605,6 +606,7 @@ KM <- KM[,1]
 
 reach_length <- abs(diff(KM))/10
 
+# TODO problem with time.intervals = reach_length
 # set up the basic model structure. Here we are using the CJS model for live recaptures
 # we are setting time intervals to reach lenth, which means our reach survival estimates will be on a per 10km scale
 Sac.process10km <- process.data(Sac.inp, model="CJS", begin.time=1,time.intervals=reach_length,groups="year")
@@ -784,6 +786,7 @@ ggsave(plot=SacSurvFig, "Figures/ReachSacSurvFig.png", width =10, height = 5)
 
 
 ## Plot cumulative survival from release to Sacramento
+# TODO these weren't working
 CumulSacdf <- data.frame(Cumul_Sac) %>%
   mutate(year = as.factor(c(2013,2015,2016,2017,2018,2019,2020,2021)))
 
