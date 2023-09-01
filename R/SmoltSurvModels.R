@@ -156,7 +156,9 @@ write.csv(model_table, paste0(here::here("data-raw", "survival_model_data"), "/S
 
 lfc.Phi.t.x.y.p.t.plus.y <- mark(Sac.process, Sac.ddl, model.parameters=list(Phi=Phi.t.x.y, p=p.t.plus.y),
                               realvcv = TRUE)
-# TODO why are these survival estimates not producing results?
+# NOTE: these will not run unless you have mark v9 installed. current version is v10.
+# when installing previous versions of mark, you will have to make sure you have the
+# right version of gcc installed as well
 
 # Reach-specific Survival estimates for Sacramento River model ------------------------------------------------------------
 Phi.t.x.y.p.t.plus.y.means <- round(lfc.Phi.t.x.y.p.t.plus.y$results$real$estimate[1:24],3)
