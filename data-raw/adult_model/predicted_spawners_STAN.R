@@ -48,7 +48,10 @@ full_data_for_input <- full_join(adult_data_input_raw,
 calculate_ss_tot <- function(data) {
   ss_tot <- 0
   data <- data |>
-    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count))
+    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding_count,
+                                         stream == "butte creek" ~ carcass_estimate,
+                                         TRUE ~ redd_count))
+
 
   N <- length(data$year)
   for(i in 1:N) {
@@ -347,9 +350,11 @@ mill_rankings <- all_streams |> get_rankings("mill creek") # gdd_std
 run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed) {
 
   stream_data <- data |>
-    filter(upstream_estimate > 0) |>
-    mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
-    filter(stream == stream_name) |>
+    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding_count,
+                                         stream == "butte creek" ~ carcass_estimate,
+                                         TRUE ~ redd_count)) |>
+    filter(upstream_estimate > 0,
+           stream == stream_name) |>
     # null covariate
     mutate(null_covar = 0) |>
     drop_na(all_of(selected_covar), observed_spawners, upstream_estimate)
@@ -383,6 +388,11 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
               "formatted_pars" = get_all_pars(stream_model_fit, stream_name)))
   #return(get_all_pars(stream_model_fit, stream_name))
 }
+
+butte_results <- run_passage_to_spawner_model(full_data_for_input,
+                                              "butte creek",
+                                              "gdd_std",
+                                              84735)
 
 battle_results <- run_passage_to_spawner_model(full_data_for_input,
                                                "battle creek",
