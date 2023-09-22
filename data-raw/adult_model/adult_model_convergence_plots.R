@@ -5,7 +5,7 @@
 # https://cran.r-project.org/web/packages/bayesplot/vignettes/plotting-mcmc-draws.html
 
 # if you return the stan fit object
-test <- extract(battle_results) # see all chains
+test <- extract(battle_results$full_object) # see all chains
 
 mcmc_pairs(battle_results$full_object, pars = c("b1_survival", "mean_redds_per_spawner"))
 mcmc_trace(battle_results, pars = c("b1_survival", "mean_redds_per_spawner"))
