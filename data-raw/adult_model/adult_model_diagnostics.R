@@ -545,10 +545,11 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
            covar_considered = case_when(covar_considered == "wy_type" ~ "WY type",
                                         covar_considered == "max_flow_std" ~ "Flow",
                                         covar_considered == "gdd_std" ~ "Temp",
+                                        covar_considered == "passage_index" ~ "Total Passage",
                                         covar_considered == "null_covar" ~ "Null"),
            forecast_level = ifelse(forecast_level == "Dry", "Low", "High"),
            covar_considered_f = factor(covar_considered,
-                                       levels = c("Null", "WY type", "Temp", "Flow"))) |>
+                                       levels = c("Null", "WY type", "Temp", "Flow", "Total Passage"))) |>
     filter(!(covar_considered == "Null" & forecast_level == "High"))
 
   if(stream_name_arg == "ALL") {
@@ -597,13 +598,15 @@ alternative_forecast_plot <- function(forecasts, stream_name_arg) {
       ggtitle(paste0("Forecasted Spawners - ", str_to_title(stream_name_arg)))
   }
 
-  ggsave(filename = here::here("data-raw", "adult_model",
-                               "adult_model_plots",
-                               paste0(stream_name_arg, "_alternative_forecast_plot.jpg")),
-         plot = forecast_plot, width = 12, height = 8)
+  return(forecast_plot)
+
+  # ggsave(filename = here::here("data-raw", "adult_model",
+  #                              "adult_model_plots",
+  #                              paste0(stream_name_arg, "_alternative_forecast_plot.jpg")),
+  #        plot = forecast_plot, width = 12, height = 8)
 }
 
-alternative_forecast_plot(forecasts, "ALL")
+alternative_forecast_plot(forecasts, "battle creek")
 
 
 # report tables ------------------------------------------------------------
@@ -613,6 +616,7 @@ compare <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
   mutate(covar_considered = case_when(covar_considered == "wy_type" ~ "Water year type",
                                       covar_considered == "max_flow_std" ~ "Flow",
                                       covar_considered == "gdd_std" ~ "Temp",
+                                      covar_considered == "passage_index" ~ "Total Passage",
                                       covar_considered == "null_covar" ~ "Null model"),
          mean = round(mean, 3),
          sd = round(sd, 3)) |>

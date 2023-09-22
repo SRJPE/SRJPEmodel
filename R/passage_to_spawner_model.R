@@ -38,7 +38,7 @@ full_data_for_input <- full_join(adult_data_input_raw,
                                  by = c("year", "stream")) |>
   filter(!is.na(data_type)) |>
   pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
-                          median_passage_timing_std),
+                          median_passage_timing_std, passage_index),
               names_from = data_type,
               values_from = count) |>
   glimpse()
@@ -166,11 +166,11 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
                           "covar_considered" = "DELETE")
 
   covars_to_consider = c("wy_type", "max_flow_std", "gdd_std",
-                         "null_covar") # no more "median_passage_timing_std" bc of sample size
+                         "null_covar", "passage_index") # no more "median_passage_timing_std" bc of sample size
 
   # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
-  percent_female <- case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
-                              stream %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
+  percent_female <- case_when(stream_name %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
+                              stream_name %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
 
   # loop through covariates to test
   for(i in 1:length(covars_to_consider)) {
@@ -219,11 +219,8 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
 
     # check rhat
     rhat_diagnostic <- rhat(stream_model_fit) |> unname()
-    hist(rhat_diagnostic)
     rhat_diagnostic <- rhat_diagnostic[rhat_diagnostic != "NaN"]
-    print(rhat_diagnostic)
     rhats_over_threshold <- sum(rhat_diagnostic > 1.05) > 0
-    print(rhats_over_threshold)
 
     if(rhats_over_threshold){
       convergence_rhat <- FALSE
