@@ -104,6 +104,8 @@ adult_model_input_raw <- full_join(upstream_passage_estimates |>
 
 # threshold
 # https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf
+
+# TODO add new thresholds
 threshold <- 20
 
 # migratory temps - sac, months = 3:5
@@ -234,6 +236,12 @@ water_year_data <- waterYearType::water_year_indices |>
   glimpse()
 
 
+# total passage as index --------------------------------------------------
+upstream_passage_index <- upstream_passage_estimates |>
+  mutate(passage_index = passage_estimate) |>
+  select(year, stream, passage_index)
+
+
 # standardized covariates -------------------------------------------------
 adult_model_covariates_standard <- full_join(standard_flow,
                                              gdd,
@@ -242,6 +250,8 @@ adult_model_covariates_standard <- full_join(standard_flow,
             by = c("year", "stream")) |>
   full_join(water_year_data,
             by = c("year" = "WY")) |>
+  full_join(upstream_passage_index,
+            by = c("year", "stream")) |>
   filter(!is.na(stream),
          stream != "sacramento river") |>
   select(-c(mean_flow, mean_passage_timing, min_passage_timing,
@@ -249,8 +259,9 @@ adult_model_covariates_standard <- full_join(standard_flow,
   mutate(wy_type = ifelse(water_year_type == "dry", 0, 1),
          max_flow_std = as.vector(scale(max_flow)),
          gdd_std = as.vector(scale(gdd_total)),
+         passage_index = as.vector(scale(passage_index)),
          median_passage_timing_std = as.vector(scale(median_passage_timing))) |>
-  select(year, stream, wy_type, max_flow_std, gdd_std, median_passage_timing_std) |>
+  select(year, stream, wy_type, max_flow_std, gdd_std, passage_index, median_passage_timing_std) |>
   arrange(stream, year) |>
   glimpse()
 
