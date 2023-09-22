@@ -79,6 +79,7 @@ predicted_spawners <- "
     int input_years[N];
     int observed_passage[N];
     int observed_spawners[N]; // this is redd count but also holding count
+    real percent_female;
     real environmental_covar[N];
     real ss_total;
     real average_upstream_passage;
@@ -96,7 +97,7 @@ predicted_spawners <- "
     real conversion_rate[N];
     real redds_per_spawner[N];
     real predicted_spawners[N];
-    real mean_redds_per_spawner = exp(log_mean_redds_per_spawner);
+    real mean_redds_per_spawner = exp(log_mean_redds_per_spawner) * percent_female;
 
     for(i in 1:N) {
       conversion_rate[i] = exp(log_redds_per_spawner[i] + b1_survival * environmental_covar[i]);
@@ -167,6 +168,10 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
   covars_to_consider = c("wy_type", "max_flow_std", "gdd_std",
                          "null_covar") # no more "median_passage_timing_std" bc of sample size
 
+  # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
+  percent_female <- case_when(stream %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
+                              stream %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
+
   # loop through covariates to test
   for(i in 1:length(covars_to_consider)) {
 
@@ -200,6 +205,7 @@ compare_covars <- function(data, stream_name, seed, truncate_data) {
                              "input_years" = unique(stream_data$year),
                              "observed_passage" = stream_data$upstream_estimate,
                              "observed_spawners" = stream_data$observed_spawners,
+                             "percent_female" = percent_female,
                              "environmental_covar" = covar,
                              "ss_total" = calculate_ss_tot(stream_data),
                              "average_upstream_passage" = mean(stream_data$upstream_estimate,
@@ -349,6 +355,9 @@ mill_rankings <- all_streams |> get_rankings("mill creek") # gdd_std
 # function for running model
 run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed) {
 
+  # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
+  percent_female <- case_when(stream_name %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
+                              stream_name %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
   stream_data <- data |>
     mutate(observed_spawners = case_when(stream == "deer creek" ~ holding_count,
                                          stream == "butte creek" ~ carcass_estimate,
@@ -366,6 +375,7 @@ run_passage_to_spawner_model <- function(data, stream_name, selected_covar, seed
                            "input_years" = unique(stream_data$year),
                            "observed_passage" = stream_data$upstream_estimate,
                            "observed_spawners" = stream_data$observed_spawners,
+                           "percent_female" = percent_female,
                            "environmental_covar" = covar,
                            "ss_total" = calculate_ss_tot(stream_data),
                            "average_upstream_passage" = mean(stream_data$upstream_estimate, na.rm = TRUE))
