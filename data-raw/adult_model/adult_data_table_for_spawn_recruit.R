@@ -1,12 +1,10 @@
 # put together adult data table for josh
 
-# TODO add in uncertainty here!
 # libraries and read in predicted model data ------------------------------
 library(ggplot2)
 library(tidyverse)
 library(tidybayes)
 library(googleCloudStorageR)
-
 
 # pull in data from google cloud ------------------------------------------
 gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
@@ -27,10 +25,12 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
 
 # read in data and format correctly ---------------------------------------
 
+# observed data
 adult_data_input_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                             "adult_data_input_raw.csv")) |>
   mutate(count = as.numeric(count))
 
+# predicted data from P2S
 P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       "P2S_model_fits.csv")) |>
   separate(par_names, into = c("par_names", "year_index"), sep = "\\[") |>
@@ -54,6 +54,7 @@ P2S_model_fits_with_year <- P2S_model_fits |>
 
 # bind together the two groups of data -------------------------------------
 
+# pivot wider so that we have a column for each data type
 table_for_spawn_recruit <- bind_rows(P2S_model_fits_with_year,
                                      adult_data_input_raw) |>
   mutate(count = round(count, 0)) |>
@@ -61,8 +62,6 @@ table_for_spawn_recruit <- bind_rows(P2S_model_fits_with_year,
               names_from = data_type,
               values_from = count) |>
   glimpse()
-
-
 
 # upload to google cloud --------------------------------------------------
 
