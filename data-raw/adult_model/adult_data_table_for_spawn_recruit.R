@@ -13,27 +13,6 @@ gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
 # Set global bucket
 gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
 # get data and save as xlsx
-gcs_get_object(object_name = "jpe-model-data/adult-model/survival_model_data.csv",
-                                      bucket = gcs_get_global_bucket(),
-                                      saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                              "survival_model_data.csv"),
-                                      overwrite = TRUE)
-gcs_get_object(object_name = "jpe-model-data/adult-model/yuba_data.csv",
-                            bucket = gcs_get_global_bucket(),
-                            saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                    "yuba_data.csv"),
-                            overwrite = TRUE)
-gcs_get_object(object_name = "jpe-model-data/adult-model/butte_data.csv",
-                             bucket = gcs_get_global_bucket(),
-                             saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                     "butte_data.csv"),
-                             overwrite = TRUE)
-gcs_get_object(object_name = "jpe-model-data/adult-model/feather_data.csv",
-                               bucket = gcs_get_global_bucket(),
-                               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
-                                                       "feather_data.csv"),
-                               overwrite = TRUE)
-
 gcs_get_object(object_name = "jpe-model-data/adult-model/adult_data_input_raw.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
@@ -46,17 +25,11 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
                              "P2S_model_fits.csv"),
                overwrite = TRUE)
 
-survival_model_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "survival_model_data.csv"))
+# read in data and format correctly ---------------------------------------
+
 adult_data_input_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                            "adult_data_input_raw.csv"))
-# we want all data, not just the "best"
-# yuba_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                                "yuba_data.csv"))
-# butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                                "butte_data.csv"))
-# feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-#                                                "feather_data.csv"))
+                                            "adult_data_input_raw.csv")) |>
+  mutate(count = as.numeric(count))
 
 P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       "P2S_model_fits.csv")) |>
@@ -75,55 +48,20 @@ P2S_model_fits_with_year <- P2S_model_fits |>
   left_join(years_to_join, by = c("year_index", "stream")) |>
   select(-c(year_index)) |>
   relocate(year, .before = P2S_median_count) |>
+  pivot_longer(c(P2S_median_count, P2S_lcl, P2S_ucl),
+               names_to = "data_type", values_to = "count") |>
   glimpse()
 
-# pull in predicted values from model -------------------------------------
+# bind together the two groups of data -------------------------------------
 
-adult_data_all_streams <- bind_rows(P2S_model_fits |>
-                                      filter(str_detect(par_names, "predicted_spawners"),
-                                             stream == "battle creek") |>
-                                      select(-stream) |>
-                                      mutate(year = battle_years,
-                                             data_type = "modeled_spawners",
-                                             stream = "battle creek") |>
-                                      select(year, spawner_count = mean, data_type, stream),
-                                    P2S_model_fits |>
-                                      filter(str_detect(par_names, "predicted_spawners"),
-                                             stream == "clear creek") |>
-                                      select(-stream) |>
-                                      mutate(year = clear_years,
-                                             data_type = "modeled_spawners",
-                                             stream = "clear creek") |>
-                                      select(year, spawner_count = mean, data_type, stream),
-                                    P2S_model_fits |>
-                                      filter(str_detect(par_names, "predicted_spawners"),
-                                             stream == "mill creek") |>
-                                      select(-stream) |>
-                                      mutate(year = mill_years,
-                                             data_type = "modeled_spawners",
-                                             stream = "mill creek") |>
-                                      select(year, spawner_count = mean, data_type, stream),
-                                    P2S_model_fits |>
-                                      filter(str_detect(par_names, "predicted_spawners"),
-                                             stream == "deer creek") |>
-                                      select(-stream) |>
-                                      mutate(year = deer_years,
-                                             data_type = "modeled_spawners",
-                                             stream = "deer creek") |>
-                                      select(year, spawner_count = mean, data_type, stream),
-                                    yuba_data |>
-                                        mutate(stream = "yuba river",
-                                               data_type = "upstream_passage_estimate") |>
-                                        rename(spawner_count = passage_estimate),
-                                    feather_data |>
-                                      mutate(stream = "feather river",
-                                             data_type = "carcass_cjs_estimate") |>
-                                      rename(spawner_count = spawner_estimate),
-                                    butte_data |>
-                                        mutate(stream = "butte creek",
-                                               data_type = "carcass_cjs_estimate") |>
-                                        rename(spawner_count = spawner_estimate)) |>
+table_for_spawn_recruit <- bind_rows(P2S_model_fits_with_year,
+                                     adult_data_input_raw) |>
+  mutate(count = round(count, 0)) |>
+  pivot_wider(id_cols = c(year, stream),
+              names_from = data_type,
+              values_from = count) |>
   glimpse()
+
 
 
 # upload to google cloud --------------------------------------------------
