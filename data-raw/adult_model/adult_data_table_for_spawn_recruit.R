@@ -34,6 +34,12 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/feather_data.csv",
                                                        "feather_data.csv"),
                                overwrite = TRUE)
 
+gcs_get_object(object_name = "jpe-model-data/adult-model/adult_data_input_raw.csv",
+               bucket = gcs_get_global_bucket(),
+               saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
+                                       "adult_data_input_raw.csv"),
+               overwrite = TRUE)
+
 gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "adult_model", "adult_model_data",
@@ -42,35 +48,36 @@ gcs_get_object(object_name = "jpe-model-data/adult-model/P2S_model_fits.csv",
 
 survival_model_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                                "survival_model_data.csv"))
-yuba_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "yuba_data.csv"))
-butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "butte_data.csv"))
-feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
-                                               "feather_data.csv"))
+adult_data_input_raw <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+                                            "adult_data_input_raw.csv"))
+# we want all data, not just the "best"
+# yuba_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                                "yuba_data.csv"))
+# butte_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                                "butte_data.csv"))
+# feather_data <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
+#                                                "feather_data.csv"))
 
 P2S_model_fits <- read.csv(here::here("data-raw", "adult_model", "adult_model_data",
                                       "P2S_model_fits.csv")) |>
+  separate(par_names, into = c("par_names", "year_index"), sep = "\\[") |>
+  mutate(year_index = str_remove(year_index, "\\]")) |>
   glimpse()
 
+years_to_join <- P2S_model_fits |>
+  filter(str_detect(par_names, "year")) |>
+  select(year = mean, stream, year_index) |>
+  glimpse()
+
+P2S_model_fits_with_year <- P2S_model_fits |>
+  filter(str_detect(par_names, "predicted_spawners")) |>
+  select(P2S_median_count = X50., year_index, P2S_lcl = X2.5., P2S_ucl = X97.5., stream) |>
+  left_join(years_to_join, by = c("year_index", "stream")) |>
+  select(-c(year_index)) |>
+  relocate(year, .before = P2S_median_count) |>
+  glimpse()
 
 # pull in predicted values from model -------------------------------------
-battle_years <- survival_model_data |>
-  filter(stream == "battle creek") |>
-  drop_na(gdd_std) |>
-  pull(year)
-clear_years <- survival_model_data |>
-  filter(stream == "clear creek") |>
-  drop_na(gdd_std) |>
-  pull(year)
-mill_years <- survival_model_data |>
-  filter(stream == "mill creek") |>
-  drop_na(gdd_std) |>
-  pull(year)
-deer_years <- survival_model_data |>
-  filter(stream == "deer creek") |>
-  drop_na(max_flow_std) |>
-  pull(year)
 
 adult_data_all_streams <- bind_rows(P2S_model_fits |>
                                       filter(str_detect(par_names, "predicted_spawners"),

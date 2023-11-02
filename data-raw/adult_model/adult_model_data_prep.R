@@ -52,11 +52,11 @@ redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_ann
                                 bucket = gcs_get_global_bucket())) |>
   filter(run %in% c("spring", "not recorded")) |>
   # redds in these reaches are likely fall, so set to 0 for battle & clear
-  mutate(max_yearly_redd_count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
+  mutate(annual_redd_count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
                                              stream %in% c("battle creek", "clear creek") ~ 0,
-                                           TRUE ~ max_yearly_redd_count)) |>
+                                           TRUE ~ annual_redd_count)) |>
   group_by(year, stream) |>
-  summarise(count = sum(max_yearly_redd_count, na.rm = T)) |>
+  summarise(count = sum(annual_redd_count, na.rm = T)) |>
   ungroup() |>
   select(year, stream, count) |>
   glimpse()
@@ -88,10 +88,11 @@ adult_model_input_raw <- full_join(upstream_passage_estimates |>
               rename(holding_count = count),
             by = c("year", "stream")) |>
   full_join(carcass_estimates |>
-              rename(carcass_estimate = carcass_spawner_estimate) |>
-              select(-c(lower, upper, confidence_interval)),
+              select(year, stream, carcass_estimate = carcass_spawner_estimate,
+                     carcass_90_lcl = lower, carcass_90_ucl = upper),
             by = c("year", "stream")) |>
-  pivot_longer(c(upstream_estimate, redd_count, holding_count, carcass_estimate),
+  pivot_longer(c(upstream_estimate, redd_count, holding_count, carcass_estimate,
+                 carcass_90_lcl, carcass_90_ucl),
                values_to = "count",
                names_to = "data_type") |>
   filter(!is.na(count)) |>
