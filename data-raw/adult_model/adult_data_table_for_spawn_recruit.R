@@ -61,17 +61,18 @@ table_for_spawn_recruit <- bind_rows(P2S_model_fits_with_year,
   pivot_wider(id_cols = c(year, stream),
               names_from = data_type,
               values_from = count) |>
+  arrange(stream, year) |>
   glimpse()
 
 # upload to google cloud --------------------------------------------------
 
 f <- function(input, output) write_csv(input, file = output)
 
-gcs_upload(adult_data_all_streams,
+gcs_upload(table_for_spawn_recruit,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/adult_data_for_spawn_recruit.csv")
 
-write.csv(adult_data_all_streams, here::here("data-raw", "adult_model", "adult_model_data",
+write.csv(table_for_spawn_recruit, here::here("data-raw", "adult_model", "adult_model_data",
                                              "adult_data_for_spawn_recruit.csv"),
           row.names = FALSE)

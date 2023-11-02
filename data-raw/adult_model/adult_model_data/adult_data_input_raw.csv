@@ -254,7 +254,6 @@ year,stream,data_type,count
 2022,feather river,carcass_estimate,6573
 2022,feather river,carcass_90_lcl,6334
 2022,feather river,carcass_90_ucl,6800
-NA,feather river,redd_count,114
 1997,mill creek,redd_count,101
 1998,mill creek,redd_count,212
 1999,mill creek,redd_count,280
