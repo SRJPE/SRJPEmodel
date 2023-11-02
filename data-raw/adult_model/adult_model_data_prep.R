@@ -59,6 +59,7 @@ redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_ann
   summarise(count = sum(annual_redd_count, na.rm = T)) |>
   ungroup() |>
   select(year, stream, count) |>
+  filter(!is.na(year)) |>
   glimpse()
 
 # raw carcass
