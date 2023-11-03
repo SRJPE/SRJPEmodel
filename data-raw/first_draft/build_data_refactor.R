@@ -22,11 +22,15 @@ gcs_get_object(object_name = "jpe-model-data/standard_flow.csv",
                bucket = gcs_get_global_bucket(),
                saveToDisk = here::here("data-raw", "first_draft", "standard_flow.csv"),
                overwrite = TRUE)
+gcs_get_object(object_name = "jpe-model-data/weekly_efficiency.csv",
+               bucket = gcs_get_global_bucket(),
+               saveToDisk = here::here("data-raw", "first_draft", "weekly_efficiency.csv"),
+               overwrite = TRUE)
 
 catch_raw <- read.csv(here::here("data-raw", "first_draft", "weekly_catch_unmarked.csv"))
 mark_recapture_raw <- read.csv(here::here("data-raw", "first_draft", "weekly_releases_and_recaptures.csv"))
 flow_raw <- read.csv(here::here("data-raw", "first_draft", "standard_flow.csv"))
-
+weekly_efficiency_raw <- read.csv(here::here("data-raw", "first_draft", "weekly_efficiency.csv"))
 
 # set ranges --------------------------------------------------------------
 
@@ -59,10 +63,13 @@ mark_recapture <- mark_recapture_raw |>
 catch <- catch_raw |>
   mutate(stream_site = paste0(stream, "_", site))
 
+weekly_efficiency <- weekly_efficiency_raw |>
+  mutate(stream_site = paste0(stream, "_", site))
+
 streams <- unique(catch$stream_site) |> sort()
 number_streams <- length(streams)
 
-# TODO we don't have origin anymore
+# TODO we don't have origin as a column anymore
 abundance <- catch |>
   filter(year %in% years,
          week %in% weeks,
@@ -75,6 +82,23 @@ tribs_and_years_to_include <- abundance |>
   mutate(any_weekly_catch = ifelse(count > 0, T, F)) |>
   filter(any_weekly_catch) |>
   distinct(year, stream_site)
+
+weekly_flow <- flow |>
+  group_by(stream_site, year, julian_week) |>
+  summarise(weekly_flow_cfs = mean(flow_cfs, na.rm = T)) |>
+  ungroup() |>
+  glimpse()
+
+output_data <- abundance |>
+  filter(stream_site %in% tribs_and_years_to_include$stream_site,
+         year %in% tribs_and_years_to_include$year) |>
+  left_join(weekly_flow, by = c("stream_site", "year", "week" = "julian_week")) |>
+  group_by(stream_site, year, week) |>
+  mutate(run_year = ifelse(week > week_range[1] & week < 53, year + 1, year),
+         weekly_catch = sum(count, na.rm = T)) |>
+  # TODO calculate efficiency
+  # TODO lifestage classification based on LAD (see code below)
+  glimpse()
 
 
 Trib=character(length=nrows);Spr_Stage=Trib;rel_origin=Trib;rel_daynight=Trib
