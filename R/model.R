@@ -5,6 +5,9 @@ library(tidyverse)
 EffortAdjust = T
 MultiRun_Mode = T
 
+doTrib <- "battle creek"
+doYr <- 2009
+
 # TODO initiate multirun logic
 
 if (MultiRun_Mode == F) {
@@ -20,7 +23,7 @@ if (MultiRun_Mode == F) {
   fnprefix = paste0(doTrib, "_", doYr)
   #fnprefix=paste0("output/",doTrib,"_",doYr)
 } else {
-  fnprefix = paste0("OutSpecPriors/", doTrib, "_", doYr)
+  fnprefix = paste0("data-raw/first_draft/OutSpecPriors/", doTrib, "_", doYr)
 }
 
 # TODO add to cache_params.R or define as model parameter at model run
@@ -82,8 +85,8 @@ indexes_stream <- tibble(stream = all_streams,
                          stream_idx = row_number(all_streams))
 indexes_week <- tibble(week = selected_weeks,
                        week_idx = row_number(selected_weeks))
-indexes_year <- tibble(run_year = selected_run_year,
-                       year_idx = row_number(selected_run_year))
+indexes_year <- tibble(run_year = selected_run_years,
+                       year_idx = row_number(selected_run_years))
 
 stream_flows <- efficiency_data |>
   group_by(stream, site) |>
@@ -133,6 +136,7 @@ if(EffortAdjust == FALSE) {
 #BT-SPAS constraint is 20 in log space but units are in 1's, not '000s.
 #So for BT-SPAS-X convert 20, divide by 1000, then put back into log units.
 #lgN_max=rep(log(exp(20)/1000),times=Nstrata)
+u <- abundance_data$abundance
 
 #Default prior fornow
 lgN_max = log((u / 1000 + 1) / 0.025)		#maxmim possible value for log N across strata
@@ -140,7 +144,7 @@ imiss = which(is.na(u) == T)
 lgN_max[imiss] = mean(lgN_max, na.rm = T) #for missing strata set to average max across strata
 
 #lgN_max for special cases
-dsp = read.csv(file = "Special_Priors.csv", header = T)
+dsp = read.csv(file = here::here("data-raw", "first_draft", "Special_Priors.csv"), header = T)
 dsp1 = subset(dsp, Stream_Site == doTrib & RunYr == doYr)
 istrata = which(is.na(match(doWks, dsp1$Jweek)) == F)
 lgN_max[istrata] = dsp1$lgN_max
@@ -148,51 +152,53 @@ lgN_max[istrata] = dsp1$lgN_max
 
 #Calculate standardized flow for each weekly strata (can be different than mr_flow which only averages over days of recovery
 #Note the mean and sd used for standardization has to be the same used for pCap model (above) for this trip
-dX = subset(dC, Trib == doTrib & is.na(match(Week, doWks)) == F)
-cf = dC$catch_flow
-irecs = which(is.na(dC$catch_flow) == T)
+dX = subset(abundance_data, stream == doTrib & is.na(match(week, doWks)) == F)
+cf = abundance_data$flow_at_catch
+irecs = which(is.na(abundance_data$flow_at_catch) == T)
 if (length(irecs) > 0)
   cf[irecs] = mean(cf, na.rm = T) #if missing values for one or more strata set to mean (but no missing values as of Aug 02,2022.
-catch_flow = (cf - mean(dX$catch_flow, na.rm = T)) / sd(dX$catch_flow, na.rm =
+catch_flow = (cf - mean(dX$flow_at_catch, na.rm = T)) / sd(dX$flow_at_catch, na.rm =
                                                           T)
 
-
+dC <- abundance_data
 #Identify the elements in 1:Nstrata (unmarked catch set) without and with pCap and corresponding flow data
 #Alternate is to identify records without mr_flow but with catch_flow, and then sub catch_flow into mr_flow for these cases. Complicated and a bit manky.
-Uind_woMR = which(is.na(dC$Rel1) == T |
-                    is.na(dC$mr_flow) == T)
+Uind_woMR = which(is.na(dC$release) == T |
+                    is.na(dC$flow_at_release) == T)
 Nwomr = length(Uind_woMR)
-Jwks_womr = dC$Week[Uind_woMR]
-Uind_wMR = which(is.na(dC$Rel1) == F &
-                   is.na(dC$mr_flow) == F)
+Jwks_womr = dC$week[Uind_woMR]
+Uind_wMR = which(is.na(dC$release) == F &
+                   is.na(dC$flow_at_release) == F)
 Nwmr = length(Uind_wMR)
-Jwks_wmr = dC$Week[Uind_wMR]
+Jwks_wmr = dC$week[Uind_wMR]
 if (Nwomr == 1)
   Uind_woMR = c(Uind_woMR, -99)
 if (Nwmr == 1)
   Uind_wMR = c(Uind_wMR, -99)#so bugs doesn't bomb if only one strata with missing MR
 
+MR <- read.table(here::here("data-raw", "first_draft", "MRdata.txt"), header = T)
+
 #identify the elements in pCap from full MR dataset for U Strata being estimated
-ind_pCap = which(MR$Trib == doTrib &
+ind_pCap = which(MR$Trib == "battle creek_ubc" &
                    MR$RunYr == doYr & is.na(match(MR$Wk, Jwks_wmr)) == F)
 Uwc_ind = which(is.na(u) == F)
-Nstrata_wc = length(Uwc_ind) #The elements of 1:Nstrata that have catch data (RST fished)
+Nstrata = length(Uwc_ind) #The elements of 1:Nstrata that have catch data (RST fished)
 
 #Setup a data file for current run which lines up with output. Used for Plotmodel
 trel = rep(NA, Nstrata)
-trel[Uind_wMR] = Releases[ind_pCap]
+trel[Uind_wMR] = MR$Rel1[ind_pCap]
 trec = rep(NA, Nstrata)
-trec[Uind_wMR] = Recaptures[ind_pCap]
+trec[Uind_wMR] = MR$Recap1[ind_pCap]
 write.table(
-  file = paste0(fnprefix, "_data.out"),
+  file = here::here(paste0(fnprefix, "_data.out")),
   cbind(
-    dC$Week,
+    dC$week,
     u,
     trel,
     trec,
-    round(Effort, digits = 1),
+    round(abundance_data$effort, digits = 1),
     round(catch_flow, digits = 1),
-    round(dC$catch_flow, digits = 1),
+    round(dC$flow_at_catch, digits = 1),
     round(exp(lgN_max), digits = 1)
   ),
   quote = F,
@@ -228,7 +234,7 @@ K = dim(ZP)[2]
 ### Pass data and initial values to lists, define parameters to save, and run model ##################
 
 #Select correct model given data for this run. Note slightly different data inputs across models
-if (length(use_trib) == 1) {
+if (length(doTrib) == 1) {
   #Some MR was done in this tributary
 
   if (Nwomr == 0) {
@@ -315,7 +321,7 @@ if (length(use_trib) == 1) {
     }
   }
 
-} else if (length(use_trib) == 0) {
+} else if (length(doTrib) == 0) {
   #No MR was done in this trib
   ModName = "estN_noMR_notrib"	#No MR data for any strata and trib was not included in MR analysis
   data <-
@@ -358,10 +364,11 @@ parameters <-
     "sd.Ne"
   )
 
+Ntribs <- number_streams
 ini_b0_pCap = vector(length = Ntribs)
 for (itrib in 1:Ntribs) {
-  irows = which(ind_trib == itrib)
-  ini_b0_pCap[itrib] = logit(sum(Recaptures[irows]) / sum(Releases[irows]))
+  irows = which(indexes_stream == itrib)
+  ini_b0_pCap[itrib] = logit(sum(MR$Recap1[irows]) / sum(MR$Rel1[irows]))
 }
 #N is estimated in units of thousands in log space
 ini_lgN = log(u / 1000 + 2)
@@ -370,7 +377,7 @@ ini_lgN[irecs] = log(2 / 1000)
 
 inits1 <-
   list(
-    trib_mu.P = logit(sum(Recaptures) / sum(Releases)),
+    trib_mu.P = logit(sum(MR$Recap1) / sum(MR$Rel1)),
     b0_pCap = ini_b0_pCap,
     flow_mu.P = 0,
     b_flow = rep(0, Ntribs),
@@ -392,10 +399,10 @@ post <-
     inits,
     parameters,
     ModName2,
-    n.chains = Nchains,
-    n.burnin = Nburnin,
-    n.thin = Nthin,
-    n.iter = Nmcmc,
+    n.chains = number_chains,
+    n.burnin = number_burnin,
+    n.thin = number_thin,
+    n.iter = number_mcmc,
     debug = F,
     codaPkg = F,
     DIC = T,
