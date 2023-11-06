@@ -102,3 +102,32 @@ write.csv(table_for_spawn_recruit_long, here::here("data-raw", "adult_model", "a
 write.csv(table_for_spawn_recruit, here::here("data-raw", "adult_model", "adult_model_data",
                                               "table_for_spawn_recruit_wide.csv"),
           row.names = F)
+
+
+# scale with redds_below_rsts ---------------------------------------------
+
+# draft redds below rsts from Skyler analysis in JPE-datasets
+rbr <- read.csv(here::here("data-raw", "adult_model", "redds_by_rst_catchment_summary.csv")) |>
+  glimpse()
+feather_sites <- read.csv(here::here("data-raw", "adult_model", "feather_annual_site_selection.csv")) |>
+  filter(year %in% seq(2015, 2017))
+
+sites_to_scale <- rbr |>
+  mutate(stream_year = paste0(stream, "_", date_year),
+         scale_factor = 1 + percent_below_rst) |>
+  filter(!stream_year %in% c("feather river_2012", "feather river_2013", "feather river_2014",
+                             "feather river_2018", "feather river_NA")) |>
+  select(-stream_year) |>
+  mutate(site_to_use = case_when(stream == "battle creek" ~ "ubc",
+                                 stream == "clear creek" ~ "lcc",
+                                 stream == "feather river" ~ "herringer riffle"),
+         supplementary_site_to_use = case_when(stream == "battle creek" ~ "ubc",
+                                               stream == "clear creek" ~ "ucc",
+                                               stream == "feather river" ~ "gateway riffle")) |>
+  select(stream, year = date_year, percent_below_rst, scale_factor)
+
+scaled_table_for_spawn_recruit <- table_for_spawn_recruit_long |>
+  left_join(sites_to_scale, by = c("stream", "year")) |>
+  mutate(scaled_count = round(count * scale_factor, 0)) |>
+  glimpse()
+
