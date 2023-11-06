@@ -101,16 +101,34 @@ output_data <- abundance |>
   glimpse()
 
 
-Trib=character(length=nrows);Spr_Stage=Trib;rel_origin=Trib;rel_daynight=Trib
-RunYr=vector(length=nrows);CalYr=RunYr;Weeks=RunYr
-ua=RunYr;us=RunYr; Rel1=ua;Recap1=ua;Spr_Size=ua;Effort=ua;mr_flow=ua;catch_flow=ua
+# save Rds ----------------------------------------------------------------
+
+saveRds(output_data, here::here("data", "bt_spas_x_input.Rds"))
+
+Trib=character(length=nrows); # empty vector of length of rows
+Spr_Stage=Trib; # empty vector of length of rows
+rel_origin=Trib;# empty vector of length of rows
+rel_daynight=Trib# empty vector of length of rows
+RunYr=vector(length=nrows); # empty vector of length of rows
+CalYr=RunYr; # empty vector of length of rows
+Weeks=RunYr # empty vector of length of rows
+ua=RunYr; # empty vector of length of rows
+us=RunYr;  # empty vector of length of rows
+Rel1=ua; # empty vector of length of rows
+Recap1=ua; # empty vector of length of rows
+Spr_Size=ua; # empty vector of length of rows
+Effort=ua; # empty vector of length of rows
+mr_flow=ua; # empty vector of length of rows
+catch_flow=ua # empty vector of length of rows
 
 print("Funk_Record-Record_Num-Trib-CalYr-RunYr-Jwk where this is no catch of unmarked chinook but this is an efficiency trial (uh oh)")
 jj=0
 k=0
 for(itrib in 1:Ntribs){
+  # for each tributary, subset flow dataset to that tributary
   dQ1=subset(dQ,Stream_Site_Q==Tribs[itrib])
 
+  # then loop through
   for(iyr in 1:Nyrs){
 
     if(Process_TribYr[itrib,iyr]==T){
