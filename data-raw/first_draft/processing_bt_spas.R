@@ -69,11 +69,6 @@ output_files <- list.files(path = here::here("data-raw", "first_draft", "OutSpec
   as_tibble() |>
   filter(str_detect(value, "_post.out"))
 
-df <- output_files$value |>
+annual_bt_spas_estimates <- output_files$value |>
   map_dfr(read_bugs_output) |>
   glimpse()
-
-
-  str_split(filepath, "\\/") |>
-  glimpse()
-
