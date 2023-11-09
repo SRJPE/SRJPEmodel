@@ -103,9 +103,56 @@ write.csv(table_for_spawn_recruit, here::here("data-raw", "adult_model", "adult_
                                               "table_for_spawn_recruit_wide.csv"),
           row.names = F)
 
+# add bt-spas-x estimates -------------------------------------------------
+
+# TODO code for pulling these are in a different branch
+bt_spas_estimates <- read.csv("~/Desktop/bt_spas_x_outputs.csv") |>
+  mutate(lcl = round(lcl_total_abundance, 0),
+         ucl = round(ucl_total_abundance, 0),
+         count = round(mean_total_abundance, 0),
+         data_type = "bt_spas_estimates") |>
+  filter(site != "ucc", # TODO using lcc
+         !site %in% c("herringer riffle")) |> # TODO decide on feather to use
+  select(-c(filepath, mean_total_abundance, lcl_total_abundance, ucl_total_abundance)) |>
+  glimpse()
+
+spawn_recruit_table_full <- bind_rows(table_for_spawn_recruit_long,
+                                      bt_spas_estimates) |>
+  arrange(stream, year) |>
+  glimpse()
+
+full_spawn_recruit_table_wide <- spawn_recruit_table_full |>
+  select(-c(ucl, lcl, site)) |>
+  pivot_wider(id_cols = c(year, stream),
+              names_from = data_type,
+              values_from = count) |>
+  glimpse()
+
+modelable_years <- full_spawn_recruit_table_wide |>
+  mutate(adult_data = ifelse(!is.na(upstream_estimate) |
+                              !is.na(carcass_estimate) |
+                              !is.na(P2S_modeled_count) |
+                              !is.na(redd_count) |
+                              !is.na(holding_count),
+                            TRUE,
+                            FALSE),
+         juv_data = ifelse(!is.na(bt_spas_estimates), TRUE, FALSE),
+         can_model = ifelse(adult_data & juv_data, TRUE, FALSE)) |>
+  filter(can_model == TRUE)
+
+spawn_recruit_table_full |>
+  left_join(modelable_years |>
+              select(year, stream, can_model),
+            by = c("year", "stream")) |>
+  mutate(juv = ifelse(data_type == "bt_spas_estimates", TRUE, FALSE)) |>
+  filter(can_model == TRUE) |>
+  ggplot(aes(x = year, y = count, color = juv)) +
+  geom_line() +
+  facet_wrap(~stream)
 
 # scale with redds_below_rsts ---------------------------------------------
 
+# TODO are we using this? not for right now
 # draft redds below rsts from Skyler analysis in JPE-datasets
 rbr <- read.csv(here::here("data-raw", "adult_model", "redds_by_rst_catchment_summary.csv")) |>
   glimpse()
@@ -130,4 +177,6 @@ scaled_table_for_spawn_recruit <- table_for_spawn_recruit_long |>
   left_join(sites_to_scale, by = c("stream", "year")) |>
   mutate(scaled_count = round(count * scale_factor, 0)) |>
   glimpse()
+
+
 
