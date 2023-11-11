@@ -151,7 +151,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     pull(ini_lgN)
 
   trib_mu.P <- mark_recapture_data |>
-    mutate(trib_mu.P = stats::qlogic(sum(number_recaptured) / sum(number_released))) |>
+    mutate(trib_mu.P = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(trib_mu.P)
 
   init_list <- list(trib_mu.P = trib_mu.P,
@@ -166,20 +166,34 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
-  # run bugs model
-  model_results <- bugs(data, inits, parameters, model_name, n.chains = number_chains,
-                        n.burnin = number_burnin, n.thin = number_thin, n.iter = number_mcmc,
-                        debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
-                        bugs.directory = paste0(bugs_directory))
+  # get operating system - bugs can't run on a mac without serious set-up
+  operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
+  if(operating_system == "mac") {
+    cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
+                           All the data required to run the model will be returned, but the model will not be run.")
 
-  posterior_output <- model_results$sims.list
-  summary_output <- round(model_results$summary, 3)
-  dic_output <- c(model_results$pD, model_results$DIC)
-  knots_output <- knot_positions
+    return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
+                n.chains = number_chains, n.burnin = number_burnin, n.thin = number_thin,
+                n.iter = number_mcmc, debug = FALSE, codaPkg = FALSE, DIC = TRUE,
+                clearWD = TRUE, bugs.directory = paste0(bugs_directory)))
+  } else {
 
-  return(list("posterior_output" = posterior_output,
-              "summary_output" = summary_output,
-              "dic_output" = dic_output,
-              "knots_output" = knots_output))
+    cli::cli_process_start("WinBUGS model running")
+    # run bugs model
+    model_results <- bugs(data, inits, parameters, model_name, n.chains = number_chains,
+                          n.burnin = number_burnin, n.thin = number_thin, n.iter = number_mcmc,
+                          debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                          bugs.directory = paste0(bugs_directory))
+
+    posterior_output <- model_results$sims.list
+    summary_output <- round(model_results$summary, 3)
+    dic_output <- c(model_results$pD, model_results$DIC)
+    knots_output <- knot_positions
+
+    return(list("posterior_output" = posterior_output,
+                "summary_output" = summary_output,
+                "dic_output" = dic_output,
+                "knots_output" = knots_output))
+  }
 
 }
