@@ -166,6 +166,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
+
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
   if(operating_system == "mac") {
