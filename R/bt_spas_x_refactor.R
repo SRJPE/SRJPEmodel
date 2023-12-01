@@ -45,7 +45,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     #        site == !!site)
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
-  # TODO remove - moving to SRJPEdata repo as mainstem and trib efficiency versions
+  # TODO this is now done in SRJPE data repo in weekly_model_data
+  # TODO we need to modify this code so that we can still pull out number_efficiency_experiments and years_with_efficiency_experiments
   mark_recapture_data <- bt_spas_x_input_data |>
     filter(!site %in% remove_sites,
            !is.na(flow_cfs), # TODO change to efficiency flow when available
@@ -58,14 +59,14 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
 
 
-  # TODO imagine we are pulling in efficiency data based on argument "trib"
+  # TODO we will pull in efficiency data based on argument "trib"
 
   # prep data for abundance component of pCap model
   # effort adjustment
   # TODO if effort_adjust == T, use standardized_catch_effort, otherwise catch
 
   # priors for upper limit on log abundance for any week
-  # TODO keep this here?
+  # TODO build special_priors table in SRJPEdata as data object
   # first, assign special prior (if relevant), else set to default, then fill in for weeks without catch
   data_with_priors <- input_data |>
     left_join(special_priors_data, by = c("run_year", "week", "site")) |>
@@ -75,6 +76,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # TODO use standardized catch flow
 
   #Identify the elements in 1:Nstrata (unmarked catch set) without and with pCap and corresponding flow data
+  # this corresponds to line 135-141 in josh_original_model_code.R
   weeks_with_recap <- data_with_priors |>
     filter(!is.na(number_released),
            !is.na(standardized_efficiency_flow))
@@ -84,11 +86,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # TODO josh has something for BUGS-specific code here
   # if(nrow(weeks_without_recap) == 1 | nrow(weeks_with_recap) == 1)
 
-  # write _data.out file
-  # TODO do we need this?
-
-
   # set up b-spline basis matrix
+  # this corresponds to line 148-153 in josh_original_model_code.R
   k_int <- 4 # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
   number_knots <- round(nrow(input_data) / k_int, 0)
   first_knot_position <- 2
@@ -170,6 +169,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
   if(operating_system == "mac") {
+    # TODO update this message to be a [Y/n] and/or link to wine emulator
     cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
                            All the data required to run the model will be returned, but the model will not be run.")
 
