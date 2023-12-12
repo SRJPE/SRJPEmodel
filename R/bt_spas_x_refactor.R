@@ -183,8 +183,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
   # run the bugs model
-  results <- bt_spas_x_bugs(data, inits, parameters, model_name, n.chains, n.burnin, n.thin, n.iter,
-                            bugs.directory = paste0(bugs_directory))
+  results <- bt_spas_x_bugs(data, inits, parameters, model_name, number_chains, number_burnin, number_thin,
+                            number_mcmc, bugs.directory = paste0(bugs_directory))
   return(results)
 }
 
@@ -223,8 +223,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 #' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
 #' of the model run.
 #' @md
-bt_spas_x_bugs <- function(data, inits, parameters, model_name, n.chains, n.burnin,
-                           n.thin, n.iter, bugs.directory) {
+bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, number_burnin, number_thin,
+                           number_mcmc, bugs.directory) {
 
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
