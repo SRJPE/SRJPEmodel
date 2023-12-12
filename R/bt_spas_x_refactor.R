@@ -57,7 +57,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # analyze efficiency trials for all relevant sites (do not filter to site)
   mark_recapture_data <- bt_spas_x_input_data |>
     filter(!site %in% remove_sites,
-           !is.na(flow_cfs), # TODO change to efficiency flow when available
+           !is.na(standardized_efficiency_flow), # TODO should stay at flow_cfs?
            !is.na(number_released),
            !is.na(number_recaptured))
 
@@ -215,10 +215,10 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 #' @param inits
 #' @param parameters
 #' @param model_name
-#' @param n.chains
-#' @param n.burnin
-#' @param n.thin
-#' @param n.iter
+#' @param number_chains
+#' @param number_burnin
+#' @param number_thin
+#' @param number_mcmc
 #' @param bugs.directory
 #' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
 #' of the model run.
