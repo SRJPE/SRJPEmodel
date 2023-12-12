@@ -1,11 +1,11 @@
-# refactor of josh_original_model_code.R and MultiRun_SpecialPriors.R
+# refactor of josh_original_model_code.R, BuildData.R, and MultiRun_SpecialPriors.R
 
 run_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains,
                           bt_spas_x_input_data, site, run_year, effort_adjust, multi_run_mode,
-                          trib, special_priors_data, bugs_directory) {
+                          mainstem_version, special_priors_data, bugs_directory) {
   if(!multi_run_mode) {
     run_single_bt_spas_x(number_mcmc, number_burnin, number_thin, number_chains,
-                         bt_spas_x_input_data, site, run_year, effort_adjust, trib,
+                         bt_spas_x_input_data, site, run_year, effort_adjust, mainstem_version,
                          special_priors_data, bugs_directory)
   } else if (multi_run_mode) {
     sites <- unique(bt_spas_x_input_data$site)
@@ -15,7 +15,7 @@ run_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains
 
 run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains,
                                  bt_spas_x_input_data, site, run_year,
-                                 effort_adjust = c(T, F), trib = c(T, F), special_priors_data,
+                                 effort_adjust = c(T, F), mainstem_version = c(F, T), special_priors_data,
                                  bugs_directory) {
 
   # TODO cache bayesian specs as params?
@@ -26,14 +26,14 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     mutate(site = ifelse(Stream_Site == "battle creek_ubc", "ubc", NA)) |>
     select(site, run_year = RunYr, week = Jweek, special_prior = lgN_max)
   bt_spas_x_input_data <- weekly_model_data |> ungroup()
-  trib = T
+  mainstem_version = F
   site_selection <- "ubc"
   run_year_selection <- 2009
 
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  if(trib) {
+  if(!mainstem_version) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
-  } else {
+  } else if(mainstem_version) {
     remove_sites <- c("deer creek", "eye riffle", "live oak",
                       "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
                       "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
