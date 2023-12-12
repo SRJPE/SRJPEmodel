@@ -29,45 +29,41 @@ model {
   	Recaptures[i] ~ dbin(pCap[i], Releases[i])
   }
 
-  # TODO Stopped here 12-11-2023
-  # For U strata without MR data, simulate pCaps from hyper distributions.
-  logit_b0_pCap~dnorm(pCap_mu_prior,pCap_tau_prior)
-  logit_b_flow~dnorm(flow_mu_prior,flow_tau.P) #Could be MVN above and here
-  for(i in 1:Nwomr){
-  	pro_dev[i]~dnorm(0,pro_tau.P)
-  	logit_pCap_Sim[i]<-logit_b0_pCap +logit_b_flow*catch_flow[Uind_woMR[i]] + pro_dev[i]
-  	logit(pCap_U[Uind_woMR[i]])<-cut(logit_pCap_Sim[i])
+  # For U strata without MR data, simulate pCaps from hyper distributions
+  logit_b0_pCap ~ dnorm(pCap_mu_prior, pCap_tau_prior)
+  logit_b_flow ~ dnorm(flow_mu_prior, flow_tau.P) # Could be MVN above and here
+  for(i in 1:Nwomr) {
+  	process_error_deviations[i] ~ dnorm(0, process_error_tau_prior)
+  	logit_pCap_Sim[i] <- logit_b0_pCap + logit_b_flow * catch_flow[Uind_woMR[i]] + process_error_deviations[i]
+  	logit(pCap_U[Uind_woMR[i]]) <- cut(logit_pCap_Sim[i])
   }
 
   ### Unmarked abundance estimation ##########
 
-  #Priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
-  tau.N~dgamma(1,0.05);sd.N<-1/pow(tau.N,0.5)
-  tau.Ne~dgamma(1,0.05);sd.Ne<-1/pow(tau.Ne,0.5) #0.1,0.1Prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
+  # priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
+  tau_N ~ dgamma(1, 0.05)
+  sd_N <- 1 / pow(tau_N, 0.5)
+  tau_Ne ~ dgamma(1, 0.05)
+  sd_Ne <- 1 / pow(tau_Ne, 0.5) # 0.1, 0.1 Prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
 
-  #Priors on spline coefficients
-  #b_sp[1]~dflat()
-  b_sp[1]~dnorm(0,1.0)
-  b_sp[2]~dflat()
-  for(i in 3:K){
-        xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b
-        b_sp[i] ~ dnorm(xi[i-2],tau.N) #The higher the estimate of tauN, the more precision in dnorm, hence less flexibility in b[i]'s, and hence a smoother the curve. Data and spline structure (knots and order) determine estimate of tauN
+  # Priors on spline coefficients
+  b_sp[1] ~ dnorm(0, 1.0)
+  b_sp[2] ~ dflat()
+  for(i in 3:K) {
+        xi[i-2] <- 2 * b_sp[i-1] - b_sp[i-2] # second order random walk to set mean of normal prior on b
+        b_sp[i] ~ dnorm(xi[i-2], tau_N) # the higher the estimate of tauN, the more precision in dnorm, hence less flexibility in b[i]'s, and hence a smoother the curve. Data and spline structure (knots and order) determine estimate of tauN
   }
 
-  for(i in 1:Nstrata){
-  	Usp[i]<-inprod(ZP[i,],b_sp[])		#spline-based estimate of log U
-  	lg_N[i]~dnorm(Usp[i],tau.Ne)I(,lgN_max[i])	#spline + extra-spline variation estimate of log U
-  	#log(N[i])<-lg_N[i]			#Convert lg_N to N
-  	N[i]<-exp(lg_N[i])*1000.0
-  }
-  Ntot<-sum(N[])
-
-  #Only loop through strata with unmarked catch observations
-  for(i in 1:Nstrata_wc){
-  	#exp_u[Uwc_ind[i]]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]]	#expected umarked catch
-  	#u[Uwc_ind[i]]~dpois(exp_u[Uwc_ind[i]])			#likelihood
-
-  	u[Uwc_ind[i]]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]])
+  for(i in 1:Nstrata) {
+  	Usp[i] <- inprod(ZP[i, ], b_sp[]) # spline-based estimate of log U
+  	lg_N[i] ~ dnorm(Usp[i], tau.Ne)I( ,lgN_max[i]) # spline + extra-spline variation estimate of log U
+  	N[i] <- exp(lg_N[i]) * 1000.0
   }
 
+  Ntot <- sum(N[])
+
+  # Only loop through strata with unmarked catch observations
+  for(i in 1:Nstrata_wc) {
+  	u[Uwc_ind[i]] ~ dbin(pCap_U[Uwc_ind[i]], N[Uwc_ind[i]])
+  }
 }
