@@ -1,13 +1,15 @@
 # refactor of josh_original_model_code.R and MultiRun_SpecialPriors.R
 
 run_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains,
-                          bt_spas_x_input_data, effort_adjust, multi_run_mode,
-                          special_priors_data) {
+                          bt_spas_x_input_data, site, run_year, effort_adjust, multi_run_mode,
+                          trib, special_priors_data, bugs_directory) {
   if(!multi_run_mode) {
-    # TODO one trib, site, and year
+    run_single_bt_spas_x(number_mcmc, number_burnin, number_thin, number_chains,
+                         bt_spas_x_input_data, site, run_year, effort_adjust, trib,
+                         special_priors_data, bugs_directory)
   } else if (multi_run_mode) {
-    # TODO loop through tribs, sites, and years
-
+    sites <- unique(bt_spas_x_input_data$site)
+    # TODO loop through sites and run years calling run_bt_spas_x - use purrr::walk ?
   }
 }
 
@@ -29,11 +31,13 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   run_year_selection <- 2009
 
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  # TODO fill in logic for when it is a mainstem-based model
   if(trib) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    remove_sites <- NA
+    remove_sites <- c("deer creek", "eye riffle", "live oak",
+                      "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
+                      "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
+                      "gateway riffle", "lower feather river")
   }
 
 
@@ -75,14 +79,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture)
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
 
-
-  # TODO we will pull in efficiency data based on argument "trib"
-
-  # prep data for abundance component of pCap model
-  # effort adjustment
-  # TODO if effort_adjust == T, use standardized_catch_effort, otherwise catch
-
-  # priors for upper limit on log abundance for any week
+  # pull in special priors for upper limit on log abundance for any week
   # TODO build special_priors table in SRJPEdata as data object
   # first, assign special prior (if relevant), else set to default, then fill in for weeks without catch
   data_with_priors <- input_data |>
@@ -103,13 +100,6 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   b_spline_matrix <- splines2::bSpline(x = 1:nrow(input_data), knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
   K <- ncol(b_spline_matrix)
 
-  # prep objects for passing to BUGS
-  number_experiments_at_site <- mark_recapture_data |>
-    group_by(site) |>
-    tally() |>
-    filter(site == site_selection) |>
-    pull(n)
-
   # full data list
   full_data_list <- list("number_efficiency_experiments" = number_efficiency_experiments,
                          "number_tribs_pCap" = number_tribs_pCap,
@@ -117,7 +107,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
                          "number_released" = data_with_priors$number_released,
                          "number_recaptured" = data_with_priors$number_recaptured,
                          "number_weeks_catch" = number_weeks_catch,
-                         "weekly_catch" = data_with_priors$count, # TODO effort adjust here
+                         "weekly_catch" = ifelse(effort_adjust == T, data_with_priors$standardized_catch_effort,
+                                                 data_with_priors$count),
                          "K" = K,
                          "b_spline_matrix" = b_spline_matrix,
                          "indices_pCap" = indices_pCap,
@@ -133,6 +124,12 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
                          "lgN_max" = data_with_priors$lgN_prior) # TODO rename?
 
   # set up models and data to pass to bugs
+  number_experiments_at_site <- mark_recapture_data |>
+    group_by(site) |>
+    tally() |>
+    filter(site == site_selection) |>
+    pull(n)
+
   # if efficiency trials occurred in the site
   if(number_experiments_at_site > 1) {
     if(nrow(weeks_without_recap) == 0) {
@@ -157,38 +154,38 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   parameters <- c("pCap_mu_prior", "pCap_sd_prior", "flow_mu_prior", "flow_sd_prior", "process_error_sd_prior", "b0_pCap", "b_flow",
                   "pCap_U", "N", "N_total", "sd_N", "sd_Ne")
 
-  # initialize parameters
+  # initial parameter values
   ini_b0_pCap <- mark_recapture_data |>
     filter(site == site_selection,
            run_year == run_year_selection) |>
     mutate(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(ini_b0_pCap)
 
-  # TODO double check these
   ini_lgN <- data_with_priors |>
     mutate(ini_lgN = log(catch_standardized_by_effort / 1000 + 2),
-           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
+           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>  # TODO double check these
     pull(ini_lgN)
 
   pCap_mu_prior <- mark_recapture_data |>
     mutate(pCap_mu_prior = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
     pull(pCap_mu_prior)
 
-  init_list <- list(pCap_mu_prior = pCap_mu_prior,
-                    b0_pCap = ini_b0_pCap,
-                    flow_mu_prior = 0,
-                    b_flow = rep(0, length(unique(mark_recapture_data$site))),# TODO double check this
-                    pCap_tau_prior = 1,
-                    flow_tau_prior = 1,
-                    process_error_tau_prior = 1,
-                    b_sp = rep(1, ncol_b_spline_matrix),
-                    lg_N = ini_lgN)
+  init_list <- list("pCap_mu_prior" = pCap_mu_prior,
+                    "b0_pCap" = ini_b0_pCap,
+                    "flow_mu_prior" = 0,
+                    "b_flow" = rep(0, number_tribs_pCap),
+                    "pCap_tau_prior" = 1,
+                    "flow_tau_prior" = 1,
+                    "process_error_tau_prior" = 1,
+                    "b_sp" = rep(1, ncol_b_spline_matrix),
+                    "lg_N" = ini_lgN)
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
   # run the bugs model
-  bt_spas_x_bugs(data, inits, parameters, model_name, n.chains, n.burnin, n.thin, n.iter,
-                 bugs.directory = paste0(bugs_directory))
+  results <- bt_spas_x_bugs(data, inits, parameters, model_name, n.chains, n.burnin, n.thin, n.iter,
+                            bugs.directory = paste0(bugs_directory))
+  return(results)
 }
 
 
@@ -234,7 +231,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, n.chains, n.burn
   if(operating_system == "mac") {
     # TODO update this message to be a [Y/n] and/or link to wine emulator
     cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
-                           All the data required to run the model will be returned, but the model will not be run.")
+                           All the information required to run the model will be returned, but the model will not be run.")
 
     return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
                 n.chains = number_chains, n.burnin = number_burnin, n.thin = number_thin,
