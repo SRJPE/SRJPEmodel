@@ -22,7 +22,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   # TODO get rid of this
   load("~/Desktop/weekly_model_data.rda")
-  special_priors_data <- read.csv(here::here("data-raw", "first_draft", "Special_Priors.csv")) |>
+  special_priors_data <- read.csv(here::here("data-raw", "juvenile_abundance", "Special_Priors.csv")) |>
     mutate(site = ifelse(Stream_Site == "battle creek_ubc", "ubc", NA)) |>
     select(site, run_year = RunYr, week = Jweek, special_prior = lgN_max)
   bt_spas_x_input_data <- weekly_model_data |> ungroup()
@@ -271,13 +271,13 @@ get_bt_spas_x_data_list <- function(model_name, full_data_list) {
                      "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "lgN_max")
   } else if(model_name = "missing_mark_recap.bug") {
     data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                        "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_mark_recapture", "number_weeks_without_mark_recapture",
-                        "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap", "number_weeks_with_catch", "indices_with_catch",
-                        "standardized_efficiency_flow", "catch_flow", "lgN_max")
+                     "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_mark_recapture", "number_weeks_without_mark_recapture",
+                     "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap", "number_weeks_with_catch", "indices_with_catch",
+                     "standardized_efficiency_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap.bug") {
     data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                      "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap",
-                      "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
+                     "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap",
+                     "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap_no_trib.bug") {
     data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "number_weeks_with_catch",

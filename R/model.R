@@ -23,7 +23,7 @@ if (MultiRun_Mode == F) {
   fnprefix = paste0(doTrib, "_", doYr)
   #fnprefix=paste0("output/",doTrib,"_",doYr)
 } else {
-  fnprefix = paste0("data-raw/first_draft/OutSpecPriors/", doTrib, "_", doYr)
+  fnprefix = paste0("data-raw/juvenile_abundance/OutSpecPriors/", doTrib, "_", doYr)
 }
 
 # TODO add to cache_params.R or define as model parameter at model run
@@ -35,7 +35,7 @@ number_chains <- 3
 
 ### Setup Data and initial values for pCap component of model ########
 # TODO migrate to data repo
-weekly_tributary_RST = as_tibble(read.table(file = "data-raw/first_draft/RST_Input.txt", header = T)) |>
+weekly_tributary_RST = as_tibble(read.table(file = "data-raw/juvenile_abundance/RST_Input.txt", header = T)) |>
   rename(stream = Trib, calendar_year = CalYr, run_year = RunYr, week = Week,
          catch_all = ua, catch_spring = us, fork_length = Spr_Sz,
          lifestage = Spr_Stage, release = Rel1, recapture = Recap1,
@@ -144,7 +144,7 @@ imiss = which(is.na(u) == T)
 lgN_max[imiss] = mean(lgN_max, na.rm = T) #for missing strata set to average max across strata
 
 #lgN_max for special cases
-dsp = read.csv(file = here::here("data-raw", "first_draft", "Special_Priors.csv"), header = T)
+dsp = read.csv(file = here::here("data-raw", "juvenile_abundance", "Special_Priors.csv"), header = T)
 dsp1 = subset(dsp, Stream_Site == doTrib & RunYr == doYr)
 istrata = which(is.na(match(doWks, dsp1$Jweek)) == F)
 lgN_max[istrata] = dsp1$lgN_max
@@ -176,7 +176,7 @@ if (Nwomr == 1)
 if (Nwmr == 1)
   Uind_wMR = c(Uind_wMR, -99)#so bugs doesn't bomb if only one strata with missing MR
 
-MR <- read.table(here::here("data-raw", "first_draft", "MRdata.txt"), header = T)
+MR <- read.table(here::here("data-raw", "juvenile_abundance", "MRdata.txt"), header = T)
 
 #identify the elements in pCap from full MR dataset for U Strata being estimated
 ind_pCap = which(MR$Trib == "battle creek_ubc" &
