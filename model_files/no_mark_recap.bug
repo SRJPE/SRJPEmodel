@@ -14,7 +14,7 @@ model {
   flow_tau_prior ~ dgamma(0.001, 0.001)
   flow_sd_prior <- 1 / pow(flow_tau_prior, 0.5)
 
-  for(j in 1:Ntribs) {
+  for(j in 1:number_tribs_pCap) {
   	b0_pCap[j] ~ dnorm(pCap_mu_prior, pCap_tau_prior) # trib-specific P is a random draw from hyper distribtion
   	b_flow[j] ~ dnorm(flow_mu_prior, flow_tau_prior)
   }
@@ -23,12 +23,12 @@ model {
   process_error_tau_prior ~ dgamma(0.001, 0.001)
   process_error_sd_prior <- 1 / pow(process_error_tau_prior, 0.5)
 
-  for(i in 1:Nmr) {
+  for(i in 1:number_efficiency_experiments) {
     # loop through all MR experiments
   	process_error_devs_prior[i] ~ dnorm(0, process_error_tau_prior)
-  	logit_pCap[i] <- b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]] * mr_flow[i] + process_error_devs_prior[i]
+  	logit_pCap[i] <- b0_pCap[indices_site_mark_recapture[i]] + b_flow[indices_site_mark_recapture[i]] * standardized_efficiency_flow[i] + process_error_devs_prior[i]
   	logit(pCap[i]) <- logit_pCap[i]
-  	Recaptures[i] ~ dbin(pCap[i], Releases[i])
+  	number_recaptured[i] ~ dbin(pCap[i], number_released[i])
   }
 
   ### Unmarked abundance estimation ##########
@@ -51,23 +51,23 @@ model {
   # For U strata without MR data, simulate pCaps from hyper distributions.
   # This version assumes that the tributary being modelled was also in the MR estimation
   # If it isn't then you have to simulate b0_pCap from hyper parameters
-  for(i in 1:Nwomr) {
+  for(i in 1:number_weeks_without_mark_recapture) {
   	process_error_deviations[i] ~ dnorm(0, process_error_tau_prior)
-  	logit_pCap_sim[i] <- b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]] + process_error_deviations[i]
-  	logit(pCap_U[Uind_woMR[i]]) <- cut(logit_pCap_sim[i])
+  	logit_pCap_sim[i] <- b0_pCap[indices_tribs_pCap] + b_flow[indices_tribs_pCap] * catch_flow[indices_without_mark_recapture[i]] + process_error_deviations[i]
+  	logit(pCap_U[indices_without_mark_recapture[i]]) <- cut(logit_pCap_sim[i])
   }
 
-  for(i in 1:Nstrata) {
-  	Usp[i] <- inprod(ZP[i,], b_sp[]) # spline-based estimate of log U
+  for(i in 1:number_weeks_catch) {
+  	Usp[i] <- inprod(b_spline_matrix[i,], b_sp[]) # spline-based estimate of log U
   	lg_N[i] ~ dnorm(Usp[i], tau_Ne)I(, lgN_max[i]) # spline + extra-spline variation estimate of log U
-  	N[i]<-exp(lg_N[i]) * 1000.0
+  	N[i] <- exp(lg_N[i]) * 1000.0
   }
 
-  Ntot <- sum(N[])
+  N_total <- sum(N[])
 
   # Only loop through strata with unmarked catch observations
-  for(i in 1:Nstrata_wc) {
-  	u[Uwc_ind[i]] ~ dbin(pCap_U[Uwc_ind[i]], N[Uwc_ind[i]])
+  for(i in 1:number_weeks_with_catch) {
+  	weekly_catch[indices_with_catch[i]] ~ dbin(pCap_U[indices_with_catch[i]], N[indices_with_catch[i]])
   }
 
 }
