@@ -177,7 +177,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
                     "pCap_tau_prior" = 1,
                     "flow_tau_prior" = 1,
                     "process_error_tau_prior" = 1,
-                    "b_sp" = rep(1, ncol_b_spline_matrix),
+                    "b_sp" = rep(1, K),
                     "lg_N" = ini_lgN)
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
