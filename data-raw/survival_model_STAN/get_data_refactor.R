@@ -1,6 +1,6 @@
 # refactor of GetData.R
 
-# TODO determine where this came from
+# TODO determine where this came from - from Flora's file?
 detections_with_covariates_sac <- read_csv(file=here::here("data-raw", "survival_model_STAN",
                                                            "SacInp_withcov.csv"))
 
@@ -19,14 +19,13 @@ detections <- detections_with_covariates_sac |>
                                          StudyID == "CNFH_FMR_2020" ~ 11,
                                          StudyID == "DeerCk_Wild_CHK_2020" ~ 12,
                                          StudyID == "CNFH_FMR_2021" ~ 13)) |>
-  # arrange(release_group_order) |>
   glimpse()
 
 n_reaches <- 4
 reach_names <- c("release-woodson", "woodson-butte", "butte-sac", "sac-delta")
 n_detection_locations <- 5
 detection_location_names <- c("release", "woodson", "butte", "sac", "delta")
-reach_river_km <- c(40, 88, 170, 11) # TODO reference josh file Summary.xlsx
+reach_river_km <- c(40, 88, 170, 110) # TODO reference josh file Summary.xlsx
 n_individuals <- nrow(detections)
 years <- unique(detections$year) |>
   sort()
@@ -50,11 +49,12 @@ capture_history_matrix <- detections |>
                                   year %in% c(2013, 2016, 2018, 2020) ~ 1,
                                   TRUE ~ 2)) |>
   separate_wider_position(ch, c("1" = 1, "2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
+  rename_at(vars(`1`:`5`), ~ detection_location_names) |> # rename to detection location
   glimpse()
 
 # this is sumout
 data_summary <- capture_history_matrix |>
-  pivot_longer(`1`:`5`, names_to = "detection_location", values_to = "detections") |>
+  pivot_longer(release:delta, names_to = "detection_location", values_to = "detections") |>
   mutate(detections = as.numeric(detections)) |>
   group_by(StudyID, detection_location) |>
   summarise(n = sum(detections)) |>
@@ -75,9 +75,8 @@ individual_summaries <- detections |>
             var_condition = sd(fish_k, na.rm = T)/mean_condition,
             n = n())
 
-#Fl=d$fish_length;Wt=d$fish_weight;Cf=d$fish_k #individual covariates that don't vary across reaches
-Nseq=25 # # of increments to calculate and plot covariate relationship over
 
-StdRlen=100 #Survival calculated for a standardized reach length of 100 km, then converted to reach specific survival in stan models
-Rlen=c(40,88,170,110)
-Rmult=Rlen/StdRlen
+# modeling prep -----------------------------------------------------------
+n_covariate_inc <- 25 # number of increments to calculate and plot covariate relationship over
+standard_reach_lengths <- 1000 # survival calculated for a standardized reach length of 100 km, then converted to reach specific survival in stan models
+r_mult <- reach_river_km / standard_reach_lengths
