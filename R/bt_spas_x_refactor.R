@@ -21,24 +21,10 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # TODO cache bayesian specs as params?
 
   # TODO get rid of this
-  load("~/Desktop/weekly_model_data.rda")
-  special_priors_data <- read.csv(here::here("data-raw", "juvenile_abundance", "Special_Priors.csv")) |>
-    mutate(site = ifelse(Stream_Site == "battle creek_ubc", "ubc", NA)) |>
-    select(site, run_year = RunYr, week = Jweek, special_prior = lgN_max)
-  bt_spas_x_input_data <- weekly_model_data |> ungroup()
+  bt_spas_x_input_data <- SRJPEdata::weekly_model_data
   mainstem_version = F
   site_selection <- "ubc"
   run_year_selection <- 2009
-
-  # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  if(!mainstem_version) {
-    remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
-  } else if(mainstem_version) {
-    remove_sites <- c("deer creek", "eye riffle", "live oak",
-                      "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
-                      "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
-                      "gateway riffle", "lower feather river")
-  }
 
 
   # filter datasets to match site, run_year, and weeks
@@ -50,11 +36,23 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     #        site == !!site)
 
   # get numbers for looping in BUGs code - abundance model
+  # TODO confirm - these don't make sense
   number_weeks_catch <- length(unique(input_data$week))
-  indices_with_catch <- which(is.na(input_data$count))
-  number_weeks_with_catch <- length(indices_With_catch)
+  indices_with_catch <- which(!is.na(input_data$count))
+  number_weeks_with_catch <- length(indices_with_catch)
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
+
+  # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
+  if(!mainstem_version) {
+    remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
+  } else if(mainstem_version) {
+    remove_sites <- c("deer creek", "eye riffle", "live oak",
+                      "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
+                      "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
+                      "gateway riffle", "lower feather river")
+  }
+
   mark_recapture_data <- bt_spas_x_input_data |>
     filter(!site %in% remove_sites,
            !is.na(standardized_efficiency_flow), # TODO should stay at flow_cfs?
@@ -79,20 +77,13 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture)
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
 
-  # pull in special priors for upper limit on log abundance for any week
-  # TODO build special_priors table in SRJPEdata as data object
-  # first, assign special prior (if relevant), else set to default, then fill in for weeks without catch
-  data_with_priors <- input_data |>
-    left_join(special_priors_data, by = c("run_year", "week", "site")) |>
-    mutate(lgN_prior = ifelse(!is.na(special_prior), special_prior, log((count / 1000) + 1) / 0.025)) |> # maximum possible value for log N across strata
-    select(-special_prior)
-
   # TODO josh has something for BUGS-specific code here
   # if(nrow(weeks_without_recap) == 1 | nrow(weeks_with_recap) == 1)
 
   # set up b-spline basis matrix
   # this corresponds to line 148-153 in josh_original_model_code.R
   k_int <- 4 # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
+  # TODO create "spline parameters" object
   number_knots <- round(nrow(input_data) / k_int, 0)
   first_knot_position <- 2
   final_knot_position <- nrow(input_data) - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
