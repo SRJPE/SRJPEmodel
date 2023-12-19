@@ -1,4 +1,5 @@
 # refactor of GetData.R
+# this will likely be moved to SRJPEdata/ repo
 
 # TODO determine where this came from - from Flora's file?
 detections_with_covariates_sac <- read_csv(file=here::here("data-raw", "survival_model_STAN",
