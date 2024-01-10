@@ -23,6 +23,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # TODO get rid of this
   bt_spas_x_input_data <- SRJPEdata::weekly_model_data
   mainstem_version = F
+  effort_adjust = T
   site_selection <- "ubc"
   run_year_selection <- 2009
 
@@ -37,9 +38,9 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   # get numbers for looping in BUGs code - abundance model
   # TODO confirm - these don't make sense
-  number_weeks_catch <- length(unique(input_data$week))
-  indices_with_catch <- which(!is.na(input_data$count))
-  number_weeks_with_catch <- length(indices_with_catch)
+  number_weeks_catch <- length(unique(input_data$week)) # number of weeks in the catch dataset
+  indices_with_catch <- which(!is.na(input_data$count)) # TODO which weeks have catch (should this be 0? or is this checking whether it was fished?)
+  number_weeks_with_catch <- length(indices_with_catch) # how many weeks actually have catch
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
 
@@ -60,6 +61,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
            !is.na(number_recaptured))
 
   # get numbers for looping in BUGs code - pCap model
+  # TODO double check these
   number_efficiency_experiments <- nrow(mark_recapture_data)
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   number_tribs_pCap <- length(unique(mark_recapture_data$site))
@@ -95,11 +97,11 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   full_data_list <- list("number_efficiency_experiments" = number_efficiency_experiments,
                          "number_tribs_pCap" = number_tribs_pCap,
                          "indices_site_mark_recapture" = indices_site_mark_recapture,
-                         "number_released" = data_with_priors$number_released,
-                         "number_recaptured" = data_with_priors$number_recaptured,
+                         "number_released" = input_data$number_released,
+                         "number_recaptured" = input_data$number_recaptured,
                          "number_weeks_catch" = number_weeks_catch,
-                         "weekly_catch" = ifelse(effort_adjust == T, data_with_priors$standardized_catch_effort,
-                                                 data_with_priors$count),
+                         "weekly_catch" = ifelse(effort_adjust == T, input_data$catch_standardized_by_effort,
+                                                 input_data$count),
                          "K" = K,
                          "b_spline_matrix" = b_spline_matrix,
                          "indices_pCap" = indices_pCap,
@@ -110,9 +112,9 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
                          "indices_tribs_pCap" = indices_tribs_pCap,
                          "number_weeks_with_catch" = number_weeks_with_catch,
                          "indices_with_catch" = indices_with_catch,
-                         "standardized_efficiency_flow" = data_with_priors$standardized_efficiency_flow,
-                         "catch_flow" = data_with_priors$flow_cfs,
-                         "lgN_max" = data_with_priors$lgN_prior) # TODO rename?
+                         "standardized_efficiency_flow" = input_data$standardized_efficiency_flow,
+                         "catch_flow" = input_data$flow_cfs,
+                         "lgN_max" = input_data$lgN_prior) # TODO rename?
 
   # set up models and data to pass to bugs
   number_experiments_at_site <- mark_recapture_data |>
@@ -123,15 +125,15 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   # if efficiency trials occurred in the site
   if(number_experiments_at_site > 1) {
-    if(nrow(weeks_without_recap) == 0) {
+    if(number_weeks_without_mark_recapture == 0) {
       # all weeks have efficiency trials
       model_name <- "all_mark_recap.bug"
     } else {
       # some or all strata don't have efficiency trials
-      if(nrow(weeks_with_recap) > 0) {
+      if(number_weeks_with_mark_recapture > 0) {
         # some weeks have efficiency trials
         model_name <- "missing_mark_recap.bug"
-      } else if(nrow(weeks_with_recap) == 0) {
+      } else if(number_weeks_with_mark_recapture == 0) {
         # no weeks have efficiency trials
         model_name <- "no_mark_recap.bug"
       }
@@ -140,7 +142,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     model_name <- "no_mark_recap_no_trib.bug"
   }
 
-  data <- get_bt_spas_x_data_list(model_name)
+  data <- get_bt_spas_x_data_list(model_name, full_data_list)
 
   parameters <- c("pCap_mu_prior", "pCap_sd_prior", "flow_mu_prior", "flow_sd_prior", "process_error_sd_prior", "b0_pCap", "b_flow",
                   "pCap_U", "N", "N_total", "sd_N", "sd_Ne")
@@ -152,7 +154,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     mutate(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(ini_b0_pCap)
 
-  ini_lgN <- data_with_priors |>
+  ini_lgN <- input_data |>
     mutate(ini_lgN = log(catch_standardized_by_effort / 1000 + 2),
            ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>  # TODO double check these
     pull(ini_lgN)
@@ -257,10 +259,10 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
 #' @returns a named list with the required elements for that model run.
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
-  if(model_name = "all_mark_recap.bug") {
+  if(model_name == "all_mark_recap.bug") {
     data_needed <- c("number_efficiency_experiments", "number_tribs_pCap" ,"indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "lgN_max")
-  } else if(model_name = "missing_mark_recap.bug") {
+  } else if(model_name == "missing_mark_recap.bug") {
     data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_mark_recapture", "number_weeks_without_mark_recapture",
                      "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap", "number_weeks_with_catch", "indices_with_catch",
