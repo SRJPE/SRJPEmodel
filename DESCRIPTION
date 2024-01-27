@@ -6,6 +6,14 @@ Authors@R:
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: What the package does (one paragraph).
 License: MIT + file LICENSE
+Imports: 
+    tidyverse,
+    rstan,
+    rstanarm,
+    cli,
+    bayesplot,
+    tidybayes,
+    here
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
