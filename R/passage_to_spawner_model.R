@@ -33,7 +33,7 @@ calculate_ss_tot <- function(data) {
 #' @description This function extracts parameter estimates and summary statistics for
 #' the Passage to Spawner model (see `?run_passage_to_spawner_model`). The function
 #' calls `summary()` on the `stanfit` object produced by running the model. For details,
-#' see \html{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}.
+#' see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html).
 #' @export
 #' @md
 get_all_pars <- function(model_fit, stream_name) {
@@ -63,7 +63,8 @@ get_all_pars <- function(model_fit, stream_name) {
 #' `passage_index` (total upstream passage), `median_passage_timing_std` (median passage timing),
 #' or `null_covar` (no environmental covariate).
 #' See \code{vignette("prep_environmental_covariates.Rmd", package = "SRJPEdata")} for more details.
-#' @returns A list containing `full_object`, the full fitted `stanfit` object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html)),
+#' @returns If `compare_environmental_covariate_mode == FALSE`, returns a list containing
+#' `full_object`, the full fitted `stanfit` object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html)),
 #' and `formatted_pars`, a formatted data table containing the following variables:
 #' * **par_names** Parameter name
 #' * **mean** Mean of the posterior distribution for a parameter
@@ -84,12 +85,6 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
                                          stream_name, selected_covariate) {
 
   stream_name <- tolower(stream_name)
-  if(!stream_name %in% c("battle creek", "clear creek", "mill creek", "butte creek")){
-    cli::cli_abort("Incorrect stream name. Please pass an approved stream.")
-  }
-  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "passage_index", "median_passage_timing_std", "null_covar")){
-    cli::cli_abort("Incorrect/Unavailable environmental covariate. Please pass an approved covariate name.")
-  }
 
   # combine observed counts and covariates and pivot wider
   data <- full_join(observed_adult_input,
@@ -104,6 +99,13 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
   # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
   percent_female <- case_when(stream_name %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
                               stream_name %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
+
+  if(!stream_name %in% c("battle creek", "clear creek", "mill creek", "butte creek")){
+    cli::cli_abort("Incorrect stream name. Please pass an approved stream.")
+  }
+  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "passage_index", "median_passage_timing_std", "null_covar")){
+    cli::cli_abort("Incorrect/Unavailable environmental covariate. Please pass an approved covariate name.")
+  }
 
   # use holding count for deer, carcass for butte, and redd for other streams
   stream_data <- data |>
@@ -149,5 +151,150 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
   cli::cli_alert(convergence_message)
   return(list("full_object" = stream_model_fit,
               "formatted_pars" = get_all_pars(stream_model_fit, stream_name)))
+
+}
+
+
+#' @title Compare Environmental Covariates in Passage to Spawner (P2S) Model
+#' @description This function iterates through adult input data for every stream and
+#' environmental covariate, fiting the P2S model and pulling out diagnostic statistics. The
+#' data is truncated to only include years for which all environmental covariates are available.
+#' @returns A table containing the following variables:
+#' * **par_names** Parameter name
+#' * **stream** Mean of the posterior distribution for a parameter
+#' * **mean** Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
+#' * **median** 50% quantile of posterior distribution for a parameter.
+#' * **sd** standard deviation
+#' * **covar_considered** the covariate considered
+#' @export
+#' @family passage_to_spawner
+#' @md
+compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covariates) {
+
+  cli::cli_alert("Fitting Passage to Spawner (P2S) model for all stream and covariate combinations")
+
+  # combine observed counts and covariates and pivot wider
+  data <- full_join(observed_adult_input,
+                    adult_model_covariates,
+                    by = c("year", "stream")) |>
+    filter(!is.na(data_type)) |>
+    pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
+                            median_passage_timing_std, passage_index),
+                names_from = data_type,
+                values_from = count)
+
+  all_streams <- tibble(par_names = "DELETE",
+                        stream = "DELETE",
+                        mean = 0.0,
+                        median = 0.0,
+                        sd = 0.0,
+                        lcl = 0.0,
+                        ucl = 0.0,
+                        covar_considered = "DELETE",
+                        convergence_metric = NA)
+
+  for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
+    stream_results <- compare_P2S_covariates_within_stream(data, i)
+    all_streams <- bind_rows(all_streams, stream_results)
+  }
+
+  comparison_results <- all_streams |>
+    filter(par_names != "DELETE")
+
+  return(list("covariate_comparison_results" = comparison_results))
+
+}
+
+#' @description This function is called within `compare_P2S_model_covariates()` and iterates through all
+#' environmental covariates for a stream, producing diagnostic statistics for that stream.
+#' @returns A table containing the following variables:
+#' * **par_names** Parameter name
+#' * **stream** Mean of the posterior distribution for a parameter
+#' * **mean** Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
+#' * **median** 50% quantile of posterior distribution for a parameter.
+#' * **sd** standard deviation
+#' * **covar_considered** the covariate considered
+#' @export
+#' @family passage_to_spawner
+#' @md
+compare_P2S_covariates_within_stream <- function(data, stream_name) {
+  #TODO continue to debug
+
+  # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
+  percent_female <- ifelse(stream_name %in% c("battle creek", "clear creek", "mill creek"), 0.5, 1)
+
+  # empty
+  final_results <- tibble("par_names" = "DELETE",
+                          "stream" = "DELETE",
+                          "mean" = 0.0,
+                          "median" = 0.0,
+                          "sd" = 0.0,
+                          "covar_considered" = "DELETE")
+
+  covars_to_consider = c("wy_type", "max_flow_std", "gdd_std",
+                         "null_covar", "passage_index") # no more "median_passage_timing_std" bc of sample size
+
+  # loop through covariates to test
+  for(i in 1:length(covars_to_consider)) {
+
+    selected_covariate <- covars_to_consider[i]
+
+    # drop NAs for all covariates being considered
+    # makes sure you are using the same dataset for each cycle
+    stream_data <- data |>
+      mutate(observed_spawners = ifelse(stream == "deer creek", holding_count, redd_count)) |>
+      filter(upstream_estimate > 0) |>
+      filter(stream == stream_name) |>
+      drop_na(wy_type, max_flow_std, gdd_std, observed_spawners, upstream_estimate) |>
+      mutate(null_covar = 0)
+
+    cli::cli_alert(paste0("Running model for ", stream_name, " and ", selected_covariate))
+
+    covar <- stream_data |>
+      pull(all_of(selected_covariate))
+
+    stream_data_list <- list("N" = length(unique(stream_data$year)),
+                             "input_years" = unique(stream_data$year),
+                             "observed_passage" = stream_data$upstream_estimate,
+                             "observed_spawners" = stream_data$observed_spawners,
+                             "percent_female" = percent_female,
+                             "environmental_covar" = covar,
+                             "ss_total" = calculate_ss_tot(stream_data),
+                             "average_upstream_passage" = mean(stream_data$upstream_estimate,
+                                                               na.rm = TRUE))
+
+    passage_to_spawner_STAN_code <- read_file("model-files/passage_to_spawner.txt")
+
+    stream_model_fit <- rstan::stan(model_name = paste("passage_to_spawner", stream_name, selected_covariate, sep = "_"),
+                                    model_code = passage_to_spawner_STAN_code,
+                                    data = stream_data_list,
+                                    chains = 3, iter = 20000*2, seed = 84735)
+
+    # check rhat
+    rhat_diagnostic <- bayesplot::rhat(stream_model_fit) |> unname()
+    rhat_diagnostic <- rhat_diagnostic[rhat_diagnostic != "NaN"]
+    rhats_over_threshold <- sum(rhat_diagnostic > 1.05) > 0
+
+    if(rhats_over_threshold){
+      convergence_rhat <- FALSE
+    } else {
+      convergence_rhat <- TRUE
+    }
+
+    stream_results <- get_all_pars(stream_model_fit, stream_name) |>
+      filter(par_names %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
+                              "b1_survival", "sigma_redds_per_spawner") |
+               str_detect(par_names, "spawner_abundance_forecast")) |> # TODO add pspawn after it's added to STAN code
+      select(par_names, stream, mean, median = `50%`, sd, lcl = `2.5%`, ucl = `97.5%`) |>
+      mutate(covar_considered = selected_covariate,
+             convergence_metric = convergence_rhat)
+
+    final_results <- bind_rows(final_results, stream_results)
+  }
+
+  final_results <- final_results |>
+    filter(par_names != "DELETE")
+
+  return(final_results)
 }
 

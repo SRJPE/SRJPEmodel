@@ -29,6 +29,13 @@ mill_results <- run_passage_to_spawner_model(observed_adult_input,
                                              "mill creek",
                                              "wy_type")
 
+# write model summaries ---------------------------------------------------
+P2S_model_fits <- bind_rows(battle_results$formatted_pars,
+                            clear_results$formatted_pars,
+                            mill_results$formatted_pars,
+                            deer_results$formatted_pars) |>
+  glimpse()
+
 # these are preliminary!
 butte_results <- run_passage_to_spawner_model(observed_adult_input,
                                               adult_model_covariates,
@@ -36,12 +43,9 @@ butte_results <- run_passage_to_spawner_model(observed_adult_input,
                                               "gdd_std")
 
 
-# write model summaries ---------------------------------------------------
-P2S_model_fits <- bind_rows(battle_results$formatted_pars,
-                            clear_results$formatted_pars,
-                            mill_results$formatted_pars,
-                            deer_results$formatted_pars) |>
-  glimpse()
+# try in comparison mode --------------------------------------------------
+comparison_results <- compare_P2S_model_covariates(observed_adult_input,
+                                                   adult_model_covariates)
 
 
 # save to google cloud ----------------------------------------------------

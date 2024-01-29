@@ -10,5 +10,5 @@ get_all_pars(model_fit, stream_name)
 This function extracts parameter estimates and summary statistics for
 the Passage to Spawner model (see \code{?run_passage_to_spawner_model}). The function
 calls \code{summary()} on the \code{stanfit} object produced by running the model. For details,
-see \html{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}.
+see \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details}.
 }
