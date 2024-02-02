@@ -4,7 +4,7 @@
 \alias{compare_P2S_model_covariates}
 \title{Compare Environmental Covariates in Passage to Spawner (P2S) Model}
 \usage{
-compare_P2S_model_covariates(data, stream_name)
+compare_P2S_model_covariates(observed_adult_input, adult_model_covariates)
 }
 \value{
 A table containing the following variables:
@@ -18,12 +18,13 @@ A table containing the following variables:
 }
 }
 \description{
-This function is called in \code{run_passage_to_spawner_model()} and iterates
-through available environmental covariates for a stream, pulling out diagnostic statistics. The
+This function iterates through adult input data for every stream and
+environmental covariate, fiting the P2S model and pulling out diagnostic statistics. The
 data is truncated to only include years for which all environmental covariates are available.
 }
 \seealso{
 Other passage_to_spawner: 
+\code{\link{compare_P2S_covariates_within_stream}()},
 \code{\link{run_passage_to_spawner_model}()}
 }
 \concept{passage_to_spawner}

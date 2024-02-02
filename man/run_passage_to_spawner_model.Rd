@@ -8,15 +8,10 @@ run_passage_to_spawner_model(
   observed_adult_input,
   adult_model_covariates,
   stream_name,
-  selected_covariate,
-  compare_environmental_covariate_mode = c(FALSE, TRUE)
+  selected_covariate
 )
 }
 \arguments{
-\item{compare_environmental_covariate_mode}{Whether or not you want to compare all environmental covariates
-for all streams (for selecting the best performing environmental covariate). Defaults to \code{FALSE}, but if true,
-will iterate through all available streams and covariates (including a null covariate).}
-
 \item{observed_adult_input:}{The exported data object \code{SRJPEdata::observed_adult_input}. See \code{?SRJPEdata::observed_adult_input} for
 details on data structure.}
 
@@ -33,14 +28,14 @@ or \code{null_covar} (no environmental covariate).
 See \code{vignette("prep_environmental_covariates.Rmd", package = "SRJPEdata")} for more details.}
 }
 \value{
-If \code{compare_environmental_covariate_mode == FALSE}, returns a list containing
+Returns a list containing
 \code{full_object}, the full fitted \code{stanfit} object (see \href{https://mc-stan.org/rstan/reference/stanfit-class.html}{details}),
 and \code{formatted_pars}, a formatted data table containing the following variables:
 \itemize{
 \item \strong{par_names} Parameter name
 \item \strong{mean} Mean of the posterior distribution for a parameter
 \item \strong{se_mean} Monte Carlo standard error for summary of all chains merged (see \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details})
-\item \strong{sd} Mean of the posterior distribution for a parameter
+\item \strong{sd} Standard deviation of the posterior distribution for a parameter
 \item \strong{\verb{2.5\%}} 2.5\% quantile of posterior distribution for a parameter.
 \item \strong{\verb{25\%}} 25\% quantile of posterior distribution for a parameter.
 \item \strong{\verb{50\%}} 50\% quantile of posterior distribution for a parameter.
@@ -49,17 +44,6 @@ and \code{formatted_pars}, a formatted data table containing the following varia
 \item \strong{n_eff} Effective sample size for a parameter
 \item \strong{Rhat} Split Rhats for a parameter
 \item \strong{stream} Stream name for the parameter estimate
-}
-
-If \code{compare_environmental_covariate_mode == TRUE}, returns a list with the table
-\code{covariate_comparison_results} with the variables:
-\itemize{
-\item \strong{par_names} Parameter name
-\item \strong{stream} Mean of the posterior distribution for a parameter
-\item \strong{mean} Monte Carlo standard error for summary of all chains merged (see \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details})
-\item \strong{median} 50\% quantile of posterior distribution for a parameter.
-\item \strong{sd} standard deviation
-\item \strong{covar_considered} the covariate considered
 }
 }
 \description{
@@ -70,6 +54,7 @@ TODO link to a vignette describing model and model comparisons?
 }
 \seealso{
 Other passage_to_spawner: 
+\code{\link{compare_P2S_covariates_within_stream}()},
 \code{\link{compare_P2S_model_covariates}()}
 }
 \concept{passage_to_spawner}

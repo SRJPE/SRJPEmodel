@@ -46,6 +46,21 @@ get_all_pars <- function(model_fit, stream_name) {
   return(results_tibble)
 }
 
+#' @title Extract Years Passage to Spawner Estimates
+#' @description This function extracts the years the data were collected from the results of
+#' the Passage to Spawner model (see `?run_passage_to_spawner_model`).
+#' @export
+#' @md
+get_years_from_P2S_model_fits <- function(P2S_model_fits) {
+  years <- P2S_model_fits |>
+    filter(stringr::str_detect(par_names, "years")) |>
+    mutate(year_index = readr::parse_number(par_names),
+           mean = round(mean)) |>
+    select(year_index, year = mean, stream)
+
+  years
+}
+
 
 #' @title Run Passage to Spawner (P2S) STAN Model
 #' @description This function takes in `SRJPEdata::observed_adult_input` and `SRJPEdata::adult_model_covariates_standard`
@@ -63,13 +78,13 @@ get_all_pars <- function(model_fit, stream_name) {
 #' `passage_index` (total upstream passage), `median_passage_timing_std` (median passage timing),
 #' or `null_covar` (no environmental covariate).
 #' See \code{vignette("prep_environmental_covariates.Rmd", package = "SRJPEdata")} for more details.
-#' @returns If `compare_environmental_covariate_mode == FALSE`, returns a list containing
+#' @returns Returns a list containing
 #' `full_object`, the full fitted `stanfit` object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html)),
 #' and `formatted_pars`, a formatted data table containing the following variables:
 #' * **par_names** Parameter name
 #' * **mean** Mean of the posterior distribution for a parameter
 #' * **se_mean** Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
-#' * **sd** Mean of the posterior distribution for a parameter
+#' * **sd** Standard deviation of the posterior distribution for a parameter
 #' * **`2.5%`** 2.5% quantile of posterior distribution for a parameter.
 #' * **`25%`** 25% quantile of posterior distribution for a parameter.
 #' * **`50%`** 50% quantile of posterior distribution for a parameter.
@@ -100,8 +115,11 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
   percent_female <- case_when(stream_name %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
                               stream_name %in% c("yuba river", "feather river", "butte creek", "deer creek") ~ 1)
 
-  if(!stream_name %in% c("battle creek", "clear creek", "mill creek", "butte creek")){
+  if(!stream_name %in% c("battle creek", "clear creek", "mill creek", "deer creek", "butte creek")){
     cli::cli_abort("Incorrect stream name. Please pass an approved stream.")
+    if(stream_name == "butte creek") {
+      cli::cli_bullet("Butte Creek Passage to Spawner model is still in development and these results have not been tested or verified and should not be used for further analysis.")
+    }
   }
   if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "passage_index", "median_passage_timing_std", "null_covar")){
     cli::cli_abort("Incorrect/Unavailable environmental covariate. Please pass an approved covariate name.")

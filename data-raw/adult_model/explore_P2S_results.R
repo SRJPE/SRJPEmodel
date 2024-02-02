@@ -4,6 +4,7 @@ library(SRJPEmodel)
 library(tidyverse)
 library(rstan)
 
+# TODO move this to vignette
 # pull in data from SRJPEdata ---------------------------------------------
 observed_adult_input <- SRJPEdata::observed_adult_input
 adult_model_covariates <- SRJPEdata::adult_model_covariates_standard
@@ -48,10 +49,6 @@ comparison_results <- compare_P2S_model_covariates(observed_adult_input,
                                                    adult_model_covariates)
 
 
-# save to google cloud ----------------------------------------------------
-f <- function(input, output) write_csv(input, file = output)
-
-gcs_upload(P2S_model_fits,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/P2S_model_fits.csv")
+# save as data object ----------------------------------------------------
+# this used to be saved in the cloud as "jpe-model-data/adult-model/P2S_model_fits.csv"
+usethis::use_data(P2S_model_fits, overwrite = TRUE)
