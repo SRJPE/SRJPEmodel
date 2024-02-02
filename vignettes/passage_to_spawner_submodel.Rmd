@@ -25,6 +25,7 @@ library(tidyverse)
 library(tidybayes)
 library(wesanderson)
 library(SRJPEdata)
+library(SRJPEmodel)
 ```
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
@@ -75,7 +76,7 @@ Methods 2 and 3 were conducted by the stream monitoring programs themselves and 
 
 Battle Creek, Clear Creek, Deer Creek, and Mill Creek data were combined into one dataset where `spawner_count` represented the survey associated with spawning adults (either `redd_count` or `holding_count`) and `upstream_estimate` represented the estimates of adults passing through the video stations. Stream monitoring programs provided estimates of upstream passage directly.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 observed_adult_input_wide |> 
   filter(!stream %in% c("yuba river", "feather river", "butte creek")) |>  
   mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
@@ -97,7 +98,7 @@ Generally, `upstream_estimate` exceeded `spawner_count`, though the plot assumes
 
 Prespawn survival, or the proportion of adults that survived from upstream passage to spawn, was calculated as `upstream_estimate / spawner_count`. When we were using redd counts as `spawner_count`, our model assumed a 50/50 sex ratio and modified that equation to be `upstream_estimate / (spawner_count * 0.5)`,. Generally, one redd per female is a reasonable assumption although our model left the possibility open for more than one redd per female [(source)](https://www.researchgate.net/publication/233231658_The_Number_of_Redds_Constructed_per_Female_Spring_Chinook_Salmon_in_the_Wenatchee_River_Basin).
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 observed_adult_input_with_prespawn_survival |> 
   filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
   ggplot(aes(x = year, y = prespawn_survival, color = stream)) +
@@ -233,17 +234,23 @@ P2S_model_fits <- bind_rows(battle_results$formatted_pars,
                             clear_results$formatted_pars,
                             mill_results$formatted_pars,
                             deer_results$formatted_pars)
+```
 
+```{r, message = FALSE, echo = FALSE, warning = FALSE}
 knitr::kable(head(P2S_model_fits, 10))
 ```
 
 We then save the P2S model fits as a data object:
 
-```{r, message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
 usethis::use_data(P2S_model_fits, overwrite = TRUE)
 ```
 
 Finally, we can compare all covariates for all streams and save the object for diagnostics:
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE}
+knitr::kable(head(comparison_results, 10))
+```
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
 compare_covariates <- compare_P2S_model_covariates(observed_adult_input,
@@ -272,7 +279,7 @@ The highest estimate for $\beta_{1}$ for Mill Creek was `r comparison_results |>
 
 Important to note for all continuous environmental variables is that the forecast is based on an average; if implemented, forecasts would rely on modeled future temperature and flow and likely have more uncertainty. For this reason further analyses are based on results from fitting each tributary's data to the model using water year type.
 
-```{r, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE}
 years_modeled <- get_years_from_P2S_model_fits(P2S_model_fits)
 
 predicted_spawners_with_year <- P2S_model_fits |> 
@@ -324,11 +331,11 @@ The P2S model produces annual spawner estimates and a conversion rate. However, 
 
 
 ## Figures
-# TODO decide if we want to source adult_model_diagnostics.R and fix data there OR run these plots in the markdown
+TODO decide if we want to source adult_model_diagnostics.R and fix data there OR run these plots in the markdown
 
 Figure 1: Upstream Passage and Spawner Abundance for spring run chinook salmon in four tributaries of the Sacramento River
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 observed_adult_input_wide |> 
   filter(!stream %in% c("yuba river", "feather river", "butte creek")) |> 
   mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
@@ -346,14 +353,15 @@ observed_adult_input_wide |>
 ```
 
 Figure 2: Parameter structure used in the model. The conversion rate of upstream passage to spawner count is composed of a fixed effect, an environmental covariate, and a random year effect.
-```{r, echo = FALSE}
+```{r, echo = FALSE, out.width = "800px"}
 knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "parameter_diagram.png"),
                         rel_path = FALSE)
 ```
 
 Figure 3: Conversion rates plotted by stream, with points colored by water year type (dry vs. wet).
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# in adult_model_diagnostics.R as plot_conversion_rate
 conversion_rates <- P2S_model_fits |>
   filter(str_detect(par_names, "conversion_rate")) |>
   mutate(lcl = `2.5%`, ucl = `97.5%`,
@@ -389,7 +397,8 @@ conversion_rates |>
 
 Figure 4: Relationship between upstream passage abundance and spawner abundance as indexed by redd counts of snorkel swims (holding) for battle creek. The points represent the data used in the model. The black solid line is the conversion rate from passage-spawners under average covariate conditions (water year type = 0 or 1 for dry and wet classes, respectively). The shaded grey area is the 95% credible interval of that average conversion rate. The red vertical lines represent predictions of spawner abundance from the model. In this example the red lines only show up for the wet year type, as the dry year type is coded as 0. The black dashed-line is the 1:1 line (upstream passage = spawners). 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# in adult_model_diagnostics.R as josh plot
 redds_per_spawner <- P2S_model_fits |>
   filter(str_detect(par_names, "log_mean_redds_per_spawner")) |>
   mutate(rps = exp(`50%`),
@@ -463,34 +472,84 @@ observed_adult_input_wide |>
 ```
 
 Figure 5: Forecasting for water year type, temperature, flow, and the null model. The null model did not converge for any stream and flow did not converge for Mill Creek. TODO update this. 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-# TODO update this code
-knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "ALL_alternative_forecast_plot.jpg"),
-                        rel_path = FALSE)
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# in adult_model_diagnostics.R as alternative_forecast
+# TODO figure out dimensions for this plot
+forecasts <- comparison_results |> 
+  filter(str_detect(par_names, "abundance_forecast")) |> 
+  mutate(year_index = readr::parse_number(par_names),
+         par_names = ifelse(year_index == "1", "forecast_dry_year", "forecast_wet_year"),
+         forecast_level = ifelse(par_names == "forecast_dry_year", "Dry", "Wet"),
+         data_type = "forecast",
+           covar_considered = case_when(covar_considered == "wy_type" ~ "WY type",
+                                        covar_considered == "max_flow_std" ~ "Flow",
+                                        covar_considered == "gdd_std" ~ "Temp",
+                                        covar_considered == "passage_index" ~ "Total Passage",
+                                        covar_considered == "null_covar" ~ "Null"),
+           forecast_level = ifelse(forecast_level == "Dry", "Low", "High"),
+           covar_considered_f = factor(covar_considered,
+                                       levels = c("Null", "WY type", "Temp", "Flow", "Total Passage")),
+         stream = str_to_title(stream)) |>  
+  filter(!(covar_considered == "Null" & forecast_level == "High"))
+
+forecasts |> 
+  mutate(adult_count = median) |> 
+  filter(!adult_count %in% c(0, Inf)) |> 
+  ggplot(aes(x = forecast_level, y = adult_count)) +
+      geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
+                    width = 0.3, alpha = 0.7) +
+      geom_point(aes(x = forecast_level, y = adult_count,
+                     color = forecast_level),
+                 size = 4) +
+      facet_wrap(~stream + covar_considered_f, scales = "free",
+                 ncol = 2) +
+      xlab("Forecast Level") + ylab("Predicted Spawner Count at Across-year Mean Passage") +
+      scale_color_manual("Forecast Level",
+                         values = wes_palette("GrandBudapest1")[2:3]) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, size = 15),
+            legend.position = "bottom",
+            strip.text = element_text(size = 12),
+            axis.text = element_text(size = 12),
+            legend.text = element_text(size = 12),
+            legend.title = element_text(size = 12),
+            axis.text.x = element_text(angle = 45))
+
 ```
 
 
 Figure 6: Predicted vs. observed spawner counts.
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-# plot
-P2S_model_fits |> 
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+predicted_vs_observed_spawner_counts <- P2S_model_fits |> 
   filter(str_detect(par_names, "predicted_spawner")) |> 
+  mutate(year_index = readr::parse_number(par_names)) |> 
+  left_join(years_modeled, by = c("stream", "year_index")) |> 
   rename(pred_spawner_count = mean) |> 
-  left_join(observed_adult_input |> 
+  left_join(observed_adult_input_wide |> 
               mutate(obsv_spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |> 
-              select(obsv_spawner_count, year),
-            by = "year") |> 
+              select(obsv_spawner_count, year, stream),
+            by = c("year", "stream")) |> 
+  mutate(stream = str_to_title(stream))
+
+# plot
+ predicted_vs_observed_spawner_counts |> 
   ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(~stream, scales = "free") +
-  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count")
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  facet_wrap(~stream, scales = "free") +
+  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count") +
+  ggtitle("Predicted vs. Observed Spawner Counts")
 ```
 
 Figure 7: Comparison of random vs. fixed effects magnitude.
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 P2S_model_fits |>
   filter(str_detect(par_names, "log_redds_per_spawner") |
          str_detect(par_names, "conversion_rate")) |> 
-  mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "conversion_rate")) |>
+  mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "conversion_rate"),
+         year_index = readr::parse_number(par_names)) |>
+  left_join(years_modeled, by = c("year_index", "stream")) |> 
+  mutate(stream = str_to_title(stream)) |> 
   ggplot(aes(x = year, y = mean, color = par_name)) +
   geom_point() +
   scale_color_manual(name = "Parameter name",
@@ -498,6 +557,7 @@ P2S_model_fits |>
                                   "Predicted survival rate"),
                      values = wes_palette("GrandBudapest1")[2:3]) +
   facet_wrap(~stream, scales = "free") +
+  ggtitle("Random Effects vs. Fixed Effects") +
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
   xlab("Year") + ylab("Mean estimated value") + theme_minimal()  +
   theme(legend.position = "bottom")
@@ -507,7 +567,7 @@ P2S_model_fits |>
 ## Tables
 
 Table 1: Sample size of datasets for use in the Passage-to-Spawner model for four tributaries. The sample size column refers to the number of years where upstream passage and a spawner survey (redd or holding) are both available.
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 table_1 <- observed_adult_input_wide |> 
   filter(stream %in% c("deer creek", "clear creek", "battle creek", "mill creek")) |>
   mutate(spawner_count = ifelse(stream == "deer creek", holding_count, redd_count),
@@ -569,7 +629,7 @@ knitr::kable(table_2)
 
 Table 3: Parameter estimates from fitting the model to all environmental covariates for each tributary, including a null model.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 table_3 <- comparison_results |> 
   arrange(stream, par_names) |> 
   filter(par_names != "R2_data") |> 
@@ -585,7 +645,7 @@ knitr::kable(table_3)
 ```
 Table 4: Parameter estimates from fitting the model to water year type for each tributary. 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 table_4 <- P2S_model_fits |> 
   filter(par_names %in% 
            c("log_mean_redds_per_spawner", "sigma_redds_per_spawner", "b1_survival", "R2_fixed", "spawner_abundance_forecast")) |> 
@@ -596,7 +656,7 @@ table_4 <- P2S_model_fits |>
                                par_names == "spawner_abundance_forecast" ~ "Forecasted Spawner Abundance",
                                par_names == "R2_fixed" ~ "$R^{2}$ of fixed effects"),
          stream = str_to_title(stream),
-         mean = ifelse(par_names == "log_mean_redds_per_spawner", round(exp(mean), 3), round(mean)),
+         mean = ifelse(par_names == "log_mean_redds_per_spawner", round(exp(mean), 3), round(mean, 3)),
          se_mean = round(se_mean, 3), sd = round(sd, 3), 
          `2.5%` = round(`2.5%`, 3), `50%` = round(`50%`, 3), `97.5%` = round(`97.5%`, 3)) |> 
   select(`Parameter` = par_names, Stream = stream, Mean = mean, `Standard Error (mean)` = se_mean, 
@@ -612,19 +672,13 @@ For the remaining streams in the JPE, other methods were used to get an estimate
 
 The CJS and GAM were conducted by the stream monitoring programs themselves and results of the CJS model and upstream passage estimates were provided by staff directly for Butte Creek, Feather River, and Yuba River. The specific methods applied in these streams are available ([Butte](https://www.calfish.org/ProgramsData/ConservationandManagement/CentralValleyMonitoring/SacramentoValleyTributaryMonitoring/ButteCreek.aspx) and [Feather](https://deltacouncil.ca.gov/pdf/science-program/fact-sheets/2020-10-06-monitoring-chinook-salmon.pdf): unpublished reports; Yuba: Poxon, B., P. Bratovich. 2020. Lower Yuba River Vaki Riverwatcher Chinook Salmon Passage and Run Differentiation Analyses. HDR). 
 
-
-# Diagnostics
-
-
-
-
 #### Results: Battle
 
 The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(mean, 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> pull(CIs)`.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-diagnostics_with_year |> 
-  filter(stream == "battle creek") |> 
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+predicted_vs_observed_spawner_counts |> 
+  filter(stream == "Battle Creek") |> 
   ggplot(aes(x = year, y = obsv_spawner_count)) + 
   geom_point(col = wes_palette("GrandBudapest1")[2]) +
   geom_line(aes(x = year, y = pred_spawner_count)) + 
@@ -637,10 +691,9 @@ diagnostics_with_year |>
 
 The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> pull(CIs)`.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-
-diagnostics_with_year |> 
-  filter(stream == "clear creek") |>  
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+predicted_vs_observed_spawner_counts |> 
+  filter(stream == "Clear Creek") |> 
   ggplot(aes(x = year, y = obsv_spawner_count)) + 
   geom_point(col = wes_palette("GrandBudapest1")[2]) +
   geom_line(aes(x = year, y = pred_spawner_count)) + 
@@ -654,9 +707,9 @@ diagnostics_with_year |>
 
 The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> pull(CIs)`.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-diagnostics_with_year |> 
-  filter(stream == "mill creek") |>  
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+predicted_vs_observed_spawner_counts |> 
+  filter(stream == "Mill Creek") |> 
   ggplot(aes(x = year, y = obsv_spawner_count)) + 
   geom_point(col = wes_palette("GrandBudapest1")[2]) +
   geom_line(aes(x = year, y = pred_spawner_count)) + 
@@ -669,9 +722,9 @@ diagnostics_with_year |>
 
 The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> pull(CIs)`. 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-diagnostics_with_year |> 
-  filter(stream == "deer creek") |> 
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+predicted_vs_observed_spawner_counts |> 
+  filter(stream == "Deer Creek") |>  
   ggplot(aes(x = year, y = obsv_spawner_count)) + 
   geom_point(col = wes_palette("GrandBudapest1")[2]) +
   geom_line(aes(x = year, y = pred_spawner_count)) + 
@@ -687,9 +740,10 @@ diagnostics_with_year |>
 
 Butte Creek recommended using adult spawner abundance as estimated by their Cormack Jolly-Seber (CJS) model. These data were acquired directly from stream teams and are available for use.
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-butte_data |>
-  ggplot(aes(x = year, y = spawner_estimate)) +
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+observed_adult_input_wide |> 
+  filter(stream == "butte creek") |> 
+  ggplot(aes(x = year, y = carcass_estimate)) +
   geom_line() +
   xlab("Year") + ylab("Spawner estimate") +
   ggtitle("Butte creek spawner estimates (CJS)") +
@@ -699,9 +753,10 @@ butte_data |>
 #### Feather River
 
 Feather River provided adult spawner abundance as estimated by CJS.
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-feather_data |> 
-  ggplot(aes(x = year, y = spawner_estimate)) +
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+observed_adult_input_wide |> 
+  filter(stream == "feather river") |> 
+  ggplot(aes(x = year, y = carcass_estimate)) +
   geom_line() +
   xlab("Year") + ylab("Spawner estimate") +
   ggtitle("Feather River spawner estimates (CJS)") +
@@ -714,9 +769,10 @@ feather_data |>
 
 Yuba River provided upstream passage estimates. This method assumes that `upstream_estimate` is a proxy for `spawner_count`, and we believe this is a reasonable assumption because anecdotally prespawn mortality is minimal on the Yuba. 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-yuba_data |>
-  ggplot(aes(x = year, y = passage_estimate)) +
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+observed_adult_input_wide |> 
+  filter(stream == "yuba river") |> 
+  ggplot(aes(x = year, y = upstream_estimate)) +
   geom_line() +
   xlab("Year") + ylab("Spawner estimate") +
   ggtitle("Yuba river spawner estimates (Upstream passage)") +
@@ -728,30 +784,23 @@ yuba_data |>
 
 After modeling, the stock-recruit model will be fed a table of spawner counts by stream and year. These are either `modeled_spawners` for Battle, Clear, Mill, and Deer Creeks; `upstream_passage_estimate` for Yuba River; or `carcass_cjs_estimate` for Butte Creek and Feather River. 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 all_data_sources <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawner")) |>
-  select(stream, adult_count = mean,
-         lcl = `2.5%`, ucl = `97.5%`) |>
   arrange(stream) |>
-  mutate(year = years_to_join,
-         data_type = "P2S spawners estimates") |>
-  bind_rows(yuba_data |>
-              rename(adult_count = passage_estimate) |>
-              mutate(data_type = "passage estimate",
-                     stream = "yuba river"),
-            butte_data |>
-              rename(adult_count = spawner_estimate) |>
-              mutate(data_type = "CJS spawner estimate",
-                     stream = "butte data"),
-            feather_data |>
-              rename(adult_count = spawner_estimate) |>
-              mutate(data_type = "passage estimate",
-                     stream = "feather river")) |>
-  glimpse()
+  mutate(year_index = readr::parse_number(par_names),
+         data_type = "P2S spawners estimates",
+         ucl = `97.5%`,
+         lcl = `2.5%`,
+         adult_count = `50%`) |>
+  left_join(years_modeled, by = c("year_index", "stream")) |> 
+  bind_rows(observed_adult_input_wide |> 
+              filter(stream %in% c("yuba river", "butte creek", "feather river")) |> 
+              mutate(adult_count = ifelse(stream == "yuba river", upstream_estimate, carcass_estimate),
+                     data_type = ifelse(stream == "yuba river", "Passage estimate", "CJS spawner estimate"))) |> 
+  mutate(stream = str_to_title(stream))
 
 all_data_sources |>
-  mutate(stream = str_to_title(stream)) |>
   ggplot(aes(x = year, y = adult_count)) +
   geom_line(aes(color = data_type)) +
   labs(color = "Data Type") +
@@ -774,38 +823,3 @@ all_data_sources |>
 ## Appendix: diagnostics for STAN model
 
 The STAN model is a mixed-effects model and as such is expected to produce predicted spawner counts that closely match observed spawner counts, with either the fixed effect or random effects absorbing much of the error. To assess the suitability of the model’s fixed effect (which can be forecasted using environmental covariate data), we looked at the predicted vs. spawner counts for each stream and the R squared value of that relationship, and we plotted the survival rate (which incorporates the fixed effect) and log redds-per-spawner parameter estimate (which are the random effects) for each year and stream to assess their magnitude.
-
-### Predicted vs. observed spawner counts
-
-The predicted spawner counts very closely matched the observed spawner counts. The R squared of a linear regression of predicted vs. observed spawner counts was `r round(summary(lm(pred_spawner_count ~ obsv_spawner_count, data = diagnostics_with_year))$r.squared, 3)`. 
-
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-# plot
-diagnostics_with_year |> ggplot(aes(x = obsv_spawner_count, y = pred_spawner_count)) +
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(~stream, scales = "free") +
-  theme_minimal() + xlab("Observed Spawner Count") + ylab("Predicted Spawner Count")
-```
-
-### Random vs. fixed effects
-
-For Battle Creek, the magnitude of the random effects were much greater than those of the fixed effect parameters. 
-
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
-P2S_model_fits |>
-  filter(str_detect(par_names, "log_redds_per_spawner") |
-         str_detect(par_names, "conversion_rate")) |> 
-  mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "conversion_rate")) |>
-  arrange(par_name) |>
-  mutate(year = rep(years_to_join, 2)) |> 
-  ggplot(aes(x = year, y = mean, color = par_name)) +
-  geom_point() +
-  scale_color_manual(name = "Parameter name",
-                     labels = c("Log redds/spawner (RE)",
-                                  "Predicted survival rate"),
-                     values = wes_palette("GrandBudapest1")[2:3]) +
-  facet_wrap(~stream, scales = "free") +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
-  xlab("Year") + ylab("Mean estimated value") + theme_minimal()  +
-  theme(legend.position = "bottom")
-  
-```

@@ -9,17 +9,17 @@ A tibble with 343 rows and 12 columns
 \itemize{
 \item \code{par_names}: Parameter name
 \item \code{mean}: Mean of the posterior distribution for a parameter
-\item \code{se_mean}: Monte Carlo standard error for summary of all chains merged (see \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details})
+\item \code{se_mean}: Monte Carlo standard error for summary of all chains merged. See \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details}
 \item \code{sd}: Standard deviation of the posterior distribution for a parameter
-\item \code{\verb{2.5\%}}: 2.5\% quantile of posterior distribution for a parameter
-\item \code{\verb{25\%}}: 25\% quantile of posterior distribution for a parameter
-\item \code{\verb{50\%}}: 50\% quantile of posterior distribution for a parameter
-\item \code{\verb{75\%}}: 75\% quantile of posterior distribution for a parameter
-\item \code{`97.5%`}: 97.5% quantile of posterior distribution for a parameter
-  \item \code{n_eff}: Effective sample size for a parameter
-  \item \code{Rhat}: Split Rhats for a parameter
-  \item \code{stream}: Stream name for the parameter estimate
-  }
+\item \code{2.5\%}: 2.5\% quantile of posterior distribution for a parameter
+\item \code{25\%}: 25\% quantile of posterior distribution for a parameter
+\item \code{50\%}: 50\% quantile of posterior distribution for a parameter
+\item \code{75\%}: 75\% quantile of posterior distribution for a parameter
+\item \code{97.5\%}: 97.5\% quantile of posterior distribution for a parameter
+\item \code{n_eff}: Effective sample size for a parameter
+\item \code{Rhat}: Split Rhats for a parameter
+\item \code{stream}: Stream name for the parameter estimate
+}
 }
 \usage{
 P2S_model_fits

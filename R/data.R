@@ -9,13 +9,13 @@
 #' \itemize{
 #'   \item \code{par_names}: Parameter name
 #'   \item \code{mean}: Mean of the posterior distribution for a parameter
-#'   \item \code{se_mean}: Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
+#'   \item \code{se_mean}: Monte Carlo standard error for summary of all chains merged. See [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html)
 #'   \item \code{sd}: Standard deviation of the posterior distribution for a parameter
-#'   \item \code{`2.5%`}: 2.5% quantile of posterior distribution for a parameter
-#'   \item \code{`25%`}: 25% quantile of posterior distribution for a parameter
-#'   \item \code{`50%`}: 50% quantile of posterior distribution for a parameter
-#'   \item \code{`75%`}: 75% quantile of posterior distribution for a parameter
-#'   \item \code{`97.5%`}: 97.5% quantile of posterior distribution for a parameter
+#'   \item \code{2.5\%}: 2.5% quantile of posterior distribution for a parameter
+#'   \item \code{25\%}: 25% quantile of posterior distribution for a parameter
+#'   \item \code{50\%}: 50% quantile of posterior distribution for a parameter
+#'   \item \code{75\%}: 75% quantile of posterior distribution for a parameter
+#'   \item \code{97.5\%}: 97.5% quantile of posterior distribution for a parameter
 #'   \item \code{n_eff}: Effective sample size for a parameter
 #'   \item \code{Rhat}: Split Rhats for a parameter
 #'   \item \code{stream}: Stream name for the parameter estimate
@@ -32,7 +32,7 @@
 #'   \item \code{stream}: Stream for which the model was run
 #'   \item \code{mean}: Mean of the posterior distribution for a parameter
 #'   \item \code{median}: Median the posterior distribution for a parameter
-#'   \item \code{sd`}: Standard deviation of the posterior distribution for a parameter
+#'   \item \code{sd}: Standard deviation of the posterior distribution for a parameter
 #'   \item \code{lcl}: 2.5% lower confidence limit
 #'   \item \code{ucl}: 97.5 upper confidence limit
 #'   \item \code{covar_considered}: The covariate associated with the results

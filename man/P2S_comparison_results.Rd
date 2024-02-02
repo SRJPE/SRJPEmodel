@@ -3,7 +3,6 @@
 \docType{data}
 \name{P2S_comparison_results}
 \alias{P2S_comparison_results}
-\alias{P2S_model_fits}
 \title{Passage to Spawner Covariate Comparison results}
 \format{
 A tibble with 140 rows and 9 columns
@@ -12,7 +11,7 @@ A tibble with 140 rows and 9 columns
 \item \code{stream}: Stream for which the model was run
 \item \code{mean}: Mean of the posterior distribution for a parameter
 \item \code{median}: Median the posterior distribution for a parameter
-\item \code{sd`}: Standard deviation of the posterior distribution for a parameter
+\item \code{sd}: Standard deviation of the posterior distribution for a parameter
 \item \code{lcl}: 2.5\% lower confidence limit
 \item \code{ucl}: 97.5 upper confidence limit
 \item \code{covar_considered}: The covariate associated with the results
@@ -20,7 +19,7 @@ A tibble with 140 rows and 9 columns
 }
 }
 \usage{
-P2S_model_fits
+P2S_comparison_results
 }
 \description{
 Output from running \code{SRJPEmodel::compare_P2S_model_covariates()}

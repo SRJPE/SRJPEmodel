@@ -223,12 +223,13 @@ compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covar
 
 }
 
+#' @title Compare Environmental Covariates in Passage to Spawner (P2S) Model Within a Stream
 #' @description This function is called within `compare_P2S_model_covariates()` and iterates through all
 #' environmental covariates for a stream, producing diagnostic statistics for that stream.
 #' @returns A table containing the following variables:
 #' * **par_names** Parameter name
 #' * **stream** Mean of the posterior distribution for a parameter
-#' * **mean** Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
+#' * **mean** Monte Carlo standard error for summary of all chains merged. Seee [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html)
 #' * **median** 50% quantile of posterior distribution for a parameter.
 #' * **sd** standard deviation
 #' * **covar_considered** the covariate considered
