@@ -463,7 +463,7 @@ observed_adult_input_wide |>
 ```
 
 Figure 5: Forecasting for water year type, temperature, flow, and the null model. The null model did not converge for any stream and flow did not converge for Mill Creek. TODO update this. 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
 # TODO update this code
 knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "ALL_alternative_forecast_plot.jpg"),
                         rel_path = FALSE)
