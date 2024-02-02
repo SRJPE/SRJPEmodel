@@ -38,4 +38,4 @@
 #'   \item \code{covar_considered}: The covariate associated with the results
 #'   \item \code{convergence_metric}: Whether or not the convergence metric was reached
 #'   }
-'P2S_model_fits'
+'P2S_comparison_results'
