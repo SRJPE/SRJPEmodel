@@ -39,3 +39,4 @@
 #'   \item \code{convergence_metric}: Whether or not the convergence metric was reached
 #'   }
 'P2S_comparison_results'
+

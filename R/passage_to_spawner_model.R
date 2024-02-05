@@ -29,23 +29,6 @@ calculate_ss_tot <- function(data) {
   return(ss_tot)
 }
 
-#' @title Extract Passage to Spawner Estimates
-#' @description This function extracts parameter estimates and summary statistics for
-#' the Passage to Spawner model (see `?run_passage_to_spawner_model`). The function
-#' calls `summary()` on the `stanfit` object produced by running the model. For details,
-#' see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html).
-#' @export
-#' @md
-get_all_pars <- function(model_fit, stream_name) {
-  par_results <- rstan::summary(model_fit)$summary
-
-  results_tibble <- as.data.frame(par_results) |>
-    rownames_to_column("par_names") |>
-    mutate(stream = stream_name)
-
-  return(results_tibble)
-}
-
 #' @title Extract Years Passage to Spawner Estimates
 #' @description This function extracts the years the data were collected from the results of
 #' the Passage to Spawner model (see `?run_passage_to_spawner_model`).
@@ -61,12 +44,49 @@ get_years_from_P2S_model_fits <- function(P2S_model_fits) {
   years
 }
 
+#' @title Extract Passage to Spawner Estimates
+#' @description This function extracts parameter estimates and summary statistics for
+#' the Passage to Spawner model (see `?run_passage_to_spawner_model`). The function
+#' calls `summary()` on the `stanfit` object produced by running the model. For details,
+#' see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html).
+#' @export
+#' @md
+get_all_pars <- function(model_fit, stream_name) {
+  par_results <- rstan::summary(model_fit)$summary
+
+  results_tibble <- as.data.frame(par_results) |>
+    rownames_to_column("par_names") |>
+    mutate(stream = stream_name)
+
+  years_modeled <- suppressWarnings(get_years_from_P2S_model_fits(results_tibble))
+
+  results_tibble_with_years <- results_tibble |>
+    mutate(year_index = suppressWarnings(readr::parse_number(par_names))) |>
+    left_join(years_modeled, by = c("year_index", "stream"))
+
+  return(results_tibble_with_years)
+}
+
+#' @title Extract Predicted Spawners from P2S Model
+#' @description This function is called within `run_passage_to_spawner_model()` and pulls only the predicted spawner
+#' counts, 2.5% and 97.5% confidence intervals from the `stanfit` object.
+#' @export
+#' @md
+get_predicted_spawners_from_P2S <- function(results_tibble_with_years) {
+  predicted_spawners <- results_tibble_with_years |>
+    filter(stringr::str_detect(par_names, "predicted_spawners")) |>
+    select(stream, year, median_predicted_spawners = `50%`,
+           lcl = `2.5%`, ucl = `97.5%`) |>
+    mutate(data_type = "P2S_predicted_spawners")
+
+  predicted_spawners
+}
 
 #' @title Run Passage to Spawner (P2S) STAN Model
 #' @description This function takes in `SRJPEdata::observed_adult_input` and `SRJPEdata::adult_model_covariates_standard`
 #' and runs the Passage to Spawner (P2S) model for a selected stream and environmental covariate. The function
-#' will return a formatted list of parameter estimates and the full fitted `STAN` object.
-#' TODO link to a vignette describing model and model comparisons?
+#' will return a formatted list of parameter estimates and the full fitted `stanfit` object.
+#' See \code{vignette("passage_to_spawner_submodel.Rmd", package = "SRJPEmodel")} for more details.
 #' @param observed_adult_input: The exported data object `SRJPEdata::observed_adult_input`. See `?SRJPEdata::observed_adult_input` for
 #' details on data structure.
 #' @param adult_model_covariates_standard: The exported data object `SRJPEdata::adult_model_covariates_standard`. See `?SRJPEdata::adult_model_covariates_standard` for
@@ -77,8 +97,18 @@ get_years_from_P2S_model_fits <- function(P2S_model_fits) {
 #' either `wy_type` (water year type), `max_flow_std` (maximum flow), `gdd_std` (growing degree days),
 #' `passage_index` (total upstream passage), `median_passage_timing_std` (median passage timing),
 #' or `null_covar` (no environmental covariate).
+#' @param extract_predicted_spawners: If `TRUE`, will only produce a tibble with median predicted spawners with upper (97.5%)
+#' and lower (2.5%) confidence intervals. If `FALSE`, returns a list with all parameter estimates and the full `stanfit` object.
 #' See \code{vignette("prep_environmental_covariates.Rmd", package = "SRJPEdata")} for more details.
-#' @returns Returns a list containing
+#' @returns If `extracted_predicted_spawners == TRUE`, Returns a tibble containing the following variables:
+#' * **stream** Stream name
+#' * **year** Year observed data came from
+#' * **median_predicted_spawners** Median predicted spawner value for a given stream and year
+#' * **lcl** 2.5% confidence interval for predicted spawner value
+#' * **ucl** 97.5% confidence interval for predicted spawner value
+#' * **data_type** Data type: `P2S_predicted_spawners`
+#'
+#' If `extracted_predicted_spawners == FALSE`, returns a list containing
 #' `full_object`, the full fitted `stanfit` object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html)),
 #' and `formatted_pars`, a formatted data table containing the following variables:
 #' * **par_names** Parameter name
@@ -93,18 +123,19 @@ get_years_from_P2S_model_fits <- function(P2S_model_fits) {
 #' * **n_eff** Effective sample size for a parameter
 #' * **Rhat** Split Rhats for a parameter
 #' * **stream** Stream name for the parameter estimate
+#' * **year** Year observed data came from
 #' @export
 #' @family passage_to_spawner
 #' @md
 run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covariates,
-                                         stream_name, selected_covariate) {
+                                         stream_name, selected_covariate, extract_predicted_spawners = c(FALSE, TRUE)) {
 
   stream_name <- tolower(stream_name)
 
   # combine observed counts and covariates and pivot wider
   data <- full_join(observed_adult_input,
-                                   adult_model_covariates,
-                                   by = c("year", "stream")) |>
+                    adult_model_covariates,
+                    by = c("year", "stream")) |>
     filter(!is.na(data_type)) |>
     pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
                             median_passage_timing_std, passage_index),
@@ -167,9 +198,16 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
   }
 
   cli::cli_alert(convergence_message)
-  return(list("full_object" = stream_model_fit,
-              "formatted_pars" = get_all_pars(stream_model_fit, stream_name)))
 
+  formatted_pars = get_all_pars(stream_model_fit, stream_name)
+
+  if(extract_predicted_spawners) {
+    predicted_spawners = suppressWarnings(get_predicted_spawners_from_P2S(formatted_pars))
+    return(predicted_spawners)
+  } else {
+    return(list("full_object" = stream_model_fit,
+                "formatted_pars" = get_all_pars(stream_model_fit, stream_name)))
+  }
 }
 
 
