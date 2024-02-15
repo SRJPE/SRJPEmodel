@@ -8,7 +8,8 @@ run_passage_to_spawner_model(
   observed_adult_input,
   adult_model_covariates,
   stream_name,
-  selected_covariate
+  selected_covariate,
+  extract_predicted_spawners = c(FALSE, TRUE)
 )
 }
 \arguments{
@@ -24,11 +25,24 @@ details on data structure.}
 \item{selected_covariate:}{The environmental covariate you'd like to run the model for. Can be
 either \code{wy_type} (water year type), \code{max_flow_std} (maximum flow), \code{gdd_std} (growing degree days),
 \code{passage_index} (total upstream passage), \code{median_passage_timing_std} (median passage timing),
-or \code{null_covar} (no environmental covariate).
+or \code{null_covar} (no environmental covariate).}
+
+\item{extract_predicted_spawners:}{If \code{TRUE}, will only produce a tibble with median predicted spawners with upper (97.5\%)
+and lower (2.5\%) confidence intervals. If \code{FALSE}, returns a list with all parameter estimates and the full \code{stanfit} object.
 See \code{vignette("prep_environmental_covariates.Rmd", package = "SRJPEdata")} for more details.}
 }
 \value{
-Returns a list containing
+If \code{extracted_predicted_spawners == TRUE}, Returns a tibble containing the following variables:
+\itemize{
+\item \strong{stream} Stream name
+\item \strong{year} Year observed data came from
+\item \strong{median_predicted_spawners} Median predicted spawner value for a given stream and year
+\item \strong{lcl} 2.5\% confidence interval for predicted spawner value
+\item \strong{ucl} 97.5\% confidence interval for predicted spawner value
+\item \strong{data_type} Data type: \code{P2S_predicted_spawners}
+}
+
+If \code{extracted_predicted_spawners == FALSE}, returns a list containing
 \code{full_object}, the full fitted \code{stanfit} object (see \href{https://mc-stan.org/rstan/reference/stanfit-class.html}{details}),
 and \code{formatted_pars}, a formatted data table containing the following variables:
 \itemize{
@@ -44,13 +58,14 @@ and \code{formatted_pars}, a formatted data table containing the following varia
 \item \strong{n_eff} Effective sample size for a parameter
 \item \strong{Rhat} Split Rhats for a parameter
 \item \strong{stream} Stream name for the parameter estimate
+\item \strong{year} Year observed data came from
 }
 }
 \description{
 This function takes in \code{SRJPEdata::observed_adult_input} and \code{SRJPEdata::adult_model_covariates_standard}
 and runs the Passage to Spawner (P2S) model for a selected stream and environmental covariate. The function
-will return a formatted list of parameter estimates and the full fitted \code{STAN} object.
-TODO link to a vignette describing model and model comparisons?
+will return a formatted list of parameter estimates and the full fitted \code{stanfit} object.
+See \code{vignette("passage_to_spawner_submodel.Rmd", package = "SRJPEmodel")} for more details.
 }
 \seealso{
 Other passage_to_spawner: 

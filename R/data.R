@@ -19,6 +19,8 @@
 #'   \item \code{n_eff}: Effective sample size for a parameter
 #'   \item \code{Rhat}: Split Rhats for a parameter
 #'   \item \code{stream}: Stream name for the parameter estimate
+#'   \item \code{year_index}: Identifier for a parameter estimate (1:n, where n is the total number of years modeled) that allows us to join the observed year back to the data table
+#'   \item \code{year}: Year associated with the parameter estimates and observed data
 #'   }
 'P2S_model_fits'
 
