@@ -1,17 +1,12 @@
 ---
 title: "Passage to Spawner Submodel"
-# output: html_document # to see tabset
+author: "Liz Stebbins, Ashley Vizek, Erin Cain, Josh Korman"
 output:
-  html_document:
+  html_document: null
   theme: flatly
-# output: rmarkdown::html_vignette
-# output: rmarkdown::word_document
-author:
-  - Liz Stebbins, Ashley Vizek, Erin Cain, Josh Korman
-vignette: >
-  %\VignetteIndexEntry{Passage to Spawner Submodel}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+  pdf_document: default
+vignette: "%\\VignetteIndexEntry{Passage to Spawner Submodel} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
 ---
 
 ```{r, include = FALSE}
@@ -32,28 +27,29 @@ library(SRJPEdata)
 library(SRJPEmodel)
 ```
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
-observed_adult_input <- SRJPEdata::observed_adult_input
-adult_model_covariates <- SRJPEdata::adult_model_covariates_standard
-```
-
 ## Overview
 
 The Passage to Spawner (P2S) is a Bayesian model that produces estimates of spawning adults for `Battle Creek`, `Clear Creek`, `Deer Creek`, and `Mill Creek` with uncertainty. The model can be used to get spawning adults for a tributary as part of any stock-recruit-based SRJPE model alternative.
 
 ## Submodel Objective
-The purpose of the P2S submodel is to take in observed upstream passage, or escapement, estimates from a tributary and model the relationship with spawner counts, either from redd surveys or holding surveys. The P2S produces estimated spawner counts with uncertainty for use in creating the `stock` portion of a `stock-recruit mdoel` in the SRJPE.
+The purpose of the P2S submodel is to take in observed upstream passage, or escapement, estimates from a tributary and model the relationship with spawner counts, either from redd surveys or holding surveys. The P2S produces estimated spawner counts with uncertainty for use in creating the `stock` portion of a `stock-recruit model` in the SRJPE.
 
 The model also estimates a `conversion rate`, or proportion of adults that pass though the video counting systems that become spawning adults (i.e. prespawn mortality). The P2S can also be used for forecasting; it takes in a standardized environmental covariate and uses this variable to predict spawners from upstream passage counts. In this way, the P2S provides resiliency for years where data may be missing (i.e. years where upstream passage data were collected but spawner surveys were not conducted).
 
 ## Conceptual model
-Insert conceptual model of SRJPE here with the P2S model included.
+
+This is a DRAFT conceptual model detailing where submodels fit into the overall SRJPE model ecosystem. 
+
+```{r, echo = FALSE, out.width = "500px"}
+knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "SRJPE Conceptual Model - 2-15-2024.png"),
+                        rel_path = FALSE)
+```
 
 ## Submodel Architecture
 
 The submodel takes observed data (in orange) and predicts spawner counts (in pink). Parameters estimated by the model are light pink; for more information, see documentation.
 
-```{r, echo = FALSE, out.width = "600px"}
+```{r, echo = FALSE, out.width = "500px"}
 knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "parameter_diagram.png"),
                         rel_path = FALSE)
 ```
@@ -67,43 +63,39 @@ The model takes in two datasets:
 
 # Running the P2S submodel
 
-To run the model, load the necessary data from `SRJPEdata`:
+The model is run for a given stream and environmental covariate.
 
-```{r, message = FALSE, warning = FALSE, eval = FALSE}
-observed_adult_input <- SRJPEdata::observed_adult_input
-adult_model_covariates <- SRJPEdata::adult_model_covariates_standard
-```
-
-The model can then be run for a given stream and environmental covariate.
-* Options for streams are `battle creek`, `clear creek`, `deer creek`, and `mill creek`.
-* Environmental covariates are `water year type`, `growing degree days`, and `maximum flow`.
-
+* Options for streams are `battle creek`, `clear creek`, `deer creek`, and `mill creek`. 
+* Environmental covariates are `water year type`, `growing degree days`, and `maximum flow`. 
+ 
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 # run the model for battle creek and water year type
-battle_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
-                                                   adult_model_covariates,
+battle_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
+                                                   SRJPEdata::adult_model_covariates_standard,
                                                    "battle creek",
-                                                   "wy_type")
+                                                   "wy_type",
+                                                   FALSE)
 # run the model for clear creek and water year type
-clear_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
-                                                  adult_model_covariates,
+clear_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
+                                                  SRJPEdata::adult_model_covariates_standard,
                                                   "clear creek",
-                                                  "wy_type")
+                                                  "wy_type",
+                                                  FALSE)
 # run the model for deer creek and water year type
-deer_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
-                                                 adult_model_covariates,
+deer_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
+                                                 SRJPEdata::adult_model_covariates_standard,
                                                  "deer creek",
-                                                 "wy_type")
+                                                 "wy_type",
+                                                 FALSE)
 # run the model for mill creek and water year type
-mill_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
-                                                 adult_model_covariates,
+mill_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
+                                                 SRJPEdata::adult_model_covariates_standard,
                                                  "mill creek",
-                                                 "wy_type")
+                                                 "wy_type",
+                                                 FALSE)
 ```
 
-# Results
-
-Once the model has been fit to separate streams, you can conbine them into one data frame:
+Once the model has been fit to separate streams, you can combine them into one data frame:
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 # join model summaries
 P2S_model_fits <- bind_rows(battle_P2S_results$formatted_pars,
@@ -112,26 +104,29 @@ P2S_model_fits <- bind_rows(battle_P2S_results$formatted_pars,
                             deer_P2S_results$formatted_pars)
 ```
 
-Current model fits are stored in the `SRJPEmodel` package as the data object `SRJPEmodel::P2S_model_fits` and they are formatted to produce all parameter estimates:
+# Model Output
 
-```{r, message = FALSE, warning = FALSE}
-knitr::kable(SRJPEmodel::P2S_model_fits |>
-               head(10))
+The P2S model produces two objects when run: 
+
+* a `full_object`, which contains all output of the STAN model (class `stanfit`)
+* `formatted_pars`, a data table with all parameter estimates and associated statistics.
+
+The most recent results from fitting the model to all streams is stored as a data object `SRJPEmodel::P2S_model_fits` and contains the full parameter list, many of which are technical and not directly of interest to the `SRJPEmodel` ecosystem. 
+`SRJPEmodel` has additional functions to extract parameter estimates of interest from this larger table and can quickly produce a table of predicted spawners by year and tributary.
+
+## Extract predicted spawners by year, with uncertainty
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# obtain the years associated with observed data
+P2S_predicted_spawners <- get_predicted_spawners_from_P2S(P2S_model_fits)
+knitr::kable(head(P2S_predicted_spawners, 5))
 ```
 
-Now predicted spawners with uncertainty can be produced for streams:
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "500px"}
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "600px"}
-years_modeled <- get_years_from_P2S_model_fits(P2S_model_fits)
-
-SRJPEmodel::P2S_model_fits |>
-  filter(str_detect(par_names, "predicted_spawner")) |>
-  mutate(year_index = readr::parse_number(par_names),
-         predicted_spawner_count = `50%`,
-         lcl = `2.5%`, ucl = `97.5%`) |>
-  left_join(years_modeled) |>
+P2S_predicted_spawners |>
   mutate(stream = str_to_title(stream)) |>
-  ggplot(aes(x = year, y = predicted_spawner_count)) +
+  ggplot(aes(x = year, y = median_predicted_spawners)) +
   geom_line(col = wes_palette("GrandBudapest1")[2]) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
   facet_wrap(~stream, scales = "free_y") +
@@ -141,16 +136,15 @@ SRJPEmodel::P2S_model_fits |>
   theme_minimal()
 ```
 
-We can also see forecasted spawner count for a wet or dry year with uncertainty:
+We can also see forecasted spawner count for a wet or dry year with uncertainty by looking at the `abundance_forecast` parameters, which use the average upstream passage as a predictor variable and water year type as the predictive covariate. Deer and Mill Creek model fits are limited in utility due to a lack of available data, so the confidence intervals for those tributaries are much greater than for Battle and Clear Creeks.
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 forecasts <- SRJPEmodel::P2S_model_fits |>
   filter(str_detect(par_names, "abundance_forecast")) |>
-  mutate(year_index = readr::parse_number(par_names),
-         par_names = ifelse(year_index == "1", "forecast_dry_year", "forecast_wet_year"),
+  mutate(pred_index = readr::parse_number(par_names),
+         par_names = ifelse(pred_index == "1", "forecast_dry_year", "forecast_wet_year"),
          forecast_level = ifelse(par_names == "forecast_dry_year", "Dry", "Wet"),
          data_type = "forecast",
-         forecast_level = ifelse(forecast_level == "Dry", "Low", "High"),
          stream = str_to_title(stream))
 
 forecasts |>
@@ -164,8 +158,10 @@ forecasts |>
   geom_point(aes(x = forecast_level, y = adult_count,
                  color = forecast_level),
              size = 4) +
-  xlab("Forecast Level") + ylab("Predicted Spawner Count at \n Across-year Mean Passage") +
-  scale_color_manual("Forecast Level",
+  labs(x = "Forecast Type (Wet or Dry)",
+       y = "Predicted Spawner Count using \n Across-year Mean Passage",
+       title = "Forecasted Spawner Count for Wet and Dry Years") +
+  scale_color_manual("Forecast Year Type",
                      values = wes_palette("GrandBudapest1")[2:3]) +
   facet_wrap(~stream, scales = "free") +
   theme_minimal() +
@@ -180,10 +176,7 @@ forecasts |>
 
 # Resources
 
-TODO update this
-See `data-raw/adult_model/passage_to_spawner_full_docmentation.Rmd` for full methods.
+See `data-raw/adult_model/passage_to_spawner_full_docmentation.Rmd` for full documentation of development, testing, and results of the Passage to Spawner submodel.
 See `adult data report` for full documentation on adult Chinook salmon data collection.
 
-TODO put the year_index into the function
-TODO get_spawning_adults() function that you give stream name and data type
 
