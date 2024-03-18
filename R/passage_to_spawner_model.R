@@ -179,7 +179,7 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
                            "ss_total" = calculate_ss_tot(stream_data),
                            "average_upstream_passage" = mean(stream_data$upstream_estimate, na.rm = TRUE))
 
-  passage_to_spawner_STAN_code <- read_file("model-files/passage_to_spawner.txt")
+  passage_to_spawner_STAN_code <- read_file("model_files/passage_to_spawner.txt")
 
   cli::cli_process_start("Fitting P2S STAN model")
   stream_model_fit <- rstan::stan(model_name = paste("passage_to_spawner", stream_name, selected_covariate, sep = "_"),
@@ -320,7 +320,7 @@ compare_P2S_covariates_within_stream <- function(data, stream_name) {
                              "average_upstream_passage" = mean(stream_data$upstream_estimate,
                                                                na.rm = TRUE))
 
-    passage_to_spawner_STAN_code <- read_file("model-files/passage_to_spawner.txt")
+    passage_to_spawner_STAN_code <- read_file("model_files/passage_to_spawner.txt")
 
     stream_model_fit <- rstan::stan(model_name = paste("passage_to_spawner", stream_name, selected_covariate, sep = "_"),
                                     model_code = passage_to_spawner_STAN_code,
