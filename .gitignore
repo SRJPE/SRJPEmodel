@@ -14,3 +14,7 @@ config.json
 *.DBF
 *.doc
 *.accdb
+*.inp
+*.out
+*.res
+*.vcv
