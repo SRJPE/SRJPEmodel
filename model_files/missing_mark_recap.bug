@@ -1,0 +1,80 @@
+# this is a refactor of estN_missMR.bug
+# it allows for missing mark-recapture experiments and unmarked catch data for some weekly strata
+
+model {
+
+  ### proportion capture estimation using all available mark-recapture data ###############
+
+  # tributary-specific mean proportion captured (pCap) is a random effect, so define priors for hyper-parameters (distributary mean pCap across tribs)
+
+  pCap_mu_prior ~ dnorm(0, 1.0E-06)
+  pCap_tau_prior ~ dngamma(0.001, 0.001)
+  pCap_sd_prior <- 1 / pow(pCap_tau_prior, 0.5)
+
+  flow_mu_prior ~ dnorm(0, 1.0E-06)
+  flow_tau_prior ~ dgamma(0.001, 0.001)
+  flow_sd_prior <- 1 / pow(flow_tau_prior, 0.5)
+
+  for(j in 1:number_tribs_pCap) {
+    b0_pCap[j] ~ dnorm(pCap_mu_prior, pCap_tau_prior) # trib-specific proportion P is a random draw from hyper distribution
+    b_flow[j] ~ dnorm(flow_mu_prior, flow_tau_prior)
+  }
+
+  process_error_tau_prior ~ dgamma(0.001, 0.001) # process error distribution (error not explained by trib, year, and week effects)
+  process_error_sd_prior <- 1 / pow(process_error_tau_prior, 0.5)
+
+  for(i in 1:number_efficiency_experiments) {
+    # loop through all mark-recapture experiments to estimate pCap and hyper-parameters
+    process_error_devs_prior[i] ~ dnorm(0, process_error_tau_prior)
+    logit_pCap[i] <- b0_pCap[indices_site_mark_recapture[i]] + b_flow[indices_site_mark_recapture[i]] * standardized_efficiency_flow[i] + process_error_devs_prior[i]     # trib and week
+    logit(pCap[i]) <- logit_pCap[i]
+    number_recaptured[i] ~ dbin(pCap[i], number_released[i])
+  }
+
+  ### Unmarked abundance estimation ##########
+
+  # Priors on sd terms controlling variability in spline parameters (flexibility) and extra-spline variation
+  tau_N ~ dgamma(1, 0.05)
+  sd_N <- 1 / pow(tau_N, 0.5)
+  tau_Ne ~ dgamma(1, 0.05)
+  sd_Ne ~ 1 / pow(tau_Ne, 0.5) # 0.1, 01 prior on extra-spline variation in logU. Relative to tau_N prior, tau_Ne has higher probability for greater precision which reduces overfitting problem (p value too high)
+
+  # Priors on spline coefficients
+  b_sp[1] ~ dnorm(0, 1.0)
+  b_sp[2] ~ dflat() # in cases where weekly_catch = NA at start of time series, large values of b_sp[1:2] lead to unrealistically high values of U[1:2]
+
+  for(i in 3:K) {
+    xi[i-2] <- 2 * b_sp[i-1] - b_sp[i-2] # second order random walk to set mean of normal prior on b
+    b_sp[i] ~ dnorm(xi[i-2], tau_N) # the higher the estimated precision of tau_N, the lower the flexibility in b[i]'s, and hence the smoother the curve
+  }
+
+  # Assign estimated pcaps to U estimation strata
+
+  for(i in 1:number_weeks_with_mark_recapture) {
+    pCap_U[indices_with_mark_recapture[i]] <- cut(pCap[indices_pCap[i]])
+  }
+
+  # For U strata without MR data, simulate pCaps from hyper distributions.
+  # This version assumes that the tributary being modelled was also in the MR estimation
+  # If it isn't then you have to simulate b0_pcap from hyper parameters
+
+  for(i in 1:number_weeks_without_mark_recapture) {
+    process_error_deviations[i] ~ dnorm(0, process_error_tau_prior)
+    logit_pCap_sim[i] <- b0_pCap[indices_tribs_pCap] + b_flow[indices_tribs_pCap] * catch_flow[indices_without_mark_recapture[i]] + process_error_deviations[i]
+    logit(pCap_U[indices_without_mark_recapture[i]]) <- cut(logit_pCap_Sim[i])
+  }
+
+  for(i in 1:number_weeks_catch) {
+    Usp[i] <- inprod(b_spline_matrix[i,], b_sp[]) # spline-based estimate of log U
+    lg_N[i] ~ dnorm(Usp[i], tau_Ne)I(, lgN_max[i]) # spline + extra-spline variation estimate of log U
+    N[i] <- exp(lg_N[i]) * 1000.0
+  }
+
+  N_total <- sum(N[])
+
+  # Only loop through strata with unmarked catch observations
+  for(i in 1:number_weeks_with_catch) {
+    weekly_catch[indices_with_catch[i]] ~ dbin(pCap_U[indices_with_catch[i]], N[indices_with_catch[i]])
+  }
+
+}
