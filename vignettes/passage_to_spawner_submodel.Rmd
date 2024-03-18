@@ -2,9 +2,10 @@
 title: "Passage to Spawner Submodel"
 author: "Liz Stebbins, Ashley Vizek, Erin Cain, Josh Korman"
 output:
-  html_document: null
+  html_document: default
+  # word_document: default
+  # pdf_document: default
   theme: flatly
-  pdf_document: default
 vignette: "%\\VignetteIndexEntry{Passage to Spawner Submodel} %\\VignetteEngine{knitr::rmarkdown}
   %\\VignetteEncoding{UTF-8}\n"
 ---
