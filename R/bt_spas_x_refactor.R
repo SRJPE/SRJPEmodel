@@ -21,7 +21,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   # TODO cache bayesian specs as params?
 
   # TODO get rid of this
-  bt_spas_x_input_data <- SRJPEdata::weekly_model_data
+  bt_spas_x_input_data <- SRJPEdata::weekly_juvenile_abundance_model_data
   mainstem_version = F
   effort_adjust = T
   site_selection <- "ubc"
@@ -37,9 +37,9 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     #        site == !!site)
 
   # get numbers for looping in BUGs code - abundance model
-  # TODO confirm - these don't make sense
-  number_weeks_catch <- length(unique(input_data$week)) # number of weeks in the catch dataset
-  indices_with_catch <- which(!is.na(input_data$count)) # TODO which weeks have catch (should this be 0? or is this checking whether it was fished?)
+  number_weeks_catch <- nrow(input_data) # for looping through the catch dataset
+  # number_weeks_catch <- length(unique(input_data$week)) # number of weeks in the catch dataset
+  indices_with_catch <- which(!is.na(input_data$count)) # indices of weeks with catch data
   number_weeks_with_catch <- length(indices_with_catch) # how many weeks actually have catch
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
@@ -61,23 +61,31 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
            !is.na(number_recaptured))
 
   # get numbers for looping in BUGs code - pCap model
-  # TODO double check these
-  number_efficiency_experiments <- nrow(mark_recapture_data)
+  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
+    nrow()# TODO check these column names
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
-  number_tribs_pCap <- length(unique(mark_recapture_data$site))
-  indices_tribs_pCap <- which(unique(mark_recapture_data$site) == site_selection)
+  number_sites_pCap <- length(unique(mark_recapture_data$site))
+  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site_selection) # TODO check this
   indices_pCap <- which(mark_recapture_data$site == site_selection &
                           mark_recapture_data$run_year == run_year_selection)
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
                                          !is.na(input_data$standardized_efficiency_flow))
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
                                             is.na(input_data$standardized_efficiency_flow))
+  # TODO check this
   indices_site_mark_recapture <- mark_recapture_data |>
+    distinct(site, run_year, week) |>
     group_by(site) |>
     mutate(ID = cur_group_id()) |>
     pull(ID)
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture)
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
+
+  # subset mark recapture data to be able to pull the flow, number released, and
+  # number recaptured for every unique mark-recapture experiment for data inputs
+  mark_recapture_data_unique_experiments <- mark_recapture_data |>
+    distinct(site, run_year, week, number_released, number_recaptured,
+             standardized_efficiency_flow)
 
   # TODO josh has something for BUGS-specific code here
   # if(nrow(weeks_without_recap) == 1 | nrow(weeks_with_recap) == 1)
@@ -95,10 +103,10 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   # full data list
   full_data_list <- list("number_efficiency_experiments" = number_efficiency_experiments,
-                         "number_tribs_pCap" = number_tribs_pCap,
+                         "number_sites_pCap" = number_sites_pCap,
                          "indices_site_mark_recapture" = indices_site_mark_recapture,
-                         "number_released" = input_data$number_released,
-                         "number_recaptured" = input_data$number_recaptured,
+                         "number_released" = mark_recapture_data_unique_experiments$number_released,
+                         "number_recaptured" = mark_recapture_data_unique_experiments$number_recaptured,
                          "number_weeks_catch" = number_weeks_catch,
                          "weekly_catch" = ifelse(effort_adjust == T, input_data$catch_standardized_by_effort,
                                                  input_data$count),
@@ -109,15 +117,16 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
                          "number_weeks_without_mark_recapture" = number_weeks_without_mark_recapture,
                          "indices_with_mark_recapture" = indices_with_mark_recapture,
                          "indices_without_mark_recapture" = indices_without_mark_recapture,
-                         "indices_tribs_pCap" = indices_tribs_pCap,
+                         "indices_sites_pCap" = indices_sites_pCap,
                          "number_weeks_with_catch" = number_weeks_with_catch,
                          "indices_with_catch" = indices_with_catch,
-                         "standardized_efficiency_flow" = input_data$standardized_efficiency_flow,
+                         "standardized_efficiency_flow" = mark_recapture_data_unique_experiments$standardized_efficiency_flow,
                          "catch_flow" = input_data$flow_cfs,
                          "lgN_max" = input_data$lgN_prior) # TODO rename?
 
   # set up models and data to pass to bugs
   number_experiments_at_site <- mark_recapture_data |>
+    distinct(site, run_year, week) |>
     group_by(site) |>
     tally() |>
     filter(site == site_selection) |>
@@ -166,7 +175,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   init_list <- list("pCap_mu_prior" = pCap_mu_prior,
                     "b0_pCap" = ini_b0_pCap,
                     "flow_mu_prior" = 0,
-                    "b_flow" = rep(0, number_tribs_pCap),
+                    "b_flow" = rep(0, number_sites_pCap),
                     "pCap_tau_prior" = 1,
                     "flow_tau_prior" = 1,
                     "process_error_tau_prior" = 1,
@@ -186,13 +195,13 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 #' @details This function is called within `run_single_bt_spas_x()` and calls the WinBUGS code
 #' @param data a list containing the following elements:
 #' * **number_efficiency_experiments** number of unique mark-recapture experiments performed across tributaries, years and weeks
-#' * **number_tribs_pCap** number of tributaries to use for the pCap component of the model
+#' * **number_sites_pCap** number of tributaries to use for the pCap component of the model
 #' * **number_weeks_catch** number of weeks with catch data
 #' * **number_weeks_with_mark_recapture** number of weeks in catch data with associated pCap and flow data
 #' * **number_weeks_without_mark_recapture** number of weeks in catch data without associated pCap and flow data
 #' * **number_weeks_with_catch** number of weeks in catch data with catch data (RST fished)
 #' * **indices_site_pCap** tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
-#' * **indices_site_mark_recapture** indices (1:number_tribs_pCap) assigned to the mark-recapture experiment table for use in BUGs
+#' * **indices_site_mark_recapture** indices (1:number_sites_pCap) assigned to the mark-recapture experiment table for use in BUGs
 #' * **indices_pCap** indices of weeks in mark-recapture table for U strata being estimated
 #' * **indices_without_mark_recapture** indices of weeks in catch data without associated pCap and flow data
 #' * **indices_with_mark_recapture** indices of weeks in catch data with associated pCap and flow data
@@ -260,19 +269,19 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
   if(model_name == "all_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_tribs_pCap" ,"indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
+    data_needed <- c("number_efficiency_experiments", "number_sites_pCap" ,"indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "lgN_max")
   } else if(model_name == "missing_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
+    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_mark_recapture", "number_weeks_without_mark_recapture",
-                     "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap", "number_weeks_with_catch", "indices_with_catch",
+                     "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_sites_pCap", "number_weeks_with_catch", "indices_with_catch",
                      "standardized_efficiency_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                     "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "indices_tribs_pCap",
+    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
+                     "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "indices_sites_pCap",
                      "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap_no_trib.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_tribs_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
+    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
                      "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "number_weeks_with_catch",
                      "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
   }

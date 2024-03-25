@@ -75,8 +75,8 @@ efficiency_data <- select_efficiency_data(weekly_tributary_RST)
 
 # Unique MR experiments across tribs, years and weeks
 efficiency_trials = unique(efficiency_data[c("stream", "run_year", "week")])
-number_efficiency_trials = nrow(efficiency_trials)
-efficiency_trials_years = unique(efficiency_trials$run_year)
+number_efficiency_trials = nrow(efficiency_trials) # TODO this doesn't get used
+efficiency_trials_years = unique(efficiency_trials$run_year) # TODO this doesn't get used
 
 selected_weeks <- 1:53
 number_weeks <- length(selected_weeks)
