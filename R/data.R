@@ -42,3 +42,16 @@
 #'   }
 'P2S_comparison_results'
 
+
+#' @title BT-SPAS-X BUGS parameters
+#' @name bt_spas_x_bayes_params
+#' @description Parameters for running BUGS on the BT-SPAS-X model
+#' @format A named list with 4 elements:
+#' \itemize{
+#'   \item \code{number_mcmc}: TODO
+#'   \item \code{number_burnin}:
+#'   \item \code{number_thin}:
+#'   \item \code{number_chains}:
+#'   }
+'bt_spas_x_bayes_params'
+

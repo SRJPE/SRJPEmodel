@@ -1,10 +1,23 @@
-# refactor of josh_original_model_code.R, BuildData.R, and MultiRun_SpecialPriors.R
-
-run_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains,
+#' Call BT-SPAS-X model
+#' @details TODO
+#' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
+#' and `number_chains`
+#' @param bt_spas_x_input_data
+#' @param site
+#' @param run_year
+#' @param effort_adjust
+#' @param multi_run_mode
+#' @param mainstem_version
+#' @param special_priors_data
+#' @param bugs_directory
+#' @returns TODO
+#' @export
+#' @md
+run_bt_spas_x <- function(bt_spas_x_bayes_params,
                           bt_spas_x_input_data, site, run_year, effort_adjust, multi_run_mode,
                           mainstem_version, special_priors_data, bugs_directory) {
   if(!multi_run_mode) {
-    run_single_bt_spas_x(number_mcmc, number_burnin, number_thin, number_chains,
+    run_single_bt_spas_x(bt_spas_x_bayes_params,
                          bt_spas_x_input_data, site, run_year, effort_adjust, mainstem_version,
                          special_priors_data, bugs_directory)
   } else if (multi_run_mode) {
@@ -13,28 +26,33 @@ run_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains
   }
 }
 
-run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number_chains,
+#' Call BT-SPAS-X on a single site/run year combination
+#' @details This function is called within `run_bt_spas_x()`
+#' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
+#' and `number_chains`
+#' @param bt_spas_x_input_data
+#' @param site
+#' @param run_year
+#' @param effort_adjust
+#' @param mainstem_version
+#' @param special_priors_data
+#' @param bugs_directory
+#' @returns TODO
+#' @export
+#' @md
+run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T), special_priors_data,
                                  bugs_directory) {
-
-  # TODO cache bayesian specs as params?
-
-  # TODO get rid of this
-  bt_spas_x_input_data <- SRJPEdata::weekly_juvenile_abundance_model_data
-  mainstem_version = F
-  effort_adjust = T
-  site_selection <- "ubc"
-  run_year_selection <- 2009
 
 
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
   input_data <- bt_spas_x_input_data |>
-    filter(run_year == run_year_selection,
-           site == site_selection)
     # filter(run_year == !!run_year,
-    #        site == !!site)
+    #        site == site_selection)
+    dplyr::filter(run_year == !!run_year,
+                  site == !!site)
 
   # get numbers for looping in BUGs code - abundance model
   number_weeks_catch <- nrow(input_data) # for looping through the catch dataset
@@ -55,7 +73,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   }
 
   mark_recapture_data <- bt_spas_x_input_data |>
-    filter(!site %in% remove_sites,
+    dplyr::filter(!site %in% remove_sites,
            !is.na(standardized_efficiency_flow), # TODO should stay at flow_cfs?
            !is.na(number_released),
            !is.na(number_recaptured))
@@ -65,9 +83,9 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     nrow()# TODO check these column names
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   number_sites_pCap <- length(unique(mark_recapture_data$site))
-  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site_selection) # TODO check this
-  indices_pCap <- which(mark_recapture_data$site == site_selection &
-                          mark_recapture_data$run_year == run_year_selection)
+  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # TODO check this
+  indices_pCap <- which(mark_recapture_data$site == site &
+                          mark_recapture_data$run_year == run_year)
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
                                          !is.na(input_data$standardized_efficiency_flow))
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
@@ -129,7 +147,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
     distinct(site, run_year, week) |>
     group_by(site) |>
     tally() |>
-    filter(site == site_selection) |>
+    dplyr::filter(site == !!site) |>
     pull(n)
 
   # if efficiency trials occurred in the site
@@ -158,8 +176,8 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 
   # initial parameter values
   ini_b0_pCap <- mark_recapture_data |>
-    filter(site == site_selection,
-           run_year == run_year_selection) |>
+    dplyr::filter(site == !!site,
+           run_year == !!run_year) |>
     mutate(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(ini_b0_pCap)
 
@@ -185,8 +203,7 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
   # run the bugs model
-  results <- bt_spas_x_bugs(data, inits, parameters, model_name, number_chains, number_burnin, number_thin,
-                            number_mcmc, bugs.directory = paste0(bugs_directory))
+  results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params, bugs_directory = paste0(bugs_directory))
   return(results)
 }
 
@@ -217,15 +234,14 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 #' @param inits
 #' @param parameters
 #' @param model_name
-#' @param number_chains
-#' @param number_burnin
-#' @param number_thin
-#' @param number_mcmc
+#' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
+#' and `number_chains`
 #' @param bugs_directory
 #' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
 #' of the model run.
+#' @export
 #' @md
-bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, number_burnin, number_thin,
+bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_params,
                            number_mcmc, bugs_directory) {
 
   # get operating system - bugs can't run on a mac without serious set-up
@@ -236,15 +252,20 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
                            All the information required to run the model will be returned, but the model will not be run.")
 
     return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
-                n.chains = number_chains, n.burnin = number_burnin, n.thin = number_thin,
-                n.iter = number_mcmc, debug = FALSE, codaPkg = FALSE, DIC = TRUE,
+                n.chains = bt_spas_x_bayes_params$number_chains,
+                n.burnin = bt_spas_x_bayes_params$number_burnin,
+                n.thin = bt_spas_x_bayes_params$number_thin,
+                n.iter = bt_spas_x_bayes_params$number_mcmc, debug = FALSE, codaPkg = FALSE, DIC = TRUE,
                 clearWD = TRUE, bugs_directory))
   } else {
 
     cli::cli_process_start("WinBUGS model running")
     # run bugs model
-    model_results <- bugs(data, inits, parameters, model_name, n.chains = number_chains,
-                          n.burnin = number_burnin, n.thin = number_thin, n.iter = number_mcmc,
+    model_results <- bugs(data, inits, parameters, model_name,
+                          n.chains = bt_spas_x_bayes_params$number_chains,
+                          n.burnin = bt_spas_x_bayes_params$number_burnin,
+                          n.thin = bt_spas_x_bayes_params$number_thin,
+                          n.iter = bt_spas_x_bayes_params$number_mcmc,
                           debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                           bugs.directory = bugs_directory)
 
@@ -266,6 +287,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
 #' @param model_name
 #' @param full_data_list
 #' @returns a named list with the required elements for that model run.
+#' @export
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
   if(model_name == "all_mark_recap.bug") {
