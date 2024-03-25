@@ -8,7 +8,7 @@ bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    site = "ubc",
                                    run_year = 2009,
                                    effort_adjust = T,
-                                   multi_run_mode = F,
+                                   multi_run_mode = F, # T
                                    mainstem_version = F,
                                    bugs_directory = "not working")
 

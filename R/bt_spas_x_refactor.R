@@ -1,7 +1,7 @@
 #' Call BT-SPAS-X model
 #' @details TODO
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
-#' and `number_chains`
+#' and `number_chains`. Created in `R/cache-params.R`.
 #' @param bt_spas_x_input_data
 #' @param site
 #' @param run_year
@@ -21,8 +21,29 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
                          bt_spas_x_input_data, site, run_year, effort_adjust, mainstem_version,
                          special_priors_data, bugs_directory)
   } else if (multi_run_mode) {
-    sites <- unique(bt_spas_x_input_data$site)
-    # TODO loop through sites and run years calling run_bt_spas_x - use purrr::walk ?
+
+    all_results <- list()
+
+    for(i in unique(bt_spas_x_input_data$site)) {
+
+      # TODO clean this up
+      available_years <- bt_spas_x_input_data |>
+        filter(site == i) |>
+        distinct(run_year) |>
+        arrange() |>
+        pull(run_year)
+
+      for(j in available_years)
+        cli::cli_process_start(paste0("Running BT-SPAS-X for site ", i,
+                                      " and run year ", j))
+
+        all_results[[i]] <- run_single_bt_spas_x(bt_spas_x_bayes_params,
+                                                 bt_spas_x_input_data,
+                                                 site = i,
+                                                 run_year = j,
+                                                 effort_adjust, mainstem_version,
+                                                 special_priors_data, bugs_directory)
+    }
   }
 }
 
@@ -79,6 +100,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
            !is.na(number_recaptured))
 
   # get numbers for looping in BUGs code - pCap model
+  # TODO add stop for if there are no mark recapture experiments in the stream
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow()# TODO check these column names
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
