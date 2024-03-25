@@ -246,7 +246,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
     model_results <- bugs(data, inits, parameters, model_name, n.chains = number_chains,
                           n.burnin = number_burnin, n.thin = number_thin, n.iter = number_mcmc,
                           debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
-                          bugs_directory)
+                          bugs.directory = bugs_directory)
 
     posterior_output <- model_results$sims.list
     summary_output <- round(model_results$summary, 3)
