@@ -221,12 +221,12 @@ run_single_bt_spas_x <- function(number_mcmc, number_burnin, number_thin, number
 #' @param number_burnin
 #' @param number_thin
 #' @param number_mcmc
-#' @param bugs.directory
+#' @param bugs_directory
 #' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
 #' of the model run.
 #' @md
 bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, number_burnin, number_thin,
-                           number_mcmc, bugs.directory) {
+                           number_mcmc, bugs_directory) {
 
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
@@ -238,7 +238,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
     return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
                 n.chains = number_chains, n.burnin = number_burnin, n.thin = number_thin,
                 n.iter = number_mcmc, debug = FALSE, codaPkg = FALSE, DIC = TRUE,
-                clearWD = TRUE, bugs.directory))
+                clearWD = TRUE, bugs_directory))
   } else {
 
     cli::cli_process_start("WinBUGS model running")
@@ -246,7 +246,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, number_chains, n
     model_results <- bugs(data, inits, parameters, model_name, n.chains = number_chains,
                           n.burnin = number_burnin, n.thin = number_thin, n.iter = number_mcmc,
                           debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
-                          bugs.directory)
+                          bugs_directory)
 
     posterior_output <- model_results$sims.list
     summary_output <- round(model_results$summary, 3)
