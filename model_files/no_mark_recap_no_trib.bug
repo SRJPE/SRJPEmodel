@@ -12,7 +12,7 @@ model {
 
   flow_mu_prior ~ dnorm(0, 1.0E-06)
   flow_tau_prior ~ dgamma(0.001, 0.001);flow_sd.P <- 1 / pow(flow_tau_prior, 0.5)
-  for(j in 1:number_tribs_pCap) {
+  for(j in 1:number_sites_pCap) {
   	b0_pCap[j] ~ dnorm(pCap_mu_prior, pCap_tau_prior) # trib-specific P is a random draw from hyper distribtion
   	b_flow[j] ~ dnorm(flow_mu_prior, flow_tau_prior)
   }

@@ -15,7 +15,7 @@ model {
   flow_tau_prior ~ dgamma(0.001, 0.001)
   flow_sd_prior <- 1 / pow(flow_tau_prior, 0.5)
 
-  for(j in 1:number_tribs_pCap) {
+  for(j in 1:number_sites_pCap) {
     b0_pCap[j] ~ dnorm(pCap_mu_prior, pCap_tau_prior) # trib-specific proportion P is a random draw from hyper distribution
     b_flow[j] ~ dnorm(flow_mu_prior, flow_tau_prior)
   }
@@ -60,7 +60,7 @@ model {
 
   for(i in 1:number_weeks_without_mark_recapture) {
     process_error_deviations[i] ~ dnorm(0, process_error_tau_prior)
-    logit_pCap_sim[i] <- b0_pCap[indices_tribs_pCap] + b_flow[indices_tribs_pCap] * catch_flow[indices_without_mark_recapture[i]] + process_error_deviations[i]
+    logit_pCap_sim[i] <- b0_pCap[indices_sites_pCap] + b_flow[indices_sites_pCap] * catch_flow[indices_without_mark_recapture[i]] + process_error_deviations[i]
     logit(pCap_U[indices_without_mark_recapture[i]]) <- cut(logit_pCap_Sim[i])
   }
 
