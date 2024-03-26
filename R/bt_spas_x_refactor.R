@@ -102,7 +102,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # get numbers for looping in BUGs code - pCap model
   # TODO add stop for if there are no mark recapture experiments in the stream
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
-    nrow()# TODO check these column names
+    nrow()
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   number_sites_pCap <- length(unique(mark_recapture_data$site))
   indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # TODO check this
@@ -141,6 +141,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   b_spline_matrix <- splines2::bSpline(x = 1:nrow(input_data), knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
   K <- ncol(b_spline_matrix)
 
+  if(effort_adjust) {
+    weekly_catch_data <- input_data$catch_standardized_by_effort
+  } else {
+    weekly_catch_data <- input_data$catch_standardized_by_effort
+  }
+
   # full data list
   full_data_list <- list("number_efficiency_experiments" = number_efficiency_experiments,
                          "number_sites_pCap" = number_sites_pCap,
@@ -148,8 +154,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "number_released" = mark_recapture_data_unique_experiments$number_released,
                          "number_recaptured" = mark_recapture_data_unique_experiments$number_recaptured,
                          "number_weeks_catch" = number_weeks_catch,
-                         "weekly_catch" = ifelse(effort_adjust == T, input_data$catch_standardized_by_effort,
-                                                 input_data$count),
+                         "weekly_catch" = weekly_catch_data,
                          "K" = K,
                          "b_spline_matrix" = b_spline_matrix,
                          "indices_pCap" = indices_pCap,
@@ -278,7 +283,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                 n.burnin = bt_spas_x_bayes_params$number_burnin,
                 n.thin = bt_spas_x_bayes_params$number_thin,
                 n.iter = bt_spas_x_bayes_params$number_mcmc, debug = FALSE, codaPkg = FALSE, DIC = TRUE,
-                clearWD = TRUE, bugs_directory))
+                clearWD = TRUE, bugs_directory = bugs_directory))
   } else {
 
     cli::cli_process_start("WinBUGS model running")
