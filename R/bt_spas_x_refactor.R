@@ -30,7 +30,7 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
       available_years <- bt_spas_x_input_data |>
         filter(site == i) |>
         distinct(run_year) |>
-        arrange() |>
+        arrange(run_year) |>
         pull(run_year)
 
       for(j in available_years)
@@ -75,6 +75,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     dplyr::filter(run_year == !!run_year,
                   site == !!site)
 
+  if(nrow(input_data) == 0) {
+    cli::cli_alert_warning(paste0("There is no catch data for site ", site,
+                                  " and run year ", run_year, ". Please try with a different combination of site and year."))
+    return(NULL)
+  }
+
   # get numbers for looping in BUGs code - abundance model
   number_weeks_catch <- nrow(input_data) # for looping through the catch dataset
   # number_weeks_catch <- length(unique(input_data$week)) # number of weeks in the catch dataset
@@ -100,7 +106,6 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
            !is.na(number_recaptured))
 
   # get numbers for looping in BUGs code - pCap model
-  # TODO add stop for if there are no mark recapture experiments in the stream
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow()
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
@@ -132,13 +137,19 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   # set up b-spline basis matrix
   # this corresponds to line 148-153 in josh_original_model_code.R
+  if(number_weeks_catch < 4) {
+    cli::cli_alert_warning(paste0("There are fewer than 4 weeks with catch data for ",
+                                  site, " and run year ", run_year, ". Spline parameters cannot function with fewer than 4 data points."))
+    return(NULL)
+  }
+
   k_int <- 4 # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
   # TODO create "spline parameters" object
-  number_knots <- round(nrow(input_data) / k_int, 0)
+  number_knots <- round(number_weeks_catch / k_int, 0)
   first_knot_position <- 2
-  final_knot_position <- nrow(input_data) - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
+  final_knot_position <- number_weeks_catch - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
   knot_positions <- seq(first_knot_position, final_knot_position, length.out = number_knots) # define position of b-spline knots using even interval if no missing data
-  b_spline_matrix <- splines2::bSpline(x = 1:nrow(input_data), knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
+  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
   K <- ncol(b_spline_matrix)
 
   if(effort_adjust) {
@@ -169,13 +180,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "catch_flow" = input_data$flow_cfs,
                          "lgN_max" = input_data$lgN_prior) # TODO rename?
 
+
   # set up models and data to pass to bugs
   number_experiments_at_site <- mark_recapture_data |>
     distinct(site, run_year, week) |>
-    group_by(site) |>
-    tally() |>
-    dplyr::filter(site == !!site) |>
-    pull(n)
+    filter(site == !!site) |>
+    nrow()
 
   # if efficiency trials occurred in the site
   if(number_experiments_at_site > 1) {
