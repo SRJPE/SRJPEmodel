@@ -1,7 +1,7 @@
 #' Call BT-SPAS-X model
 #' @details TODO
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
-#' and `number_chains`. Created in `R/cache-params.R`.
+#' and `number_chains`.
 #' @param bt_spas_x_input_data
 #' @param site
 #' @param run_year
@@ -262,7 +262,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @param parameters
 #' @param model_name
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
-#' and `number_chains`
+#' and `number_chains`.
 #' @param bugs_directory
 #' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
 #' of the model run.
