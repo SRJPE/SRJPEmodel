@@ -25,3 +25,4 @@ P2S_spawners |>
   geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
   geom_line() +
   theme_minimal()
+
