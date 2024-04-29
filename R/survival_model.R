@@ -1,124 +1,100 @@
 # refactor of Call_Model.R
-library(rstan)
-options(mc.cores = parallel::detectCores())
-rstan_options(auto_write = TRUE)
+# library(rstan)
+# options(mc.cores = parallel::detectCores())
+# rstan_options(auto_write = TRUE)
 
-run_survival_model <- function(capture_history_matrix, n_chains = 3, n_iter = 1500, n_years, n_reaches, n_release_groups, n_individuals) {
-  # TODO get covariates (in "d" in GetData.R - where is he getting these?)
-  # TODO what data are we passing in, and can we get n_years, n_reaches, n_release_groups, n_individuals ?
-  # TODO pass in capture_history_matrix, environmental_covariates
-  for(irun in 10:12){
-    ModNm=switch(irun,"Year_Reach","YR_HBM","NoCov","CovWY2","CovWY2_Reach","CovWY3_Reach","CovInd_Reach","CovInd_Reach","CovInd_Reach","CovInd_ReachSz","CovInd_ReachSz","CovInd_ReachSz")
-    fnext=""
+#' Call Survival Model
+#' @details TODO
+#' @param survival_model_data
+#' @returns TODO
+#' @export
+#' @md
+run_survival_model <- function(survival_model_data) {
 
-    if(ModNm=="Year_Reach"){ #Flora's year*reach model for pCap and survival
-      ParSaveList=c("S_b","pred_surv","SurvWoodSac","pred_pcap")
-      inits1<-list(S_b=matrix(data=0.85,nrow=Nyrs,ncol=Nreaches),P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches))
-      CovX=rep(0,Nind) #no covariate effect so set to 0
-      rgwy_ind=rep(0,Nrg)
+  # TODO confirm CovWY3_Reach model is the best fitting model (the one we want to use)
+  model_name <- "survival_model_STAN" # "CovWY3_Reach" reach-specific 3 water year type covariate effect effect on survival (C, D/BN, W)
+  parameters <- c("P_b", "muPb", "sdPb", "S_bReach", "S_bCov", "RE_sd",
+                  "S_RE", "pred_surv", "SurvWoodSac", "SurvForecast", "pred_pcap")
 
-    } else if (ModNm=="YR_HBM"){
-      ParSaveList=c("S_b","P_b","muPb","sdPb","pred_surv","SurvWoodSac","pred_pcap")
-      inits1<-list(S_b=matrix(data=0.85,nrow=Nyrs,ncol=Nreaches),P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches))
-      CovX=rep(0,Nind) #no covariate effect so set to 0
-      rgwy_ind=rep(0,Nrg)
+  number_years <- length(unique(survival_model_data$year))
+  number_reaches <- 4
+  number_release_groups <- length(unique(survival_model_data$study_id))
 
-    } else if (ModNm=="NoCov"){
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvForecast","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
-      CovX=rep(0,Nind)
-      rgwy_ind=rep(0,Nrg)
+  initial_parameter_values <- list(P_b = matrix(data = 2.2, nrow = number_years, ncol = number_reaches),
+                                   muPb = rep(0, number_reaches),
+                                   sdPb = rep(1.0, number_reaches),
+                                   S_bCov = matrix(data = 1, nrow = 2, number_reaches - 1),
+                                   S_bReach = rep(0, number_reaches - 1),
+                                   S_RE = rep(-3, number_release_groups),
+                                   RE_sd = 0.5)
 
-    }else if (ModNm=="CovWY2"){ #water year dummy variable (0/1) covariate effect on survival (same for all reaches)
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","S_bCov","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvForecast","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bCov=1, S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
-      CovX=WY2  #2-level covariate effect (dry or wet)
-      rgwy_ind=rep(0,Nrg)
+  # build out model data
+  standard_reach_length <- 100 #Survival calculated for a standardized reach length of 100 km, then converted to reach specific survival in stan models
+  reach_lengths <- c(40, 88, 170, 110)
+  Rmult <- reach_lengths / standard_reach_length
 
-    }else if (ModNm=="CovWY2_Reach"){ #reach-specific water year dummy variable covariate effect on survival (dry vs wet)
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","S_bCov","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvForecast","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bCov=rep(1,Nreaches-1), S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
-      CovX=WY2 #2 level covariate effect
-      rgwy_ind=c(0,0,0,1,1,1,1,1,1,1,0,0,0) #index for S_bCov for each release group - year (0=dry, 1=wet)
+  prepare_data_variables <- survival_model_data |>
+    mutate(firstCap = unname(str_locate(ch, "1")[1, 1]), # first station individual was detected at
+           WY3 = case_when(year %in% c(2015, 2021) ~ 0,
+                           year %in% c(2013, 2016, 2018, 2020) ~ 1,
+                           TRUE ~ 2)) |> # 3 water year type groupings (C, D-BN, W) to used as a fixed effect) |>
+    group_by(year) |>
+    mutate(yrind = cur_group_id()) |> # year id index for for loop in STAN code
+    ungroup() |>
+    group_by(study_id) |>
+    mutate(rgind = cur_group_id()) |> # study id index for for loop in STAN code
+    ungroup()
 
-    }else if (ModNm=="CovWY3_Reach"){ #reach-specific 3 water year type covariate effect effect on survival (C, D/BN, W)
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","S_bCov","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvForecast","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bCov=matrix(data=1,nrow=2,Nreaches-1), S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
-      CovX=WY3  #3 level covariate effect
-      rgwy_ind=c(1,1,0,1,2,2,2,1,1,2,1,1,0) #index for S_bCov for each release group - year (0=critical, 1=dry/BN, 2 = wet)
+  # index for S_bCov for each release group - year (0=critical, 1=dry/BN, 2 = wet)
+  rgwy_ind <- prepare_data_variables |>
+    distinct(study_id, WY3) |>
+    mutate(WY3_index = WY3 ) |>
+    pull(WY3_index)
 
-    }else if (ModNm=="CovInd_Reach"){ #Individual covariate effects that vary by reach (flow, temperature, travel time)
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","S_bCov","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvForecast","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bCov=0, S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
+  if(length(rgwy_ind) != number_release_groups) {
+    cli::cli_alert_danger("rgwy_ind is longer than number_release_groups")
+    stop()
+  }
 
-      if(irun==7){
-        X=cbind(d$Flow_Releasepoint,d$Flow_Woodson.Br, d$Flow_ButteBridge,d$Flow_Sacramento)  #Flow
-        fnext="_Q"
-      } else if (irun==8){
-        X=cbind(d$Vel_Releasepoint,d$Vel_Woodson.Br, d$Vel_ButteBridge,d$Vel_Sacramento) #Velocity
-        fnext="_Vel"
-      } else if (irun==9){
-        X=cbind(d$Temp_Releasepoint,d$Temp_Woodson.Br, d$Temp_ButteBridge,d$Temp_Sacramento) #Temperature
-        fnext="_Wt"
-      }
-      Xstd=matrix(nrow=Nind,ncol=Nreaches); muX=mean(X);sdX=sd(X)
-      for(j in 1:Nreaches){Xstd[,j]=(X[,j]-muX)/sdX}
-      Xseq=seq(from=min(Xstd),to=max(Xstd),length.out=Nseq)
+  # get detection location of last capture
+  lastCap <- sapply(survival_model_data$ch, function(x) {
+    max(unlist(str_locate_all(x, "1"))) + 1
+  })
 
-    }else if (ModNm=="CovInd_ReachSz"){ #Individual covariate effects that vary by reach (flow, temperature, travel time)
-      ParSaveList=c("P_b","muPb","sdPb","S_bReach","S_bCov","S_bSz","RE_sd","S_RE","pred_surv","SurvWoodSac","SurvWoodSacSz","SurvForecast","SurvForecastSz","pred_pcap")
-      inits1<-list(P_b=matrix(data=2.2,nrow=Nyrs,ncol=Nreaches),muPb=rep(0,Nreaches),sdPb=rep(1.0,Nreaches),S_bCov=0, S_bSz=0, S_bReach=rep(0,Nreaches-1), S_RE=rep(-3,Nrg), RE_sd=0.5)
+  # convert to a matrix
+  CH <- survival_model_data |>
+    separate_wider_position(ch, widths = c("2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
+    mutate("1" = 1) |>
+    select(`1`, `2`, `3`, `4`, `5`) |>
+    mutate_all(as.numeric) |>
+    as.matrix() |>
+    unname()
 
-      if(irun==10){
-        X=cbind(d$Vel_Releasepoint,d$Vel_Woodson.Br, d$Vel_ButteBridge,d$Vel_Sacramento) #Velocity
-        fnext="_Vel_FL"
-        Sz=(FL-mean(FL))/sd(FL)
-      } else if (irun==11){
-        X=cbind(d$Vel_Releasepoint,d$Vel_Woodson.Br, d$Vel_ButteBridge,d$Vel_Sacramento) #Velocity
-        fnext="_Vel_WGT"
-        Sz=(WGT-mean(WGT))/sd(WGT)
-      } else if (irun==12){
-        X=cbind(d$Vel_Releasepoint,d$Vel_Woodson.Br, d$Vel_ButteBridge,d$Vel_Sacramento) #Velocity
-        fnext="_Vel_CF"
-        Sz=(CF-mean(CF))/sd(CF)
-      }
+  model_data <- list(Nind = length(unique(survival_model_data$fish_id)),
+                     Nreaches = number_reaches, # for right now all capture histories are length = 4 but can change in future
+                     Ndetlocs = 5, # for right now using 5 detection locations
+                     Rmult = Rmult,
+                     Nyrs = number_years,
+                     Nrg = number_release_groups,
+                     CH = CH,
+                     yrind = prepare_data_variables$yrind,
+                     rgind = prepare_data_variables$rgind,
+                     rch_covind = c(1, 2, 3, 3), # index pointing to covariate effect for each reach (note Butte-Sac and Sac-Delta have same fixed effect index),
+                     CovX = prepare_data_variables$WY3, # best fitting model (for now)
+                     firstCap = prepare_data_variables$firstCap,
+                     lastCap = unname(lastCap),
+                     rgwy_ind = rgwy_ind)
 
-      Xstd=matrix(nrow=Nind,ncol=Nreaches); muX=mean(X);sdX=sd(X)
-      for(j in 1:Nreaches){Xstd[,j]=(X[,j]-muX)/sdX}
-      Xseq=seq(from=min(Xstd),to=max(Xstd),length.out=Nseq)
-      Xsz=seq(from=min(Sz),to=max(Sz),length.out=Nseq)
+  inits <- list(initial_parameter_values, initial_parameter_values, initial_parameter_values)
 
-      CovX=Xstd
-      rgwy_ind=rep(0,Nrg)
+  cli::cli_process_start("Fitting STAN survival model")
+  fit <- rstan::stan(file = paste0("model_files/", model_name, ".stan"),
+                     model_name = model_name,
+                     data = model_data,
+                     init = inits, chains = 3, iter = 1500, include = T,
+                     pars = parameters)
+  cli::cli_process_done("STAN survival model fitting complete")
 
-    }
-
-    if(irun<=6){
-      model_data<-list(Nind=Nind, Nreaches=Nreaches, Ndetlocs=Ndetlocs,Rmult=Rmult,Nyrs=Nyrs, Nrg=Nrg, CH=CH, yrind=yrind, rgind=rgind, rch_covind=rch_covind, CovX=CovX, firstCap=firstCap,lastCap=lastCap, rgwy_ind=rgwy_ind)
-    } else if (irun<=9) {
-      model_data<-list(Nind=Nind, Nreaches=Nreaches, Ndetlocs=Ndetlocs,Rmult=Rmult,Nyrs=Nyrs, Nrg=Nrg, CH=CH, yrind=yrind, rgind=rgind, rch_covind=rch_covind, CovX=CovX, firstCap=firstCap,lastCap=lastCap, rgwy_ind=rgwy_ind,Nseq=Nseq,Xseq=Xseq)
-    } else {
-      model_data<-list(Nind=Nind, Nreaches=Nreaches, Ndetlocs=Ndetlocs,Rmult=Rmult,Nyrs=Nyrs, Nrg=Nrg, CH=CH, yrind=yrind, rgind=rgind, rch_covind=rch_covind, CovX=CovX, firstCap=firstCap,lastCap=lastCap, rgwy_ind=rgwy_ind,Nseq=Nseq,Xseq=Xseq,Sz=Sz,Xsz=Xsz)
-    }
-
-
-    inits2<-inits1;inits3<-inits1;inits=list(inits1,inits2,inits3)
-
-    fit=stan(file=paste0(ModNm,".stan"),data=model_data, init=inits, chains=nchains,iter=niter,include=T,pars=ParSaveList)#,algorithm = "Fixed_param",sample_file="post.txt",diagnostic_file="diagnostic.txt" #algorithm = "Fixed_param"
-    fitnm=paste0(OutDir,"fit_",ModNm,fnext,".Rdata")
-    save(fit,file=fitnm)
-
-  } #next irun
-
-  #If fitting model by optimization. Won't work with random effects
-  #m <- stan_model(file=paste0(ModNm,".stan"))
-  #opt_fit=optimizing(object=m,data=model_data, init=inits1,hessian=T,verbose=T)
-  #ipars=which(strtrim(names(opt_fit$par),width=11)=="SurvWoodSac")#example of how to pull out some specific parameter names
-  #print(opt_fit$par[ipars])
-  #Note the hessian is only available for directly estimated parameters so won't work for SurvWoodSac[] derived variable
-  #se=sqrt(diag(solve(opt_fit$hessian/opt_fit$value))); #I think divide by value since optimizer is looking at log probability, not probability. Fuzzy on this bit!
-  #print(cbind(opt_fit$par[ipars],se[ipars]))
-
+  return("full_object" = fit)
 }
-
 
