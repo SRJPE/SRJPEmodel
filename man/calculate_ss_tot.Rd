@@ -10,3 +10,4 @@ calculate_ss_tot(data)
 This function calculates the total sum of squares, which is required
 as input to the \code{data} call for \code{run_passage_to_spawner_model()}.
 }
+\keyword{internal}

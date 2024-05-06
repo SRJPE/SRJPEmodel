@@ -10,3 +10,4 @@ get_years_from_P2S_model_fits(P2S_model_fits)
 This function extracts the years the data were collected from the results of
 the Passage to Spawner model (see \code{?run_passage_to_spawner_model}).
 }
+\keyword{internal}

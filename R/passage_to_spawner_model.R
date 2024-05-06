@@ -12,7 +12,7 @@ library(SRJPEdata)
 #' @title Passage to Spawner Sum of Squares
 #' @description This function calculates the total sum of squares, which is required
 #' as input to the `data` call for `run_passage_to_spawner_model()`.
-#' @export
+#' @keywords internal
 #' @md
 calculate_ss_tot <- function(data) {
   ss_tot <- 0
@@ -32,7 +32,7 @@ calculate_ss_tot <- function(data) {
 #' @title Extract Years Passage to Spawner Estimates
 #' @description This function extracts the years the data were collected from the results of
 #' the Passage to Spawner model (see `?run_passage_to_spawner_model`).
-#' @export
+#' @keywords internal
 #' @md
 get_years_from_P2S_model_fits <- function(P2S_model_fits) {
   years <- P2S_model_fits |>
@@ -49,7 +49,7 @@ get_years_from_P2S_model_fits <- function(P2S_model_fits) {
 #' the Passage to Spawner model (see `?run_passage_to_spawner_model`). The function
 #' calls `summary()` on the `stanfit` object produced by running the model. For details,
 #' see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html).
-#' @export
+#' @keywords internal
 #' @md
 get_all_pars <- function(model_fit, stream_name) {
   par_results <- rstan::summary(model_fit)$summary
@@ -70,7 +70,7 @@ get_all_pars <- function(model_fit, stream_name) {
 #' @title Extract Predicted Spawners from P2S Model
 #' @description This function is called within `run_passage_to_spawner_model()` and pulls only the predicted spawner
 #' counts, 2.5% and 97.5% confidence intervals from the `stanfit` object.
-#' @export
+#' @keywords internal
 #' @md
 get_predicted_spawners_from_P2S <- function(results_tibble_with_years) {
   predicted_spawners <- results_tibble_with_years |>
@@ -222,7 +222,7 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
 #' * **median** 50% quantile of posterior distribution for a parameter.
 #' * **sd** standard deviation
 #' * **covar_considered** the covariate considered
-#' @export
+#' @keywords internal
 #' @family passage_to_spawner
 #' @md
 compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covariates) {
@@ -271,7 +271,7 @@ compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covar
 #' * **median** 50% quantile of posterior distribution for a parameter.
 #' * **sd** standard deviation
 #' * **covar_considered** the covariate considered
-#' @export
+#' @keywords internal
 #' @family passage_to_spawner
 #' @md
 compare_P2S_covariates_within_stream <- function(data, stream_name) {

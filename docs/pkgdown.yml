@@ -3,7 +3,7 @@ pkgdown: 2.0.7
 pkgdown_sha: ~
 articles:
   passage_to_spawner_submodel: passage_to_spawner_submodel.html
-last_built: 2024-05-06T19:30Z
+last_built: 2024-05-06T19:52Z
 urls:
   reference: https://SRJPE.github.io/SRJPEmodel/reference
   article: https://SRJPE.github.io/SRJPEmodel/articles

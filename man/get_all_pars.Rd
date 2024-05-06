@@ -12,3 +12,4 @@ the Passage to Spawner model (see \code{?run_passage_to_spawner_model}). The fun
 calls \code{summary()} on the \code{stanfit} object produced by running the model. For details,
 see \href{https://mc-stan.org/rstan/reference/stanfit-method-summary.html}{details}.
 }
+\keyword{internal}

@@ -4,6 +4,8 @@ This data package contains the Spring Run Juvenile Production Estimate (SRJPE) F
 
 This model is dependent on data produced in the `SRJPEdata` R package. 
 
+The SR JPE model is still in development. This package will be updated to contain the most up to date code and documentation on the model. 
+
 ## Installation
 
 ```

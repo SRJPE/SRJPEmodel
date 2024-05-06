@@ -27,24 +27,11 @@ reference:
 - contents:
   - run_survival_model
 
-
-
-- title: Reviewing Model Results
-  desc: Functions used as to review submodels/models results
-- contents:
-  - P2S_comparison_results
-  - calculate_ss_tot
-  - compare_P2S_covariates_within_stream
-  - compare_P2S_model_covariates
-  - get_years_from_P2S_model_fits
-  - get_all_pars
-  - get_bt_spas_x_data_list
-  - get_predicted_spawners_from_P2S
-
 - title: Model Results
   desc: Data objsects produced by models
 - contents:
   - P2S_model_fits
+  - P2S_comparison_results
 
 - title: Model Data
   desc: Additional data beyons SRJPEdata needed to run model
