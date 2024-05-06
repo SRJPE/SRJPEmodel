@@ -1,5 +1,6 @@
 library(tidyverse)
 library(SRJPEdata)
+library(rstan)
 
 # bt-spas-x ---------------------------------------------------------------
 # TODO test for different sites - put in stop if running on a site with no data in catch
@@ -25,4 +26,10 @@ P2S_spawners |>
   geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
   geom_line() +
   theme_minimal()
+
+
+# survival model ----------------------------------------------------------
+
+# explore results for survival model
+survival_results <- run_survival_model(SRJPEdata::survival_model_inputs)
 
