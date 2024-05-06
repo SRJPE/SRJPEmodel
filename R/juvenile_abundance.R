@@ -66,12 +66,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T), special_priors_data,
                                  bugs_directory) {
 
-
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
   input_data <- bt_spas_x_input_data |>
-    # filter(run_year == !!run_year,
-    #        site == site_selection)
     dplyr::filter(run_year == !!run_year,
                   site == !!site)
 
@@ -153,9 +150,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   K <- ncol(b_spline_matrix)
 
   if(effort_adjust) {
-    weekly_catch_data <- input_data$catch_standardized_by_effort
+    weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   } else {
-    weekly_catch_data <- input_data$catch_standardized_by_effort
+    weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   }
 
   # full data list
@@ -219,7 +216,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     pull(ini_b0_pCap)
 
   ini_lgN <- input_data |>
-    mutate(ini_lgN = log(catch_standardized_by_effort / 1000 + 2),
+    mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
            ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>  # TODO double check these
     pull(ini_lgN)
 
@@ -281,6 +278,10 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_params,
                            number_mcmc, bugs_directory) {
 
+  # set model name directory
+  model_name_full <- here::here("model_files", model_name)
+ # model_name_full <- paste0("model_files/", model_name)
+
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
   if(operating_system == "mac") {
@@ -288,7 +289,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
     cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
                            All the information required to run the model will be returned, but the model will not be run.")
 
-    return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
+    return(list(data = data, inits = inits, parameters = parameters, model_name = model_name_full,
                 n.chains = bt_spas_x_bayes_params$number_chains,
                 n.burnin = bt_spas_x_bayes_params$number_burnin,
                 n.thin = bt_spas_x_bayes_params$number_thin,
@@ -298,13 +299,13 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 
     cli::cli_process_start("WinBUGS model running")
     # run bugs model
-    model_results <- bugs(data, inits, parameters, model_name,
-                          n.chains = bt_spas_x_bayes_params$number_chains,
-                          n.burnin = bt_spas_x_bayes_params$number_burnin,
-                          n.thin = bt_spas_x_bayes_params$number_thin,
-                          n.iter = bt_spas_x_bayes_params$number_mcmc,
-                          debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
-                          bugs.directory = bugs_directory)
+    model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = model_name_full,
+                                     n.chains = bt_spas_x_bayes_params$number_chains,
+                                     n.burnin = bt_spas_x_bayes_params$number_burnin,
+                                     n.thin = bt_spas_x_bayes_params$number_thin,
+                                     n.iter = bt_spas_x_bayes_params$number_mcmc,
+                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     bugs.directory = bugs_directory)
 
     posterior_output <- model_results$sims.list
     summary_output <- round(model_results$summary, 3)
