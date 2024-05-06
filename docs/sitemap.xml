@@ -1,69 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>/404.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/404.html</loc>
   </url>
   <url>
-    <loc>/LICENSE-text.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/LICENSE-text.html</loc>
   </url>
   <url>
-    <loc>/LICENSE.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/LICENSE.html</loc>
   </url>
   <url>
-    <loc>/articles/index.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/articles/index.html</loc>
   </url>
   <url>
-    <loc>/articles/passage_to_spawner_submodel.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html</loc>
   </url>
   <url>
-    <loc>/authors.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/authors.html</loc>
   </url>
   <url>
-    <loc>/index.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/index.html</loc>
   </url>
   <url>
-    <loc>/reference/P2S_comparison_results.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/P2S_comparison_results.html</loc>
   </url>
   <url>
-    <loc>/reference/P2S_model_fits.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/P2S_model_fits.html</loc>
   </url>
   <url>
-    <loc>/reference/bt_spas_x_bayes_params.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/bt_spas_x_bayes_params.html</loc>
   </url>
   <url>
-    <loc>/reference/bt_spas_x_bugs.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/bt_spas_x_bugs.html</loc>
   </url>
   <url>
-    <loc>/reference/calculate_ss_tot.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/calculate_ss_tot.html</loc>
   </url>
   <url>
-    <loc>/reference/compare_P2S_covariates_within_stream.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/compare_P2S_covariates_within_stream.html</loc>
   </url>
   <url>
-    <loc>/reference/compare_P2S_model_covariates.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/compare_P2S_model_covariates.html</loc>
   </url>
   <url>
-    <loc>/reference/get_all_pars.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_all_pars.html</loc>
   </url>
   <url>
-    <loc>/reference/get_bt_spas_x_data_list.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_bt_spas_x_data_list.html</loc>
   </url>
   <url>
-    <loc>/reference/get_predicted_spawners_from_P2S.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_predicted_spawners_from_P2S.html</loc>
   </url>
   <url>
-    <loc>/reference/get_years_from_P2S_model_fits.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_years_from_P2S_model_fits.html</loc>
   </url>
   <url>
-    <loc>/reference/index.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/index.html</loc>
   </url>
   <url>
-    <loc>/reference/run_bt_spas_x.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_bt_spas_x.html</loc>
   </url>
   <url>
-    <loc>/reference/run_passage_to_spawner_model.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_passage_to_spawner_model.html</loc>
   </url>
   <url>
-    <loc>/reference/run_single_bt_spas_x.html</loc>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_single_bt_spas_x.html</loc>
+  </url>
+  <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_survival_model.html</loc>
   </url>
 </urlset>

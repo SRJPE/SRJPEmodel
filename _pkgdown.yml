@@ -1,0 +1,77 @@
+title: SRJPEmodel
+url: https://SRJPE.github.io/SRJPEmodel/
+template:
+  params:
+    bootswatch: flatly
+
+home:
+  links:
+  - text: ITP Website
+    href: https://water.ca.gov/Programs/State-Water-Project/Endangered-Species-Protection
+
+reference:
+- title: Running the Model Functions
+  desc: Functions used as to run submodels/models
+- subtitle: BTSPAS-X
+  desc: Functions to run BTSPAS-X
+- contents:
+  - bt_spas_x_bugs
+  - run_bt_spas_x
+  - run_single_bt_spas_x
+- subtitle: P2S
+  desc: Functions to run P2S
+- contents:
+  - run_passage_to_spawner_model
+- subtitle: Survival
+  desc: Functions to run Survival Model
+- contents:
+  - run_survival_model
+
+
+
+- title: Reviewing Model Results
+  desc: Functions used as to review submodels/models results
+- contents:
+  - P2S_comparison_results
+  - calculate_ss_tot
+  - compare_P2S_covariates_within_stream
+  - compare_P2S_model_covariates
+  - get_years_from_P2S_model_fits
+  - get_all_pars
+  - get_bt_spas_x_data_list
+  - get_predicted_spawners_from_P2S
+
+- title: Model Results
+  desc: Data objsects produced by models
+- contents:
+  - P2S_model_fits
+
+- title: Model Data
+  desc: Additional data beyons SRJPEdata needed to run model
+- contents:
+  - bt_spas_x_bayes_params
+
+- title: Helper Functions
+  desc: Functions used as to generate model data / format model outputs
+- contents:
+  - get_bt_spas_x_data_list
+
+
+navbar:
+  structure:
+    left:  [home, reference, articles]
+    right: [github]
+  type: default
+  left:
+  - text: 'Reference'
+    href: reference/index.html
+  - text: 'Articles'
+    menu:
+      - text: 'Passage to Spawner Model (P2S)'
+        href: articles/passage_to_spawner_submodel.html
+
+
+repo:
+ url:
+  home: https://github.com/SRJPE/SRJPEmodel
+  issue: https://github.com/SRJPE/SRJPEmodel/issues/

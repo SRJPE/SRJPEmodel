@@ -1,41 +1,47 @@
-
 # SRJPEmodel
 
-<!-- badges: start -->
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-<!-- badges: end -->
+This data package contains the Spring Run Juvenile Production Estimate (SRJPE) Forecast model. This model is made up of multiple submodels that are combined to produce an annual forecast of juvenile spring run chinook salmon at the delta entry. 
 
-The goal of SRJPEmodel is to ...
+This model is dependent on data produced in the `SRJPEdata` R package. 
 
 ## Installation
 
-You can install the development version of SRJPEmodel like so:
-
-``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+```
+# install.packages("remotes")
+remotes::install_github("SRJPE/SRJPEmodel")
 ```
 
-## Example
+## Usage
+This package contains code and documenation for the SR JPE model. 
 
-This is a basic example which shows you how to solve a common problem:
+```
+# datasets within the package
+data(package = 'SRJPEmodel')
 
-```{r example}
-library(SRJPEmodel)
-## basic example code
+# explore package documentation 
+?SRJPEmodel
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## SR JPE Submodel Components 
+This repository contains code to run a few versions of the SR JPE including: 
 
-```{r cars}
-summary(cars)
-```
+* Within Season Forecast 
+* SR Annual Forecast 
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/v1/examples>.
+*Both these versions can be run using tributary RST data or Mainstem RST data*
 
-You can also embed plots, for example:
+These models are both dependent on the following submodels, click on the link to view an article giving a brief overview of each submodel: 
 
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
+* BTSPAS-X Juvenile Abundance Modeling 
+* Passage to Spawner (P2S) - Adult Spawner Modeling 
+* Survival Model 
+* Probabilistic Length at Date (PLAD) - Run Identification Model 
+* Stock-Recruit Model 
+* Travel Time Model 
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+## Explore model fits and results 
+
+Explore model datasets, fits, and results on the SRJPEdashboard shiny app. (Add link)
+
+
+
