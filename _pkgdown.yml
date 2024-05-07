@@ -10,7 +10,7 @@ home:
     href: https://water.ca.gov/Programs/State-Water-Project/Endangered-Species-Protection
 
 reference:
-- title: Running the Model Functions
+- title: Model and Submodels Functions
   desc: Functions used as to run submodels/models
 - subtitle: BTSPAS-X
   desc: Functions to run BTSPAS-X

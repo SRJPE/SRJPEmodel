@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   btspas_submodel_documentation: btspas_submodel_documentation.html
   passage_to_spawner_submodel: passage_to_spawner_submodel.html
-last_built: 2024-05-07T15:39Z
+last_built: 2024-05-07T15:44Z
 urls:
   reference: https://SRJPE.github.io/SRJPEmodel/reference
   article: https://SRJPE.github.io/SRJPEmodel/articles
