@@ -28,4 +28,3 @@ Other passage_to_spawner:
 \code{\link{run_passage_to_spawner_model}()}
 }
 \concept{passage_to_spawner}
-\keyword{internal}

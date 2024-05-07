@@ -42,6 +42,9 @@ reference:
   desc: Functions used as to generate model data / format model outputs
 - contents:
   - get_bt_spas_x_data_list
+  - get_predicted_spawners_from_P2S
+  - compare_P2S_model_covariates
+  - compare_P2S_covariates_within_stream
 
 
 navbar:
@@ -56,6 +59,8 @@ navbar:
     menu:
       - text: 'Passage to Spawner Model (P2S)'
         href: articles/passage_to_spawner_submodel.html
+      - text: 'Juvenile Abundance Model (BTSPAS-X)'
+        href: articles/btspas_submodel_documentation.html
 
 
 repo:

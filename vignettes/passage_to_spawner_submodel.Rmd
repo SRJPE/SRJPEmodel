@@ -14,8 +14,8 @@ vignette: "%\\VignetteIndexEntry{Passage to Spawner Submodel} %\\VignetteEngine{
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.width = 7,
-  fig.height = 5
+  fig.width = 8, 
+  fig.height = 6
 )
 ```
 
@@ -42,7 +42,7 @@ The model also estimates a `conversion rate`, or proportion of adults that pass 
 This is a DRAFT conceptual model detailing where submodels fit into the overall SRJPE model ecosystem. 
 
 ```{r, echo = FALSE, out.width = "500px"}
-knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "SRJPE Conceptual Model - 2-15-2024.png"),
+knitr::include_graphics(path = here::here("vignettes", "images", "SRJPE Conceptual Model - 2-15-2024.png"),
                         rel_path = FALSE)
 ```
 
@@ -51,7 +51,7 @@ knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_mode
 The submodel takes observed data (in orange) and predicts spawner counts (in pink). Parameters estimated by the model are light pink; for more information, see documentation.
 
 ```{r, echo = FALSE, out.width = "500px"}
-knitr::include_graphics(path = here::here("data-raw", "adult_model", "adult_model_plots", "parameter_diagram.png"),
+knitr::include_graphics(path = here::here("vignettes", "images", "parameter_diagram.png"),
                         rel_path = FALSE)
 ```
 
@@ -119,11 +119,11 @@ The most recent results from fitting the model to all streams is stored as a dat
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 # obtain the years associated with observed data
-P2S_predicted_spawners <- get_predicted_spawners_from_P2S(P2S_model_fits)
+P2S_predicted_spawners <- SRJPEmodel::get_predicted_spawners_from_P2S(P2S_model_fits)
 knitr::kable(head(P2S_predicted_spawners, 5))
 ```
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "500px"}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 
 P2S_predicted_spawners |>
   mutate(stream = str_to_title(stream)) |>

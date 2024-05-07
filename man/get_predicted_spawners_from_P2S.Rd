@@ -10,4 +10,3 @@ get_predicted_spawners_from_P2S(results_tibble_with_years)
 This function is called within \code{run_passage_to_spawner_model()} and pulls only the predicted spawner
 counts, 2.5\% and 97.5\% confidence intervals from the \code{stanfit} object.
 }
-\keyword{internal}

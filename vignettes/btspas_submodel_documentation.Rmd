@@ -1,0 +1,58 @@
+---
+title: "Juvenile Abundance Model"
+author: "Josh Korman"
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Passage to Spawner Submodel} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(wesanderson)
+library(SRJPEdata)
+library(SRJPEmodel)
+```
+
+## Overview
+
+
+## Submodel Objective
+
+## Conceptual model
+
+
+## Submodel Architecture
+
+
+# Model inputs
+
+The model takes in X datasets:
+
+
+# Running BTSPAS-X submodel
+
+
+# Model Output
+
+
+
+## Extract predicted juveniles by year, with uncertainty
+
+
+# Resources
+
+
+

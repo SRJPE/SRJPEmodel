@@ -70,7 +70,7 @@ get_all_pars <- function(model_fit, stream_name) {
 #' @title Extract Predicted Spawners from P2S Model
 #' @description This function is called within `run_passage_to_spawner_model()` and pulls only the predicted spawner
 #' counts, 2.5% and 97.5% confidence intervals from the `stanfit` object.
-#' @keywords internal
+#' @export
 #' @md
 get_predicted_spawners_from_P2S <- function(results_tibble_with_years) {
   predicted_spawners <- results_tibble_with_years |>
@@ -222,7 +222,7 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
 #' * **median** 50% quantile of posterior distribution for a parameter.
 #' * **sd** standard deviation
 #' * **covar_considered** the covariate considered
-#' @keywords internal
+#' @export
 #' @family passage_to_spawner
 #' @md
 compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covariates) {
@@ -271,7 +271,7 @@ compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covar
 #' * **median** 50% quantile of posterior distribution for a parameter.
 #' * **sd** standard deviation
 #' * **covar_considered** the covariate considered
-#' @keywords internal
+#' @export
 #' @family passage_to_spawner
 #' @md
 compare_P2S_covariates_within_stream <- function(data, stream_name) {
