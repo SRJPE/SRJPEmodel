@@ -34,8 +34,8 @@ This repository contains code to run a few versions of the SR JPE including:
 
 These models are both dependent on the following submodels, click on the link to view an article giving a brief overview of each submodel: 
 
-* BTSPAS-X Juvenile Abundance Modeling 
-* Passage to Spawner (P2S) - Adult Spawner Modeling 
+* [BTSPAS-X Juvenile Abundance Modeling](https://srjpe.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html)
+* [Passage to Spawner (P2S) - Adult Spawner Modeling](https://srjpe.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html) 
 * Survival Model 
 * Probabilistic Length at Date (PLAD) - Run Identification Model 
 * Stock-Recruit Model 
