@@ -9,7 +9,7 @@
 #' @returns TODO
 #' @export
 #' @md
-run_survival_model <- function(survival_model_data) {
+run_survival_model <- function(survival_model_data, number_detection_locations, number_reaches) {
 
   # TODO confirm CovWY3_Reach model is the best fitting model (the one we want to use)
   model_name <- "survival_model_STAN" # "CovWY3_Reach" reach-specific 3 water year type covariate effect effect on survival (C, D/BN, W)
@@ -17,7 +17,6 @@ run_survival_model <- function(survival_model_data) {
                   "S_RE", "pred_surv", "SurvWoodSac", "SurvForecast", "pred_pcap")
 
   number_years <- length(unique(survival_model_data$year))
-  number_reaches <- 4
   number_release_groups <- length(unique(survival_model_data$study_id))
 
   initial_parameter_values <- list(P_b = matrix(data = 2.2, nrow = number_years, ncol = number_reaches),
@@ -63,16 +62,22 @@ run_survival_model <- function(survival_model_data) {
 
   # convert to a matrix
   CH <- survival_model_data |>
-    separate_wider_position(ch, widths = c("2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
-    mutate("1" = 1) |>
-    select(`1`, `2`, `3`, `4`, `5`) |>
+    # separate_wider_position(ch, widths = c("2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
+    # mutate("1" = 1) |> # TODO this should be done in SRJPEdata
+    # select(`1`, `2`, `3`, `4`, `5`) |>
+    separate_wider_position(ch, widths = c("1" = 1, "2" = 1, "3" = 1, "4" = 1)) |>
+    select(`1`, `2`, `3`, `4`) |>
     mutate_all(as.numeric) |>
     as.matrix() |>
     unname()
 
+  if(dim(CH)[2] != number_detection_locations) {
+    cli::cli_abort("capture history matrix must have the dimensions of number individuals x number detection locations")
+  }
+
   model_data <- list(Nind = length(unique(survival_model_data$fish_id)),
                      Nreaches = number_reaches, # for right now all capture histories are length = 4 but can change in future
-                     Ndetlocs = 5, # for right now using 5 detection locations
+                     Ndetlocs = number_detection_locations, # for right now using 5 detection locations
                      Rmult = Rmult,
                      Nyrs = number_years,
                      Nrg = number_release_groups,

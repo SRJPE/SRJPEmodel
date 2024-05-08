@@ -32,5 +32,8 @@ P2S_spawners |>
 # survival model ----------------------------------------------------------
 
 # explore results for survival model
-survival_results <- run_survival_model(SRJPEdata::survival_model_inputs)
+# TODO model runs with 5 detection locations but not 4
+survival_results <- run_survival_model(SRJPEdata::survival_model_inputs,
+                                       number_detection_locations = 4,
+                                       number_reaches = 4)
 

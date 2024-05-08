@@ -75,8 +75,7 @@ generated quantities{
 
   array[Nyrs] vector[Nreaches] pred_pcap;
   for(iyr in 1:Nyrs){
-    //for(j in 2:Ndetlocs){
-      for(j in 1:Nreaches){
+    for(j in 2:Ndetlocs){
       pred_pcap[iyr,j-1]=inv_logit(P_b[iyr,j-1]);
     }
   }
