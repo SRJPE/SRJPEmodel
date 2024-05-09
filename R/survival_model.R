@@ -62,11 +62,8 @@ run_survival_model <- function(survival_model_data, number_detection_locations, 
 
   # convert to a matrix
   CH <- survival_model_data |>
-    # separate_wider_position(ch, widths = c("2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
-    # mutate("1" = 1) |> # TODO this should be done in SRJPEdata
-    # select(`1`, `2`, `3`, `4`, `5`) |>
-    separate_wider_position(ch, widths = c("1" = 1, "2" = 1, "3" = 1, "4" = 1)) |>
-    select(`1`, `2`, `3`, `4`) |>
+    separate_wider_position(ch, widths = c("1" = 1, "2" = 1, "3" = 1, "4" = 1, "5" = 1)) |>
+    select(`1`, `2`, `3`, `4`, `5`) |>
     mutate_all(as.numeric) |>
     as.matrix() |>
     unname()
