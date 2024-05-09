@@ -108,10 +108,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   number_sites_pCap <- length(unique(mark_recapture_data$site))
   indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # TODO check this
-  indices_pCap <- which(mark_recapture_data$site == site &
-                          mark_recapture_data$run_year == run_year)
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
                                          !is.na(input_data$standardized_efficiency_flow))
+  # TODO This is wrong - producing numbers outside the range of Nmwr, which is used in the code (missing_mark_recap.bug, cut function)
+  indices_pCap <- which(mark_recapture_data$site == site &
+                          mark_recapture_data$run_year == run_year &
+                          is.na(match(mark_recapture_data$week, indices_with_mark_recapture)))
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
                                             is.na(input_data$standardized_efficiency_flow))
   # TODO check this
@@ -210,9 +212,10 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   # initial parameter values
   ini_b0_pCap <- mark_recapture_data |>
-    dplyr::filter(site == !!site,
-           run_year == !!run_year) |>
-    mutate(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
+    group_by(site) |>
+    # dplyr::filter(site == !!site,
+    #        run_year == !!run_year) |>
+    summarise(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(ini_b0_pCap)
 
   ini_lgN <- input_data |>
@@ -304,7 +307,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
-                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     debug = TRUE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
     posterior_output <- model_results$sims.list
