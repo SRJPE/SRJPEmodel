@@ -1,73 +1,66 @@
-# this is a refactor of estN_noMR.bug
-# This version assumes no MR data but trib where N is estimated is within larger MR dataset
+#This version assumes no MR data but trib where N is estimated is within larger MR dataset
 
-model {
+model{
 
-  ### pCap Estimation using all mark-recap data ###############
+### pCap Estimation using all mark-recap data ###############
 
-  # tributary-specific mean pCap is a random effect, so define priors for hyper-paramaters (distribution of tributary mean pCap across tribs)
-  pCap_mu_prior ~ dnorm(0, 1.0E-06)
-  pCap_tau_prior ~ dgamma(0.001, 0.001)
-  pCap_sd_prior <- 1 / pow(pCap_tau_prior, 0.5)
+#tributary-specific mean pCap is a random effect, so define priors for hyper-paramaters (distribution of tributary mean pCap across tribs)
+trib_mu.P~dnorm(0,1.0E-06);trib_tau.P~dgamma(0.001,0.001);trib_sd.P<-1/pow(trib_tau.P,0.5)
+flow_mu.P~dnorm(0,1.0E-06);flow_tau.P~dgamma(0.001,0.001);flow_sd.P<-1/pow(flow_tau.P,0.5)
+for(j in 1:Ntribs){
+	b0_pCap[j]~dnorm(trib_mu.P,trib_tau.P)#trib-specific P is a random draw from hyper distribtion
+	b_flow[j]~dnorm(flow_mu.P,flow_tau.P)
+}
 
-  flow_mu_prior ~ dnorm(0, 1.0E-06)
-  flow_tau_prior ~ dgamma(0.001, 0.001)
-  flow_sd_prior <- 1 / pow(flow_tau_prior, 0.5)
+#process error distribution (error not explained by trib, year, and week effects
+pro_tau.P~dgamma(0.001,0.001);pro_sd.P<-1/pow(pro_tau.P,0.5)
 
-  for(j in 1:number_sites_pCap) {
-  	b0_pCap[j] ~ dnorm(pCap_mu_prior, pCap_tau_prior) # trib-specific P is a random draw from hyper distribtion
-  	b_flow[j] ~ dnorm(flow_mu_prior, flow_tau_prior)
-  }
+for(i in 1:Nmr){	#loop through all MR experiments
+	pro_dev.P[i]~dnorm(0,pro_tau.P)
+	logit_pCap[i]<-  b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]]*mr_flow[i] + pro_dev.P[i]
+	logit(pCap[i])<-logit_pCap[i]
+	Recaptures[i]~dbin(pCap[i],Releases[i])
+}
 
-  # process error distribution (error not explained by trib, year, and week effects
-  process_error_tau_prior ~ dgamma(0.001, 0.001)
-  process_error_sd_prior <- 1 / pow(process_error_tau_prior, 0.5)
+### Unmarked abundance estimation ##########
 
-  for(i in 1:number_efficiency_experiments) {
-    # loop through all MR experiments
-  	process_error_devs_prior[i] ~ dnorm(0, process_error_tau_prior)
-  	logit_pCap[i] <- b0_pCap[indices_site_mark_recapture[i]] + b_flow[indices_site_mark_recapture[i]] * standardized_efficiency_flow[i] + process_error_devs_prior[i]
-  	logit(pCap[i]) <- logit_pCap[i]
-  	number_recaptured[i] ~ dbin(pCap[i], number_released[i])
-  }
-
-  ### Unmarked abundance estimation ##########
-
-  # Priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
-  tau_N ~ dgamma(1, 0.05)
-  sd_N <- 1 / pow(tau_N, 0.5)
-  tau_Ne ~ dgamma(1, 0.05)
-  sd_Ne <- 1 / pow(tau_Ne, 0.5) # 0.1, 0.1 prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
+##Priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
+tau.N~dgamma(1,0.05);sd.N<-1/pow(tau.N,0.5)
+tau.Ne~dgamma(1,0.05);sd.Ne<-1/pow(tau.Ne,0.5) #0.1,0.1Prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
 
 
-  # Priors on spline coefficients
-  b_sp[1] ~ dnorm(0, 1.0)
-  b_sp[2] ~ dflat()
-  for(i in 3:K){
-        xi[i-2] <- 2 * b_sp[i-1] - b_sp[i-2] # Second order random walk to set mean of normal prior on b
-        b_sp[i] ~ dnorm(xi[i-2], tau.N) # The higher the estimate of tauN, the more precision in dnorm, hence less flexibility in b[i]'s, and hence a smoother the curve. Data and spline structure (knots and order) determine estimate of tauN
-  }
+#Priors on spline coefficients
+#b_sp[1]~dflat()
+b_sp[1]~dnorm(0,1.0)	
+b_sp[2]~dflat()
+for(i in 3:K){
+      xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b 
+      b_sp[i] ~ dnorm(xi[i-2],tau.N) #The higher the estimate of tauN, the more precision in dnorm, hence less flexibility in b[i]'s, and hence a smoother the curve. Data and spline structure (knots and order) determine estimate of tauN
+}
 
-  # For U strata without MR data, simulate pCaps from hyper distributions.
-  # This version assumes that the tributary being modelled was also in the MR estimation
-  # If it isn't then you have to simulate b0_pCap from hyper parameters
-  for(i in 1:number_weeks_without_mark_recapture) {
-  	process_error_deviations[i] ~ dnorm(0, process_error_tau_prior)
-  	logit_pCap_sim[i] <- b0_pCap[indices_sites_pCap] + b_flow[indices_sites_pCap] * catch_flow[indices_without_mark_recapture[i]] + process_error_deviations[i]
-  	logit(pCap_U[indices_without_mark_recapture[i]]) <- cut(logit_pCap_sim[i])
-  }
+#For U strata without MR data, simulate pCaps from hyper distributions. 
+#This version assumes that the tributary being modelled was also in the MR estimation
+#If it isn't then you have to simulate b0_pCap from hyper parameters
+for(i in 1:Nwomr){
+	pro_dev[i]~dnorm(0,pro_tau.P)
+	logit_pCap_Sim[i]<-b0_pCap[use_trib] + b_flow[use_trib]*catch_flow[Uind_woMR[i]] + pro_dev[i]
+	logit(pCap_U[Uind_woMR[i]])<-cut(logit_pCap_Sim[i])
+}
 
-  for(i in 1:number_weeks_catch) {
-  	Usp[i] <- inprod(b_spline_matrix[i,], b_sp[]) # spline-based estimate of log U
-  	lg_N[i] ~ dnorm(Usp[i], tau_Ne)I(, lgN_max[i]) # spline + extra-spline variation estimate of log U
-  	N[i] <- exp(lg_N[i]) * 1000.0
-  }
+for(i in 1:Nstrata){
+	Usp[i]<-inprod(ZP[i,],b_sp[])		#spline-based estimate of log U
+	lg_N[i]~dnorm(Usp[i],tau.Ne)I(,lgN_max[i])	#spline + extra-spline variation estimate of log U
+	#log(N[i])<-lg_N[i]			#Convert lg_N to N
+	N[i]<-exp(lg_N[i])*1000.0
+}
+Ntot<-sum(N[])
 
-  N_total <- sum(N[])
-
-  # Only loop through strata with unmarked catch observations
-  for(i in 1:number_weeks_with_catch) {
-  	weekly_catch[indices_with_catch[i]] ~ dbin(pCap_U[indices_with_catch[i]], N[indices_with_catch[i]])
-  }
+#Only loop through strata with unmarked catch observations
+for(i in 1:Nstrata_wc){
+	u[Uwc_ind[i]]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]])
+	
+	#exp_u[Uwc_ind[i]]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]]
+	#u[Uwc_ind[i]]~dpois(exp_u[Uwc_ind[i]])
+}	
 
 }

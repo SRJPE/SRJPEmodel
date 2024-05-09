@@ -156,24 +156,24 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   }
 
   # full data list
-  full_data_list <- list("number_efficiency_experiments" = number_efficiency_experiments,
-                         "number_sites_pCap" = number_sites_pCap,
-                         "indices_site_mark_recapture" = indices_site_mark_recapture,
-                         "number_released" = mark_recapture_data_unique_experiments$number_released,
-                         "number_recaptured" = mark_recapture_data_unique_experiments$number_recaptured,
-                         "number_weeks_catch" = number_weeks_catch,
-                         "weekly_catch" = weekly_catch_data,
+  full_data_list <- list("Nmr" = number_efficiency_experiments,
+                         "Ntribs" = number_sites_pCap,
+                         "ind_trib" = indices_site_mark_recapture,
+                         "Releases" = mark_recapture_data_unique_experiments$number_released,
+                         "Recaptures" = mark_recapture_data_unique_experiments$number_recaptured,
+                         "Nstrata" = number_weeks_catch,
+                         "u" = weekly_catch_data,
                          "K" = K,
-                         "b_spline_matrix" = b_spline_matrix,
-                         "indices_pCap" = indices_pCap,
-                         "number_weeks_with_mark_recapture" = number_weeks_with_mark_recapture,
-                         "number_weeks_without_mark_recapture" = number_weeks_without_mark_recapture,
-                         "indices_with_mark_recapture" = indices_with_mark_recapture,
-                         "indices_without_mark_recapture" = indices_without_mark_recapture,
-                         "indices_sites_pCap" = indices_sites_pCap,
-                         "number_weeks_with_catch" = number_weeks_with_catch,
-                         "indices_with_catch" = indices_with_catch,
-                         "standardized_efficiency_flow" = mark_recapture_data_unique_experiments$standardized_efficiency_flow,
+                         "ZP" = b_spline_matrix,
+                         "ind_pCap" = indices_pCap,
+                         "Nwmr" = number_weeks_with_mark_recapture,
+                         "Nwomr" = number_weeks_without_mark_recapture,
+                         "Uind_wMR" = indices_with_mark_recapture,
+                         "Uind_woMR" = indices_without_mark_recapture,
+                         "use_trib" = indices_sites_pCap,
+                         "Nstrata_wc" = number_weeks_with_catch,
+                         "Uwc_ind" = indices_with_catch,
+                         "mr_flow" = mark_recapture_data_unique_experiments$standardized_efficiency_flow,
                          "catch_flow" = input_data$flow_cfs,
                          "lgN_max" = input_data$lgN_prior) # TODO rename?
 
@@ -224,13 +224,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     mutate(pCap_mu_prior = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
     pull(pCap_mu_prior)
 
-  init_list <- list("pCap_mu_prior" = pCap_mu_prior,
+  init_list <- list("trib_mu.P" = pCap_mu_prior,
                     "b0_pCap" = ini_b0_pCap,
-                    "flow_mu_prior" = 0,
+                    "flow_mu.P" = 0,
                     "b_flow" = rep(0, number_sites_pCap),
-                    "pCap_tau_prior" = 1,
-                    "flow_tau_prior" = 1,
-                    "process_error_tau_prior" = 1,
+                    "trib_tau.P" = 1,
+                    "flow_tau.P" = 1,
+                    "pro_tau.P" = 1,
                     "b_sp" = rep(1, K),
                     "lg_N" = ini_lgN)
 
@@ -245,25 +245,25 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' Execute BT-SPAS-X in WinBUGs
 #' @details This function is called within `run_single_bt_spas_x()` and calls the WinBUGS code
 #' @param data a list containing the following elements:
-#' * **number_efficiency_experiments** number of unique mark-recapture experiments performed across tributaries, years and weeks
-#' * **number_sites_pCap** number of tributaries to use for the pCap component of the model
-#' * **number_weeks_catch** number of weeks with catch data
-#' * **number_weeks_with_mark_recapture** number of weeks in catch data with associated pCap and flow data
-#' * **number_weeks_without_mark_recapture** number of weeks in catch data without associated pCap and flow data
-#' * **number_weeks_with_catch** number of weeks in catch data with catch data (RST fished)
+#' * **Nmr** number of unique mark-recapture experiments performed across tributaries, years and weeks
+#' * **Ntribs** number of tributaries to use for the pCap component of the model
+#' * **Nstrata** number of weeks with catch data
+#' * **Uwc_ind** number of weeks in catch data with associated pCap and flow data
+#' * **Nwomr** number of weeks in catch data without associated pCap and flow data
+#' * **Nstrata_wc** number of weeks in catch data with catch data (RST fished)
 #' * **indices_site_pCap** tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
-#' * **indices_site_mark_recapture** indices (1:number_sites_pCap) assigned to the mark-recapture experiment table for use in BUGs
-#' * **indices_pCap** indices of weeks in mark-recapture table for U strata being estimated
-#' * **indices_without_mark_recapture** indices of weeks in catch data without associated pCap and flow data
-#' * **indices_with_mark_recapture** indices of weeks in catch data with associated pCap and flow data
-#' * **indices_with_catch** indices of weeks in catch data with catch data
-#' * **number_released** number of fish released for each mark-recapture experiment
-#' * **number_recaptured** number of fish recaptured for each mark-recapture experiment
-#' * **weekly_catch** weekly abundance
-#' * **standardized_efficiency_flow** standardized flow, averaged over recapture days (< 1 week)
+#' * **ind_trib** indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs
+#' * **ind_pCap** indices of weeks in mark-recapture table for U strata being estimated
+#' * **Uind_woMR** indices of weeks in catch data without associated pCap and flow data
+#' * **Uind_wMR** indices of weeks in catch data with associated pCap and flow data
+#' * **Uwc_ind** indices of weeks in catch data with catch data
+#' * **Releases** number of fish released for each mark-recapture experiment
+#' * **Recaptures** number of fish recaptured for each mark-recapture experiment
+#' * **u** weekly abundance
+#' * **mr_flow** standardized flow, averaged over recapture days (< 1 week)
 #' * **catch_flow** standardized flow, averaged by week
 #' * **K** number of columns in the bspline basis matrix
-#' * **b_spline_matrix** The b_spline_matrix (bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots)
+#' * **ZP** The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)
 #' * **lgN_max** maxmimum possible value for log N across strata
 #' @param inits
 #' @param parameters
@@ -329,21 +329,21 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
   if(model_name == "all_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_sites_pCap" ,"indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                     "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "lgN_max")
+    data_needed <- c("Nmr", "Ntribs" ,"ind_trib", "Releases", "Recaptures", "Nstrata",
+                     "u", "K", "ZP", "ind_pCap", "Nstrata_wc", "Uwc_ind", "mr_flow", "lgN_max")
   } else if(model_name == "missing_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                     "weekly_catch", "K", "b_spline_matrix", "indices_pCap", "number_weeks_with_mark_recapture", "number_weeks_without_mark_recapture",
-                     "indices_with_mark_recapture", "indices_without_mark_recapture", "indices_sites_pCap", "number_weeks_with_catch", "indices_with_catch",
-                     "standardized_efficiency_flow", "catch_flow", "lgN_max")
+    data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
+                     "u", "K", "ZP", "ind_pCap", "Nwmr", "Nwomr",
+                     "Uind_wMR", "Uind_woMR", "use_trib", "Nstrata_wc", "Uwc_ind",
+                     "mr_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                     "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "indices_sites_pCap",
-                     "number_weeks_with_catch", "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
+    data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
+                     "u", "K", "ZP", "Nwomr", "Uind_woMR", "use_trib",
+                     "Nstrata_wc", "Uwc_ind", "mr_flow", "catch_flow", "lgN_max")
   } else if(model_name == "no_mark_recap_no_trib.bug") {
-    data_needed <- c("number_efficiency_experiments", "number_sites_pCap", "indices_site_mark_recapture", "number_released", "number_recaptured", "number_weeks_catch",
-                     "weekly_catch", "K", "b_spline_matrix", "number_weeks_without_mark_recapture", "indices_without_mark_recapture", "number_weeks_with_catch",
-                     "indices_with_catch", "standardized_efficiency_flow", "catch_flow", "lgN_max")
+    data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
+                     "u", "K", "ZP", "Nwomr", "Uind_woMR", "Nstrata_wc",
+                     "Uwc_ind", "mr_flow", "catch_flow", "lgN_max")
   }
   new_data_list <- full_data_list[sapply(names(full_data_list), function(x) x %in% data_needed)]
   return(new_data_list)

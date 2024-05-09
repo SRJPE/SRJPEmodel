@@ -57,7 +57,7 @@ run_survival_model <- function(survival_model_data, number_detection_locations, 
 
   # get detection location of last capture
   lastCap <- sapply(survival_model_data$ch, function(x) {
-    max(unlist(str_locate_all(x, "1"))) + 1
+    max(unlist(str_locate_all(x, "1")))
   })
 
   # convert to a matrix

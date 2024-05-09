@@ -12,6 +12,10 @@ bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    effort_adjust = T,
                                    multi_run_mode = F, # T
                                    mainstem_version = F,
+                                   # when running on remote computer, we have the WinBUGS14 in this folder
+                                   # however, messaging should be included here to say that the
+                                   # WinBUGS folder needs to be in a folder where you have write permissions
+                                   # because this errors out frequently
                                    bugs_directory = here::here("data-raw", "WinBUGS14"))
 
 
