@@ -98,38 +98,46 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   mark_recapture_data <- bt_spas_x_input_data |>
     dplyr::filter(!site %in% remove_sites,
-           !is.na(standardized_efficiency_flow), # TODO should stay at flow_cfs?
+           !is.na(standardized_efficiency_flow),
            !is.na(number_released),
            !is.na(number_recaptured))
 
   # get numbers for looping in BUGs code - pCap model
-  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
-    nrow()
+  # number of efficiency experiments completed
+  number_efficiency_experiments <- nrow(mark_recapture_data) # unique(mark_recapture_data[c("site", "run_year", "week")]) |> nrow()
+  # years where efficiency experiments were done
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
+  # number of sites (for pCap calculations)
   number_sites_pCap <- length(unique(mark_recapture_data$site))
-  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # TODO check this
+  # indices of those sites where efficiency trials were performed
+  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site)
+  # indices of efficiency experiments in catch data
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
                                          !is.na(input_data$standardized_efficiency_flow))
-  # TODO This is wrong - producing numbers outside the range of Nmwr, which is used in the code (missing_mark_recap.bug, cut function)
+  # weeks (in catch data) where mark recapture were performed
+  weeks_with_mark_recapture <- input_data$week[indices_with_mark_recapture]
+  # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
   indices_pCap <- which(mark_recapture_data$site == site &
                           mark_recapture_data$run_year == run_year &
-                          is.na(match(mark_recapture_data$week, indices_with_mark_recapture)))
+                          mark_recapture_data$week %in% weeks_with_mark_recapture)
+  # indices (in catch data) where no mark recap were performed
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
                                             is.na(input_data$standardized_efficiency_flow))
-  # TODO check this
+  # indices (in mark-recap data) for each site
   indices_site_mark_recapture <- mark_recapture_data |>
-    distinct(site, run_year, week) |>
     group_by(site) |>
     mutate(ID = cur_group_id()) |>
     pull(ID)
+  # number of weeks (in mark-recap data) where effiency experiments were performed
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture)
+  # number of weeks (in mark-recap data) where effiency experiments were not performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
 
   # subset mark recapture data to be able to pull the flow, number released, and
   # number recaptured for every unique mark-recapture experiment for data inputs
-  mark_recapture_data_unique_experiments <- mark_recapture_data |>
-    distinct(site, run_year, week, number_released, number_recaptured,
-             standardized_efficiency_flow)
+  # mark_recapture_data_unique_experiments <- mark_recapture_data |>
+  #   distinct(site, run_year, week, number_released, number_recaptured,
+  #            standardized_efficiency_flow)
 
   # TODO josh has something for BUGS-specific code here
   # if(nrow(weeks_without_recap) == 1 | nrow(weeks_with_recap) == 1)
@@ -142,14 +150,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     return(NULL)
   }
 
-  k_int <- 4 # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
-  # TODO create "spline parameters" object
-  number_knots <- round(number_weeks_catch / k_int, 0)
-  first_knot_position <- 2
-  final_knot_position <- number_weeks_catch - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
-  knot_positions <- seq(first_knot_position, final_knot_position, length.out = number_knots) # define position of b-spline knots using even interval if no missing data
-  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
-  K <- ncol(b_spline_matrix)
+  # spline parameter calculation
+  spline_data <- build_spline_data(number_weeks_catch, k_int = 4) # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
 
   if(effort_adjust) {
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
@@ -161,12 +163,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   full_data_list <- list("Nmr" = number_efficiency_experiments,
                          "Ntribs" = number_sites_pCap,
                          "ind_trib" = indices_site_mark_recapture,
-                         "Releases" = mark_recapture_data_unique_experiments$number_released,
-                         "Recaptures" = mark_recapture_data_unique_experiments$number_recaptured,
+                         "Releases" = mark_recapture_data$number_released,
+                         "Recaptures" = mark_recapture_data$number_recaptured,
                          "Nstrata" = number_weeks_catch,
                          "u" = weekly_catch_data,
-                         "K" = K,
-                         "ZP" = b_spline_matrix,
+                         "K" = spline_data$K,
+                         "ZP" = spline_data$b_spline_matrix,
                          "ind_pCap" = indices_pCap,
                          "Nwmr" = number_weeks_with_mark_recapture,
                          "Nwomr" = number_weeks_without_mark_recapture,
@@ -175,9 +177,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "use_trib" = indices_sites_pCap,
                          "Nstrata_wc" = number_weeks_with_catch,
                          "Uwc_ind" = indices_with_catch,
-                         "mr_flow" = mark_recapture_data_unique_experiments$standardized_efficiency_flow,
+                         "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
                          "catch_flow" = input_data$flow_cfs,
-                         "lgN_max" = input_data$lgN_prior) # TODO rename?
+                         "lgN_max" = input_data$lgN_prior)
 
 
   # set up models and data to pass to bugs
@@ -220,7 +222,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   ini_lgN <- input_data |>
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
-           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>  # TODO double check these
+           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
     pull(ini_lgN)
 
   pCap_mu_prior <- mark_recapture_data |>
@@ -234,7 +236,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     "trib_tau.P" = 1,
                     "flow_tau.P" = 1,
                     "pro_tau.P" = 1,
-                    "b_sp" = rep(1, K),
+                    "b_sp" = rep(1, spline_data$K),
                     "lg_N" = ini_lgN)
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
@@ -350,4 +352,26 @@ get_bt_spas_x_data_list <- function(model_name, full_data_list) {
   }
   new_data_list <- full_data_list[sapply(names(full_data_list), function(x) x %in% data_needed)]
   return(new_data_list)
+}
+
+
+#' Prepare spline parameters object for BT-SPAS-X WinBUGs call
+#' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
+#' to pass to the data list
+#' @param number_weeks_catch
+#' @param k_int
+#' @returns a named list containing *K* and *b_spline_matrix* for passing to WinBUGS
+#' @export
+#' @md
+build_spline_data <- function(number_weeks_catch, k_int) {
+
+  number_knots <- round(number_weeks_catch / k_int, 0)
+  first_knot_position <- 2
+  final_knot_position <- number_weeks_catch - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
+  knot_positions <- seq(first_knot_position, final_knot_position, length.out = number_knots) # define position of b-spline knots using even interval if no missing data
+  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
+  K <- ncol(b_spline_matrix)
+
+  return(list("K" = K,
+              "b_spline_matrix" = b_spline_matrix))
 }
