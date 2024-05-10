@@ -17,25 +17,25 @@ bt_spas_x_bugs(
 \arguments{
 \item{data}{a list containing the following elements:
 \itemize{
-\item \strong{number_efficiency_experiments} number of unique mark-recapture experiments performed across tributaries, years and weeks
-\item \strong{number_sites_pCap} number of tributaries to use for the pCap component of the model
-\item \strong{number_weeks_catch} number of weeks with catch data
-\item \strong{number_weeks_with_mark_recapture} number of weeks in catch data with associated pCap and flow data
-\item \strong{number_weeks_without_mark_recapture} number of weeks in catch data without associated pCap and flow data
-\item \strong{number_weeks_with_catch} number of weeks in catch data with catch data (RST fished)
+\item \strong{Nmr} number of unique mark-recapture experiments performed across tributaries, years and weeks
+\item \strong{Ntribs} number of tributaries to use for the pCap component of the model
+\item \strong{Nstrata} number of weeks with catch data
+\item \strong{Uwc_ind} number of weeks in catch data with associated pCap and flow data
+\item \strong{Nwomr} number of weeks in catch data without associated pCap and flow data
+\item \strong{Nstrata_wc} number of weeks in catch data with catch data (RST fished)
 \item \strong{indices_site_pCap} tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
-\item \strong{indices_site_mark_recapture} indices (1:number_sites_pCap) assigned to the mark-recapture experiment table for use in BUGs
-\item \strong{indices_pCap} indices of weeks in mark-recapture table for U strata being estimated
-\item \strong{indices_without_mark_recapture} indices of weeks in catch data without associated pCap and flow data
-\item \strong{indices_with_mark_recapture} indices of weeks in catch data with associated pCap and flow data
-\item \strong{indices_with_catch} indices of weeks in catch data with catch data
-\item \strong{number_released} number of fish released for each mark-recapture experiment
-\item \strong{number_recaptured} number of fish recaptured for each mark-recapture experiment
-\item \strong{weekly_catch} weekly abundance
-\item \strong{standardized_efficiency_flow} standardized flow, averaged over recapture days (< 1 week)
+\item \strong{ind_trib} indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs
+\item \strong{ind_pCap} indices of weeks in mark-recapture table for U strata being estimated
+\item \strong{Uind_woMR} indices of weeks in catch data without associated pCap and flow data
+\item \strong{Uind_wMR} indices of weeks in catch data with associated pCap and flow data
+\item \strong{Uwc_ind} indices of weeks in catch data with catch data
+\item \strong{Releases} number of fish released for each mark-recapture experiment
+\item \strong{Recaptures} number of fish recaptured for each mark-recapture experiment
+\item \strong{u} weekly abundance
+\item \strong{mr_flow} standardized flow, averaged over recapture days (< 1 week)
 \item \strong{catch_flow} standardized flow, averaged by week
 \item \strong{K} number of columns in the bspline basis matrix
-\item \strong{b_spline_matrix} The b_spline_matrix (bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots)
+\item \strong{ZP} The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)
 \item \strong{lgN_max} maxmimum possible value for log N across strata
 }}
 
