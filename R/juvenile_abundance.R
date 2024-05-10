@@ -159,6 +159,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   }
 
+  lgN_max <- log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025)
+  lgN_max <- ifelse(is.na(lgN_max), mean(lgN_max, na.rm = T), lgN_max)
+
   # full data list
   full_data_list <- list("Nmr" = number_efficiency_experiments,
                          "Ntribs" = number_sites_pCap,
@@ -179,7 +182,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "Uwc_ind" = indices_with_catch,
                          "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
                          "catch_flow" = input_data$flow_cfs,
-                         "lgN_max" = input_data$lgN_prior)
+                         "lgN_max" = lgN_max)
 
 
   # set up models and data to pass to bugs
@@ -225,9 +228,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
            ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
     pull(ini_lgN)
 
-  pCap_mu_prior <- mark_recapture_data |>
-    mutate(pCap_mu_prior = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
-    pull(pCap_mu_prior)
+  pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
+                                   sum(mark_recapture_data$number_released))
 
   init_list <- list("trib_mu.P" = pCap_mu_prior,
                     "b0_pCap" = ini_b0_pCap,
@@ -309,7 +311,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
-                                     debug = TRUE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
     posterior_output <- model_results$sims.list
