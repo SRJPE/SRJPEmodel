@@ -133,12 +133,6 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # number of weeks (in mark-recap data) where effiency experiments were not performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
 
-  # subset mark recapture data to be able to pull the flow, number released, and
-  # number recaptured for every unique mark-recapture experiment for data inputs
-  # mark_recapture_data_unique_experiments <- mark_recapture_data |>
-  #   distinct(site, run_year, week, number_released, number_recaptured,
-  #            standardized_efficiency_flow)
-
   # so BUGS doesn't bomb
   if(number_weeks_without_mark_recapture == 1) {
     indices_without_mark_recapture <- c(indices_without_mark_recapture, -99)
@@ -217,14 +211,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   data <- get_bt_spas_x_data_list(model_name, full_data_list)
 
-  parameters <- c("pCap_mu_prior", "pCap_sd_prior", "flow_mu_prior", "flow_sd_prior", "process_error_sd_prior", "b0_pCap", "b_flow",
-                  "pCap_U", "N", "N_total", "sd_N", "sd_Ne")
+  parameters <- c("trib_mu.P", "trib_sd.P", "flow_mu.P", "flow_sd.P", "pro_sd.P",
+                   "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
 
   # initial parameter values
   ini_b0_pCap <- mark_recapture_data |>
     group_by(site) |>
-    # dplyr::filter(site == !!site,
-    #        run_year == !!run_year) |>
     summarise(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
     pull(ini_b0_pCap)
 
@@ -246,7 +238,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     b_sp = rep(1, spline_data$K),
                     lg_N = ini_lgN)
 
-  inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
+  #inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
+  inits <- list(init_list, init_list, init_list)
 
   # run the bugs model
   results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params, bugs_directory = paste0(bugs_directory))
