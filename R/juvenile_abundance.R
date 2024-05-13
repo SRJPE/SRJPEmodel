@@ -139,8 +139,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   #   distinct(site, run_year, week, number_released, number_recaptured,
   #            standardized_efficiency_flow)
 
-  # TODO josh has something for BUGS-specific code here
-  # if(nrow(weeks_without_recap) == 1 | nrow(weeks_with_recap) == 1)
+  # so BUGS doesn't bomb
+  if(number_weeks_without_mark_recapture == 1) {
+    indices_without_mark_recapture <- c(indices_without_mark_recapture, -99)
+  }
+  if(number_weeks_with_mark_recapture == 1) {
+    indices_with_mark_recapture <- c(indices_with_mark_recapture, -99)
+  }
 
   # set up b-spline basis matrix
   # this corresponds to line 148-153 in josh_original_model_code.R
@@ -231,15 +236,15 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
                                    sum(mark_recapture_data$number_released))
 
-  init_list <- list("trib_mu.P" = pCap_mu_prior,
-                    "b0_pCap" = ini_b0_pCap,
-                    "flow_mu.P" = 0,
-                    "b_flow" = rep(0, number_sites_pCap),
-                    "trib_tau.P" = 1,
-                    "flow_tau.P" = 1,
-                    "pro_tau.P" = 1,
-                    "b_sp" = rep(1, spline_data$K),
-                    "lg_N" = ini_lgN)
+  init_list <- list(trib_mu.P = pCap_mu_prior,
+                    b0_pCap = ini_b0_pCap,
+                    flow_mu.P = 0,
+                    b_flow = rep(0, number_sites_pCap),
+                    trib_tau.P = 1,
+                    flow_tau.P = 1,
+                    pro_tau.P = 1,
+                    b_sp = rep(1, spline_data$K),
+                    lg_N = ini_lgN)
 
   inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
 
@@ -311,7 +316,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
-                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     debug = TRUE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
     posterior_output <- model_results$sims.list
