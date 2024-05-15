@@ -73,7 +73,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   input_data <- bt_spas_x_input_data |>
     dplyr::filter(run_year == !!run_year,
                   site == !!site,
-                  week %in% c(seq(45, 53), seq(1, 22))) # TODO check
+                  week %in% c(seq(45, 53), seq(1, 22))) |> # TODO check
+    mutate(count = round(count, 0),
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
 
   if(nrow(input_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
@@ -104,7 +106,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                   !is.na(standardized_flow),
                   !is.na(number_released) &
                   !is.na(number_recaptured),
-                  site %in% c("ubc", "lcc", "ucc")) |> # TODO remove
+                  site == "ubc") |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
 
@@ -183,8 +185,28 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "Nstrata_wc" = number_weeks_with_catch,
                          "Uwc_ind" = indices_with_catch,
                          "mr_flow" = mark_recapture_data$standardized_flow,
-                         "catch_flow" = input_data$flow_cfs,
+                         "catch_flow" = input_data$standardized_flow,
                          "lgN_max" = input_data$lgN_prior)
+
+  # full_data_list$Nmr = josh_data$Nmr
+  # full_data_list$ind_trib = josh_data$ind_trib
+  # full_data_list$Releases = josh_data$Releases
+  # full_data_list$Recaptures = josh_data$Recaptures
+  # full_data_list$ind_pCap = josh_data$ind_pCap
+  # full_data_list$Nwmr = josh_data$Nwmr
+  # full_data_list$Nwomr = josh_data$Nwomr
+  # full_data_list$Uind_wMR = josh_data$Uind_wMR
+  # full_data_list$Uind_woMR = josh_data$Uind_woMR
+  # full_data_list$mr_flow = josh_data$mr_flow
+
+  # full_data_list$u <- josh_data$u
+  # full_data_list$Nstrata <- josh_data$Nstrata
+  # full_data_list$Nstrata_wc <- josh_data$Nstrata_wc
+  # full_data_list$ZP <- josh_data$ZP
+  # full_data_list$K <- josh_data$K
+  # full_data_list$Uwc_ind <- josh_data$Uwc_ind
+  # full_data_list$catch_flow <- josh_data$catch_flow
+  # full_data_list$lgN_max <- josh_data$lgN_max
 
 
   # set up models and data to pass to bugs
@@ -218,11 +240,11 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                    "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
 
   # initial parameter values
-  ini_b0_pCap <- rep(NaN, Ntribs)
+  ini_b0_pCap <- rep(NA, Ntribs)
   ini_b0_pCap[1] <- gtools::logit(sum(mark_recapture_data$number_recaptured) / sum(mark_recapture_data$number_released))
   # TODO fix this
   # ini_b0_pCap <- mark_recapture_data |>
-  #   group_by(site) |>
+  #   group_by(stream) |>
   #   summarise(ini_b0_pCap = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
   #   pull(ini_b0_pCap)
 
@@ -243,6 +265,10 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     pro_tau.P = 1,
                     b_sp = rep(1, spline_data$K),
                     lg_N = ini_lgN)
+
+  # init_list$b0_pCap <- josh_inits[[1]]$b0_pCap
+  # init_list$trib_mu.P <- josh_inits[[1]]$trib_mu.P
+  # init_list$lg_N <- josh_inits[[1]]$lg_N
 
   inits <- list(init_list, init_list, init_list)
 
