@@ -15,16 +15,17 @@ updated_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
             hours_fished = mean(hours_fished, na.rm = T),
             flow_cfs = mean(flow_cfs, na.rm = T),
             standardized_flow = mean(standardized_flow, na.rm = T),
-            catch_standardized_by_hours_fished = count * hours_fished,
+            catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished),
             standardized_efficiency_flow = mean(standardized_efficiency_flow, na.rm = T),
             lgN_prior = mean(lgN_prior, na.rm = T)) |>
   ungroup()
 
+
+
 bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    bt_spas_x_input_data = updated_input,
                                    site = "ubc",
-                                   run_year = 2009,
-                                   life_stage = "fry",
+                                   run_year = 2004,
                                    effort_adjust = T,
                                    multi_run_mode = F, # T
                                    mainstem_version = F,

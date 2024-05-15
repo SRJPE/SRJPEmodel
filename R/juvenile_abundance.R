@@ -188,25 +188,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "catch_flow" = input_data$standardized_flow,
                          "lgN_max" = input_data$lgN_prior)
 
-  # full_data_list$Nmr = josh_data$Nmr
-  # full_data_list$ind_trib = josh_data$ind_trib
-  # full_data_list$Releases = josh_data$Releases
-  # full_data_list$Recaptures = josh_data$Recaptures
-  # full_data_list$ind_pCap = josh_data$ind_pCap
-  # full_data_list$Nwmr = josh_data$Nwmr
-  # full_data_list$Nwomr = josh_data$Nwomr
-  # full_data_list$Uind_wMR = josh_data$Uind_wMR
-  # full_data_list$Uind_woMR = josh_data$Uind_woMR
-  # full_data_list$mr_flow = josh_data$mr_flow
 
-  # full_data_list$u <- josh_data$u
-  # full_data_list$Nstrata <- josh_data$Nstrata
-  # full_data_list$Nstrata_wc <- josh_data$Nstrata_wc
-  # full_data_list$ZP <- josh_data$ZP
-  # full_data_list$K <- josh_data$K
-  # full_data_list$Uwc_ind <- josh_data$Uwc_ind
-  # full_data_list$catch_flow <- josh_data$catch_flow
-  # full_data_list$lgN_max <- josh_data$lgN_max
 
 
   # set up models and data to pass to bugs
@@ -266,9 +248,6 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     b_sp = rep(1, spline_data$K),
                     lg_N = ini_lgN)
 
-  # init_list$b0_pCap <- josh_inits[[1]]$b0_pCap
-  # init_list$trib_mu.P <- josh_inits[[1]]$trib_mu.P
-  # init_list$lg_N <- josh_inits[[1]]$lg_N
 
   inits <- list(init_list, init_list, init_list)
 
@@ -340,18 +319,20 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
-                                     debug = TRUE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
-    posterior_output <- model_results$sims.list
-    summary_output <- round(model_results$summary, 3)
-    dic_output <- c(model_results$pD, model_results$DIC)
-    knots_output <- knot_positions
+    return(model_results)
 
-    return(list("posterior_output" = posterior_output,
-                "summary_output" = summary_output,
-                "dic_output" = dic_output,
-                "knots_output" = knots_output))
+    # posterior_output <- model_results$sims.list
+    # summary_output <- round(model_results$summary, 3)
+    # dic_output <- c(model_results$pD, model_results$DIC)
+    # knots_output <- knot_positions
+    #
+    # return(list("posterior_output" = posterior_output,
+    #             "summary_output" = summary_output,
+    #             "dic_output" = dic_output,
+    #             "knots_output" = knots_output))
   }
 }
 

@@ -9,29 +9,29 @@ if(MultiRun_Mode==F){
 	doTrib="battle creek_ubc";doYr=2009
 	#doTrib="clear creek_lcc";doYr=2005
 	#doTrib="feather river_eye riffle";doYr=2020
-	
+
 	doWks=c(seq(45,53),seq(1,22)) #can't have a wider range than range used to build RST_input.txt (as specified in BuildData.R)
 	#doWks=seq(1,19)
-	
+
 	fnprefix=paste0(doTrib,"_",doYr)
 	#fnprefix=paste0("output/",doTrib,"_",doYr)
 } else {
-	fnprefix=paste0("OutSpecPriors/",doTrib,"_",doYr)
+	fnprefix=paste0("data-raw/juvenile_abundance/btspas_model_code/OutSpecPriors/",doTrib,"_",doYr)
 }
 
-#Nmcmc=2500;Nburnin=500;Nthin=1;Nchains=3	
-#Nmcmc=5000;Nburnin=3000;Nthin=2;Nchains=3	
-Nmcmc=10000;Nburnin=5000;Nthin=5;Nchains=3	
-#Nmcmc=20000;Nburnin=10000;Nthin=10;Nchains=3	
+#Nmcmc=2500;Nburnin=500;Nthin=1;Nchains=3
+#Nmcmc=5000;Nburnin=3000;Nthin=2;Nchains=3
+Nmcmc=10000;Nburnin=5000;Nthin=5;Nchains=3
+#Nmcmc=20000;Nburnin=10000;Nthin=10;Nchains=3
 
 ### Setup Data and initial values for pCap component of model ########
-d0=read.table(file="RST_Input.txt",header=T)
+d0=read.table(file="data-raw/juvenile_abundance/RST_Input.txt",header=T)
 
 #Tribs to use for pCap component of model. This is where sacramento river_knights landing is excluded because its efficiency is not exchangeable with those from CV tribs
 alltribs=c("battle creek_ubc","clear creek_lcc","clear creek_ucc","feather river_eye riffle","feather river_herringer riffle","feather river_steep riffle","feather river_gateway riffle","feather river_sunset pumps")#,"sacramento river_knights landing"
 Ntribs=length(alltribs)
 
-#Trib index to use to predict efficiency for missing strata. 
+#Trib index to use to predict efficiency for missing strata.
 #Note length=0 if doTrib is not part of trib set that has MR data. In this case model that samples from trib hyper will be called
 use_trib=which(alltribs==doTrib)
 
@@ -55,15 +55,15 @@ for(i in 1:Nmr){
 	dmr1=subset(dmr,Trib==mr_expts$Trib[i] & RunYr==mr_expts$RunYr[i] & Week==mr_expts$Week[i])
 	Releases[i]=dmr1$Rel1
 	Recaptures[i]=dmr1$Recap1
-	
+
 	#create standardized flow for mark-recap experiments. catch_flow which is average for Jwk, mr_flow is average over recapture days (< 1 week)
 	#use mr_flow in fitting (as for /pCap/pCap.tws), but standardized based on catch_flow, which will be used in prediction
 	#for strata without MR data. Fitting based on mr_flow is more accurate and produces gentler b_flow.? slopes which provides more stability in abundance estimates
 	#Otherwise you can get very low pCaps at high flows for some tris
-	dmr1X=subset(dmr,Trib==mr_expts$Trib[i] & is.na(match(Week,doWks))==F) 
+	dmr1X=subset(dmr,Trib==mr_expts$Trib[i] & is.na(match(Week,doWks))==F)
 	mr_flow[i]=(dmr1$mr_flow-mean(dmr1X$catch_flow,na.rm=T))/sd(dmr1X$catch_flow,na.rm=T)
 	#mr_flow[i]=(dmr1$catch_flow-mean(dmr1X$catch_flow,na.rm=T))/sd(dmr1X$catch_flow,na.rm=T)
-	
+
 	ind_trib[i]=which(alltribs==mr_expts$Trib[i])
 	ind_yr[i]=which(allyrs==mr_expts$RunYr[i])
 	if(length(which(doWks==mr_expts$Week[i]))>0) ind_wk[i]=which(doWks==mr_expts$Week[i])
@@ -94,9 +94,9 @@ if(length(which(is.na(Effort)==T))==Nstrata){#No effort data
 	dCx=subset(d0,Trib==doTrib & is.na(match(Week,doWks))==F & is.na(Effort)==F)
 	bad_recs=which(is.na(u0)==F & Effort==0) #In rare cases where strata was fished but no effort was recorded assume average effort for year
 	if(length(bad_recs)==0){
-		muEff=mean(dCx$Effort,na.rm=T)	
+		muEff=mean(dCx$Effort,na.rm=T)
 	} else {
-		muEff=mean(dCx$Effort[-bad_recs],na.rm=T)	
+		muEff=mean(dCx$Effort[-bad_recs],na.rm=T)
 		Effort[bad_recs]=muEff
 	}
 }
@@ -115,7 +115,7 @@ lgN_max=log((u/1000+1)/0.025)		#maxmim possible value for log N across strata
 imiss=which(is.na(u)==T);lgN_max[imiss]=mean(lgN_max,na.rm=T) #for missing strata set to average max across strata
 
 #lgN_max for special cases
-dsp=read.csv(file="Special_Priors.csv",header=T)
+dsp=read.csv(file="data-raw/juvenile_abundance/btspas_model_code/Special_Priors.csv",header=T)
 dsp1=subset(dsp,Stream_Site==doTrib & RunYr==doYr)
 istrata= which(is.na(match(doWks,dsp1$Jweek))==F)
 lgN_max[istrata]=dsp1$lgN_max
@@ -123,8 +123,8 @@ lgN_max[istrata]=dsp1$lgN_max
 
 #Calculate standardized flow for each weekly strata (can be different than mr_flow which only averages over days of recovery
 #Note the mean and sd used for standardization has to be the same used for pCap model (above) for this trip
-dX=subset(dC,Trib==doTrib & is.na(match(Week,doWks))==F) 
-cf=dC$catch_flow	
+dX=subset(dC,Trib==doTrib & is.na(match(Week,doWks))==F)
+cf=dC$catch_flow
 irecs=which(is.na(dC$catch_flow)==T)
 if(length(irecs)>0) cf[irecs]=mean(cf,na.rm=T) #if missing values for one or more strata set to mean (but no missing values as of Aug 02,2022.
 catch_flow=(cf-mean(dX$catch_flow,na.rm=T))/sd(dX$catch_flow,na.rm=T)
@@ -146,10 +146,10 @@ write.table(file=paste0(fnprefix,"_data.out"),cbind(dC$Week,u, trel,trec,round(E
 
 #### Setup B-spline basis matrix
 k_int=4	#Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
-Nknots=round(Nstrata/k_int,digits=0) 
+Nknots=round(Nstrata/k_int,digits=0)
 fkp=2;lkp=Nstrata-1 #Keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
 kknots=seq(fkp,lkp,length.out=Nknots) #Define position of b-spline knots using even interval if no missing data
-ZP <- bSpline(x=1:Nstrata,knots=kknots,deg=3,intercept=T)	 #bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots 
+ZP <- bSpline(x=1:Nstrata,knots=kknots,deg=3,intercept=T)	 #bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots
 K=dim(ZP)[2]
 #######################################################################################################
 
@@ -169,12 +169,12 @@ if(length(use_trib)==1){ #Some MR was done in this tributary
 
 		if(Nwmr>0){#some strata have MR data
 			ModName="estN_missMR"		#MR data for some strata and tributary was included in the MR analysis
-			
+
 			data<-list("Nmr","Ntribs","ind_trib","Releases","Recaptures","Nstrata","u","K","ZP","ind_pCap","Nwmr","Nwomr","Uind_wMR","Uind_woMR","use_trib","Nstrata_wc","Uwc_ind","mr_flow","catch_flow","lgN_max")
-			
+
 			#ModName="gamma_estN_missMR"		#MR data for some strata and tributary was included in the MR analysis
 			#data<-list("Nmr","Ntribs","ind_trib","Releases","Recaptures","Nstrata","u","K","ZP","ind_pCap","Nwmr","Nwomr","Uind_wMR","Uind_woMR","use_trib","Nstrata_wc","Uwc_ind","mr_flow","catch_flow","lgN_max")
-						
+
 		} else if (Nwmr==0){ #No strata have MR data
 			ModName="estN_noMR"		#No MR data for any strata and trib was included in MR analysis
 			data<-list("Nmr","Ntribs","ind_trib","Releases","Recaptures","Nstrata","u","K","ZP","Nwomr","Uind_woMR","use_trib","Nstrata_wc","Uwc_ind","mr_flow","catch_flow","lgN_max")
@@ -192,6 +192,7 @@ if(length(use_trib)==1){ #Some MR was done in this tributary
 parameters<-c("trib_mu.P","trib_sd.P","flow_mu.P","flow_sd.P","pro_sd.P","b0_pCap","b_flow","pCap_U","N","Ntot","sd.N","sd.Ne")
 
 ini_b0_pCap=vector(length=Ntribs);for(itrib in 1:Ntribs){irows=which(ind_trib==itrib);ini_b0_pCap[itrib]=logit(sum(Recaptures[irows])/sum(Releases[irows]))}
+ini_b0_pCap[4:8] <- c(NA, NA, NA, NA, NA)
 #N is estimated in units of thousands in log space
 ini_lgN=log(u/1000+2);irecs=which(is.na(ini_lgN)==T);ini_lgN[irecs]=log(2/1000)
 
@@ -199,11 +200,13 @@ inits1<-list(trib_mu.P=logit(sum(Recaptures)/sum(Releases)), b0_pCap=ini_b0_pCap
 inits2<-inits1;inits3<-inits1;inits<-list(inits1,inits2,inits3)
 
 
-ModName2=paste0(ModName,".bug")
-post<-bugs(data, inits, parameters, ModName2,n.chains=Nchains, n.burnin=Nburnin,n.thin=Nthin,n.iter=Nmcmc, debug=F,codaPkg=F,DIC=T,clearWD=T,bugs.directory="c:/WinBUGS14/")	#run bugs model
+ModName2=here::here("data-raw", "juvenile_abundance", "btspas_model_code", paste0(ModName,".bug"))
+post<-bugs(data, inits, parameters, ModName2,n.chains=Nchains, n.burnin=Nburnin,
+           n.thin=Nthin,n.iter=Nmcmc, debug=F,codaPkg=F,DIC=T,clearWD=T,
+           bugs.directory=here::here("data-raw", "WinBUGS14"))	#run bugs model
 
-fnstats=paste0(fnprefix,"_post.out");write.table(post$sims.list,file=fnstats,col.names=T,row.names=T) 
-fnstats=paste0(fnprefix,"_sum.out");write.table(round(post$summary,digits=3),file=fnstats,col.names=T,row.names=T) 
+fnstats=paste0(fnprefix,"_post.out");write.table(post$sims.list,file=fnstats,col.names=T,row.names=T)
+fnstats=paste0(fnprefix,"_sum.out");write.table(round(post$summary,digits=3),file=fnstats,col.names=T,row.names=T)
 fn_dic=paste0(fnprefix,"_dic.out");write(file=fn_dic,c(post$pD,post$DIC),ncolumns=2)
 fn_knots=paste0(fnprefix,"_knots.out");write(file=fn_knots,kknots,ncolumns=Nknots)
 
