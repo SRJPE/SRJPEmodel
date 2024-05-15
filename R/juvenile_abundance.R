@@ -5,21 +5,23 @@
 #' @param bt_spas_x_input_data
 #' @param site
 #' @param run_year
+#' @param life_stage
 #' @param effort_adjust
 #' @param multi_run_mode
 #' @param mainstem_version
-#' @param special_priors_data
 #' @param bugs_directory
 #' @returns TODO
 #' @export
 #' @md
 run_bt_spas_x <- function(bt_spas_x_bayes_params,
-                          bt_spas_x_input_data, site, run_year, effort_adjust, multi_run_mode,
-                          mainstem_version, special_priors_data, bugs_directory) {
+                          bt_spas_x_input_data, site, run_year, life_stage,
+                          effort_adjust, multi_run_mode,
+                          mainstem_version, bugs_directory) {
   if(!multi_run_mode) {
     run_single_bt_spas_x(bt_spas_x_bayes_params,
-                         bt_spas_x_input_data, site, run_year, effort_adjust, mainstem_version,
-                         special_priors_data, bugs_directory)
+                         bt_spas_x_input_data, site, run_year,
+                         life_stage, effort_adjust, mainstem_version,
+                         bugs_directory)
   } else if (multi_run_mode) {
 
     all_results <- list()
@@ -41,8 +43,8 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
                                                  bt_spas_x_input_data,
                                                  site = i,
                                                  run_year = j,
-                                                 effort_adjust, mainstem_version,
-                                                 special_priors_data, bugs_directory)
+                                                 life_stage = !!life_stage,
+                                                 effort_adjust, mainstem_version, bugs_directory)
     }
   }
 }
@@ -56,21 +58,22 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @param run_year
 #' @param effort_adjust
 #' @param mainstem_version
-#' @param special_priors_data
 #' @param bugs_directory
 #' @returns TODO
 #' @export
 #' @md
 run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year,
-                                 effort_adjust = c(T, F), mainstem_version = c(F, T), special_priors_data,
+                                 life_stage,
+                                 effort_adjust = c(T, F), mainstem_version = c(F, T),
                                  bugs_directory) {
 
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
   input_data <- bt_spas_x_input_data |>
     dplyr::filter(run_year == !!run_year,
-                  site == !!site)
+                  site == !!site,
+                  week %in% c(seq(45, 53), seq(1, 22))) # TODO check
 
   if(nrow(input_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
@@ -97,23 +100,26 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   }
 
   mark_recapture_data <- bt_spas_x_input_data |>
-    dplyr::filter(!site %in% remove_sites,
-           !is.na(standardized_efficiency_flow),
-           !is.na(number_released),
-           !is.na(number_recaptured))
+    dplyr::filter(!site %in% remove_sites &
+                  !is.na(standardized_flow),
+                  !is.na(number_released) &
+                  !is.na(number_recaptured),
+                  site %in% c("ubc", "lcc", "ucc")) |> # TODO remove
+    select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
+              catch_standardized_by_hours_fished, lgN_prior))
 
   # get numbers for looping in BUGs code - pCap model
   # number of efficiency experiments completed
-  number_efficiency_experiments <- nrow(mark_recapture_data) # unique(mark_recapture_data[c("site", "run_year", "week")]) |> nrow()
+  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |> nrow() # nrow(mark_recapture_data) this depends on whether you have lifestage or not
   # years where efficiency experiments were done
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   # number of sites (for pCap calculations)
-  number_sites_pCap <- length(unique(mark_recapture_data$site))
+  Ntribs <- 8 #  <- length(unique(mark_recapture_data$site))
   # indices of those sites where efficiency trials were performed
   indices_sites_pCap <- which(unique(mark_recapture_data$site) == site)
   # indices of efficiency experiments in catch data
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
-                                         !is.na(input_data$standardized_efficiency_flow))
+                                         !is.na(input_data$standardized_flow))
   # weeks (in catch data) where mark recapture were performed
   weeks_with_mark_recapture <- input_data$week[indices_with_mark_recapture]
   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
@@ -122,7 +128,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                           mark_recapture_data$week %in% weeks_with_mark_recapture)
   # indices (in catch data) where no mark recap were performed
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
-                                            is.na(input_data$standardized_efficiency_flow))
+                                            is.na(input_data$standardized_flow))
   # indices (in mark-recap data) for each site
   indices_site_mark_recapture <- mark_recapture_data |>
     group_by(site) |>
@@ -158,30 +164,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   }
 
-  josh_priors <- read_csv(here::here("data-raw", "juvenile_abundance", "btspas_model_code", "Special_Priors.csv")) |>
-    janitor::clean_names() |>
-    mutate(site = sub(".*_", "", stream_site)) |>
-    select(run_year = run_yr,
-           josh_prior = lg_n_max,
-           week = jweek,
-           site)
-
-  lgN_max <- input_data |>
-    left_join(josh_priors, by = c("site", "run_year", "week")) |>
-    mutate(lgN_max = ifelse(!is.na(josh_prior),
-                               josh_prior,
-                               NA),
-           lgN_max_default = ifelse(is.na(lgN_max),
-                                    log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025),
-                                    lgN_max)) |>
-    pull(lgN_max_default)
-
-  # lgN_max <- log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025)
-  # lgN_max <- ifelse(is.na(lgN_max), mean(lgN_max, na.rm = T), lgN_max)
-
   # full data list
   full_data_list <- list("Nmr" = number_efficiency_experiments,
-                         "Ntribs" = number_sites_pCap,
+                         "Ntribs" = Ntribs,
                          "ind_trib" = indices_site_mark_recapture,
                          "Releases" = mark_recapture_data$number_released,
                          "Recaptures" = mark_recapture_data$number_recaptured,
@@ -197,9 +182,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "use_trib" = indices_sites_pCap,
                          "Nstrata_wc" = number_weeks_with_catch,
                          "Uwc_ind" = indices_with_catch,
-                         "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
+                         "mr_flow" = mark_recapture_data$standardized_flow,
                          "catch_flow" = input_data$flow_cfs,
-                         "lgN_max" = lgN_max)
+                         "lgN_max" = input_data$lgN_prior)
 
 
   # set up models and data to pass to bugs
@@ -233,10 +218,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                    "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
 
   # initial parameter values
-  ini_b0_pCap <- mark_recapture_data |>
-    group_by(site) |>
-    summarise(ini_b0_pCap = stats::qlogis(sum(number_recaptured) / sum(number_released))) |>
-    pull(ini_b0_pCap)
+  ini_b0_pCap <- rep(NaN, Ntribs)
+  ini_b0_pCap[1] <- gtools::logit(sum(mark_recapture_data$number_recaptured) / sum(mark_recapture_data$number_released))
+  # TODO fix this
+  # ini_b0_pCap <- mark_recapture_data |>
+  #   group_by(site) |>
+  #   summarise(ini_b0_pCap = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
+  #   pull(ini_b0_pCap)
 
   ini_lgN <- input_data |>
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
@@ -249,14 +237,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   init_list <- list(trib_mu.P = pCap_mu_prior,
                     b0_pCap = ini_b0_pCap,
                     flow_mu.P = 0,
-                    b_flow = rep(0, number_sites_pCap),
+                    b_flow = rep(0, Ntribs),
                     trib_tau.P = 1,
                     flow_tau.P = 1,
                     pro_tau.P = 1,
                     b_sp = rep(1, spline_data$K),
                     lg_N = ini_lgN)
 
-  #inits <- list(inits1 = init_list, inits2 = init_list, inits3 = init_list)
   inits <- list(init_list, init_list, init_list)
 
   # run the bugs model
