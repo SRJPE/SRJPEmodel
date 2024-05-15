@@ -158,8 +158,26 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   }
 
-  lgN_max <- log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025)
-  lgN_max <- ifelse(is.na(lgN_max), mean(lgN_max, na.rm = T), lgN_max)
+  josh_priors <- read_csv(here::here("data-raw", "juvenile_abundance", "btspas_model_code", "Special_Priors.csv")) |>
+    janitor::clean_names() |>
+    mutate(site = sub(".*_", "", stream_site)) |>
+    select(run_year = run_yr,
+           josh_prior = lg_n_max,
+           week = jweek,
+           site)
+
+  lgN_max <- input_data |>
+    left_join(josh_priors, by = c("site", "run_year", "week")) |>
+    mutate(lgN_max = ifelse(!is.na(josh_prior),
+                               josh_prior,
+                               NA),
+           lgN_max_default = ifelse(is.na(lgN_max),
+                                    log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025),
+                                    lgN_max)) |>
+    pull(lgN_max_default)
+
+  # lgN_max <- log((input_data$catch_standardized_by_hours_fished/1000 + 1) / 0.025)
+  # lgN_max <- ifelse(is.na(lgN_max), mean(lgN_max, na.rm = T), lgN_max)
 
   # full data list
   full_data_list <- list("Nmr" = number_efficiency_experiments,
