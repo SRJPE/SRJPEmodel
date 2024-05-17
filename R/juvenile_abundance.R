@@ -10,18 +10,19 @@
 #' @param multi_run_mode
 #' @param mainstem_version
 #' @param bugs_directory
+#' @param debug_mode
 #' @returns TODO
 #' @export
 #' @md
 run_bt_spas_x <- function(bt_spas_x_bayes_params,
                           bt_spas_x_input_data, site, run_year, life_stage,
                           effort_adjust, multi_run_mode,
-                          mainstem_version, bugs_directory) {
+                          mainstem_version, bugs_directory, debug_mode) {
   if(!multi_run_mode) {
     run_single_bt_spas_x(bt_spas_x_bayes_params,
                          bt_spas_x_input_data, site, run_year,
                          life_stage, effort_adjust, mainstem_version,
-                         bugs_directory)
+                         bugs_directory, debug_mode)
   } else if (multi_run_mode) {
 
     all_results <- list()
@@ -44,7 +45,8 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
                                                  site = i,
                                                  run_year = j,
                                                  life_stage = !!life_stage,
-                                                 effort_adjust, mainstem_version, bugs_directory)
+                                                 effort_adjust, mainstem_version,
+                                                 bugs_directory, debug_mode)
     }
   }
 }
@@ -59,6 +61,7 @@ run_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @param effort_adjust
 #' @param mainstem_version
 #' @param bugs_directory
+#' @param debug_mode
 #' @returns TODO
 #' @export
 #' @md
@@ -66,7 +69,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year,
                                  life_stage,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T),
-                                 bugs_directory) {
+                                 bugs_directory, debug_mode) {
 
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
@@ -105,8 +108,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
-                  !is.na(number_recaptured),
-                  site == "ubc") |>
+                  !is.na(number_recaptured)) %>% #,
+                  #site == "ubc") |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
 
@@ -116,7 +119,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # years where efficiency experiments were done
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
   # number of sites (for pCap calculations)
-  Ntribs <- 8 #  <- length(unique(mark_recapture_data$site))
+  # Ntribs <- 8
+  Ntribs <- length(unique(mark_recapture_data$site))
   # indices of those sites where efficiency trials were performed
   indices_sites_pCap <- which(unique(mark_recapture_data$site) == site)
   # indices of efficiency experiments in catch data
@@ -133,7 +137,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                             is.na(input_data$standardized_flow))
   # indices (in mark-recap data) for each site
   indices_site_mark_recapture <- mark_recapture_data |>
-    group_by(site) |>
+    group_by(site) |> # TODO confirm this, not stream?
     mutate(ID = cur_group_id()) |>
     pull(ID)
   # number of weeks (in mark-recap data) where effiency experiments were performed
@@ -188,9 +192,6 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "catch_flow" = input_data$standardized_flow,
                          "lgN_max" = input_data$lgN_prior)
 
-
-
-
   # set up models and data to pass to bugs
   number_experiments_at_site <- mark_recapture_data |>
     distinct(site, run_year, week) |>
@@ -218,17 +219,27 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   data <- get_bt_spas_x_data_list(model_name, full_data_list)
 
+  # check data list for NaNs
+  cli::cli_process_start("Checking data inputs")
+  invisible(lapply(names(data), function(x) {
+    if(any(is.nan(data[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, " please check your input data."))
+    }
+  }))
+
   parameters <- c("trib_mu.P", "trib_sd.P", "flow_mu.P", "flow_sd.P", "pro_sd.P",
                    "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
 
   # initial parameter values
   ini_b0_pCap <- rep(NA, Ntribs)
-  ini_b0_pCap[1] <- gtools::logit(sum(mark_recapture_data$number_recaptured) / sum(mark_recapture_data$number_released))
-  # TODO fix this
-  # ini_b0_pCap <- mark_recapture_data |>
-  #   group_by(stream) |>
-  #   summarise(ini_b0_pCap = gtools::logit(sum(number_recaptured) / sum(number_released))) |>
-  #   pull(ini_b0_pCap)
+  for(i in 1:Ntribs) {
+    irows = which(indices_site_mark_recapture == i)
+    ini_b0_pCap[i] = gtools::logit(sum(mark_recapture_data$number_recaptured[irows]) /
+                                     sum(mark_recapture_data$number_released[irows]))
+    if(is.nan(ini_b0_pCap[i])) {
+      ini_b0_pCap[i] <- NA
+    }
+  }
 
   ini_lgN <- input_data |>
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
@@ -249,10 +260,18 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     lg_N = ini_lgN)
 
 
+  cli::cli_process_start("Checking init inputs")
+  invisible(lapply(names(init_list), function(x) {
+    if(any(is.nan(init_list[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, " please check your input data."))
+    }
+  }))
+
   inits <- list(init_list, init_list, init_list)
 
   # run the bugs model
-  results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params, bugs_directory = paste0(bugs_directory))
+  results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params,
+                            bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
   return(results)
 }
 
@@ -291,7 +310,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @export
 #' @md
 bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_params,
-                           number_mcmc, bugs_directory) {
+                           number_mcmc, bugs_directory, debug_mode) {
 
   # set model name directory
   model_name_full <- here::here("model_files", model_name)
@@ -319,22 +338,36 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
-                                     debug = FALSE, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
+                                     debug = debug_mode, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
-    return(model_results)
+    return(list("model_results" = model_results,
+                "model_called" = sub(".*/", "", model_name_full),
+                "data_inputs" = data,
+                "init_inputs" = inits))
 
-    # posterior_output <- model_results$sims.list
-    # summary_output <- round(model_results$summary, 3)
-    # dic_output <- c(model_results$pD, model_results$DIC)
-    # knots_output <- knot_positions
-    #
-    # return(list("posterior_output" = posterior_output,
-    #             "summary_output" = summary_output,
-    #             "dic_output" = dic_output,
-    #             "knots_output" = knots_output))
+    return(model_results)
   }
 }
+
+#' Extract results from BT-SPAS-X bugs object
+#' @details TODO
+#' @param model_result_object TODO
+#' @returns TODO
+#' @export
+#' @md
+extract_bt_spas_x_results <- function(model_result_object) {
+  posterior_output <- model_result_object$sims.list
+  summary_output <- round(model_result_object$summary, 3)
+  dic_output <- c(model_result_object$pD, model_results$DIC)
+  #knots_output <- knot_positions
+
+  return(list("posterior_output" = posterior_output,
+              "summary_output" = summary_output,
+              "dic_output" = dic_output))
+              #"knots_output" = knots_output))
+}
+
 
 #' Prepare Data Object for BT-SPAS-X WinBUGs call
 #' @details This function is called within `run_single_bt_spas_x()` and prepares the data lists

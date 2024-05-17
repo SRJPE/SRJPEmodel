@@ -11,7 +11,8 @@ bt_spas_x_bugs(
   model_name,
   bt_spas_x_bayes_params,
   number_mcmc,
-  bugs_directory
+  bugs_directory,
+  debug_mode
 )
 }
 \arguments{

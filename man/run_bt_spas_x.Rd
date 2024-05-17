@@ -9,11 +9,12 @@ run_bt_spas_x(
   bt_spas_x_input_data,
   site,
   run_year,
+  life_stage,
   effort_adjust,
   multi_run_mode,
   mainstem_version,
-  special_priors_data,
-  bugs_directory
+  bugs_directory,
+  debug_mode
 )
 }
 \arguments{

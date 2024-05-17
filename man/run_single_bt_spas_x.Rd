@@ -9,9 +9,9 @@ run_single_bt_spas_x(
   bt_spas_x_input_data,
   site,
   run_year,
+  life_stage,
   effort_adjust = c(T, F),
   mainstem_version = c(F, T),
-  special_priors_data,
   bugs_directory
 )
 }
