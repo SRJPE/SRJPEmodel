@@ -373,7 +373,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 extract_bt_spas_x_results <- function(model_result_object) {
   posterior_output <- model_result_object$sims.list
   summary_output <- round(model_result_object$summary, 3)
-  dic_output <- c(model_result_object$pD, model_results$DIC)
+  dic_output <- c(model_result_object$pD, model_result_object$DIC)
   #knots_output <- knot_positions
 
   return(list("posterior_output" = posterior_output,
@@ -433,4 +433,41 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 
   return(list("K" = K,
               "b_spline_matrix" = b_spline_matrix))
+}
+
+#' @title Extract Years BT-SPAS-X results
+#' @description TODO
+#' @keywords internal
+#' @md
+get_years_from_juvenile_model_fits <- function(juvenile_model_fits_summary) {
+  years <- test$summary_output |>
+    as.data.frame() |>
+    cbind(par_names = rownames(test$summary_output)) |>
+    janitor::clean_names() |>
+    filter(stringr::str_detect(par_names, "N\\[")) |>
+    mutate(year_index = parse_number(par_names)) |>
+    pull(year_index)
+
+  years
+}
+
+#' @title Extract Abundance estimates from BT-SPAS-X results
+#' @description TODO
+#' @keywords internal
+#' @md
+get_juvenile_abundance_estimates <- function(juvenile_model_fits_summary) {
+  abundance_data <- test$summary_output |>
+    as.data.frame() |>
+    cbind(par_names = rownames(test$summary_output)) |>
+    janitor::clean_names() |>
+    filter(stringr::str_detect(par_names, "N\\[")) |>
+    mutate(year_index = parse_number(par_names),
+           mean_abundance = mean,
+           sd_abundance = sd,
+           lcl_97_5 = x2_5_percent,
+           median_abundance = x50_percent,
+           ucl_97_5 = x97_5_percent) |>
+    select(year_index, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
+
+  abundance_data
 }

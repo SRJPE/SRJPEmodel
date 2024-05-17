@@ -100,6 +100,19 @@ deer_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    bugs_directory = here::here("data-raw", "WinBUGS14"),
                                    debug_mode = TRUE)
 
+deer_2023 <- readRDS(here::here("data-raw", "juvenile_abundance",
+                                "juvenile_abundancedeer_2023_model_fits.rds"))
+
+test <- extract_bt_spas_x_results(deer_2023$results$model_results)
+
+estimated_abundance <- get_juvenile_abundance_estimates(test$summary_output)
+
+estimated_abundance |>
+  #geom_ribbon(aes(x = year_index, ymin = lcl_97_5, ymax = ucl_97_5)) +
+  ggplot(aes(x = year_index, y = median_abundance)) +
+  geom_line()
+
+
 # TODO this still isn't working
 mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                   bt_spas_x_input_data = deer_mill_2023_input,
@@ -110,3 +123,5 @@ mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                   mainstem_version = F,
                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
                                   debug_mode = TRUE)
+
+
