@@ -364,6 +364,8 @@ josh_inits <- list(list(trib_mu.P = -2.71452561812701, b0_pCap = c(-2.8794604534
                                                                                           0.697139201829483, 0.695644060758532, 0.693147180559945,
                                                                                           0.693147180559945, 0.693147180559945)))
 
+
+
 # full_data_list$Nmr = josh_data$Nmr
 # full_data_list$ind_trib = josh_data$ind_trib
 # full_data_list$Releases = josh_data$Releases

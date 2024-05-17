@@ -33,7 +33,18 @@ bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    # however, messaging should be included here to say that the
                                    # WinBUGS folder needs to be in a folder where you have write permissions
                                    # because this errors out frequently
-                                   bugs_directory = here::here("data-raw", "WinBUGS14"))
+                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                   debug_mode = TRUE)
+
+bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                   bt_spas_x_input_data = updated_input,
+                                   site = "deer creek",
+                                   run_year = 1995,
+                                   effort_adjust = T,
+                                   multi_run_mode = F, # T
+                                   mainstem_version = F,
+                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                   debug_mode = FALSE)
 
 
 # passage to spawner ------------------------------------------------------

@@ -12,7 +12,8 @@ run_single_bt_spas_x(
   life_stage,
   effort_adjust = c(T, F),
   mainstem_version = c(F, T),
-  bugs_directory
+  bugs_directory,
+  debug_mode
 )
 }
 \arguments{

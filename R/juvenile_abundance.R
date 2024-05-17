@@ -108,7 +108,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
-                  !is.na(number_recaptured)) %>% #,
+                  !is.na(number_recaptured),
+                  site != "mill creek") %>% # TODO fix this - why does adding mill creek efficiency throw errors?
                   #site == "ubc") |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
@@ -272,7 +273,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # run the bugs model
   results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params,
                             bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
-  return(results)
+  return(list("results" = results,
+              "site" = site,
+              "run_year" = run_year))
 }
 
 
