@@ -20,8 +20,6 @@ updated_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
             lgN_prior = mean(lgN_prior, na.rm = T)) |>
   ungroup()
 
-
-
 bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    bt_spas_x_input_data = updated_input,
                                    site = "ubc",
@@ -35,16 +33,6 @@ bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    # because this errors out frequently
                                    bugs_directory = here::here("data-raw", "WinBUGS14"),
                                    debug_mode = TRUE)
-
-bt_spas_x_results <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                   bt_spas_x_input_data = updated_input,
-                                   site = "deer creek",
-                                   run_year = 1995,
-                                   effort_adjust = T,
-                                   multi_run_mode = F, # T
-                                   mainstem_version = F,
-                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                   debug_mode = FALSE)
 
 
 # passage to spawner ------------------------------------------------------
@@ -68,3 +56,57 @@ survival_results <- run_survival_model(SRJPEdata::survival_model_inputs,
                                        number_detection_locations = 5,
                                        number_reaches = 4)
 
+
+# analysis: deer/mill 2023 ------------------------------------------------
+
+# analyze deer/mill 2023 data
+
+deer_2023 <- SRJPEdata::weekly_juvenile_abundance_model_data_mill_deer_2022_2023 |>
+  group_by(year, week, stream, site, run_year) |>
+  summarise(count = sum(count, na.rm = T),
+            mean_fork_length = mean(mean_fork_length, na.rm = T),
+            number_released = sum(number_released),
+            number_recaptured = sum(number_recaptured),
+            hours_fished = mean(hours_fished, na.rm = T),
+            flow_cfs = mean(flow_cfs, na.rm = T),
+            standardized_flow = mean(standardized_flow, na.rm = T),
+            catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished),
+            standardized_efficiency_flow = mean(standardized_efficiency_flow, na.rm = T),
+            lgN_prior = mean(lgN_prior, na.rm = T)) |>
+  ungroup()
+
+deer_mill_2023_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
+  group_by(year, week, stream, site, run_year) |>
+  summarise(count = sum(count, na.rm = T),
+            mean_fork_length = mean(mean_fork_length, na.rm = T),
+            number_released = sum(number_released),
+            number_recaptured = sum(number_recaptured),
+            hours_fished = mean(hours_fished, na.rm = T),
+            flow_cfs = mean(flow_cfs, na.rm = T),
+            standardized_flow = mean(standardized_flow, na.rm = T),
+            catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished),
+            standardized_efficiency_flow = mean(standardized_efficiency_flow, na.rm = T),
+            lgN_prior = mean(lgN_prior, na.rm = T)) |>
+  ungroup() %>%
+  bind_rows(deer_2023)
+
+deer_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                   bt_spas_x_input_data = deer_mill_2023_input,
+                                   site = "deer creek",
+                                   run_year = 2023,
+                                   effort_adjust = T,
+                                   multi_run_mode = F,
+                                   mainstem_version = F,
+                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                   debug_mode = TRUE)
+
+# TODO this still isn't working
+mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                  bt_spas_x_input_data = deer_mill_2023_input,
+                                  site = "mill creek",
+                                  run_year = 2023,
+                                  effort_adjust = F,
+                                  multi_run_mode = F,
+                                  mainstem_version = F,
+                                  bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                  debug_mode = TRUE)

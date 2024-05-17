@@ -104,25 +104,32 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                       "gateway riffle", "lower feather river")
   }
 
+  # only run pCap portion of the model with the following tribs:
+  # tribs_for_pCap <- c("ubc", "lcc", "ucc", "eye riffle", "herringer riffle",
+  #                     "steep riffle", "gateway riffle", "sunset pumps",
+  #                     "deer creek") # TODO include mill creek, deer creek, etc.?
+  #Ntribs <- length(tribs_for_pCap) # TODO confirm
+
   mark_recapture_data <- bt_spas_x_input_data |>
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
                   !is.na(number_recaptured),
+                  #site %in% c(tribs_for_pCap)) %>%
                   site != "mill creek") %>% # TODO fix this - why does adding mill creek efficiency throw errors?
-                  #site == "ubc") |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
+
+  # number of sites (for pCap calculations)
+  # Ntribs <- 8
+  Ntribs <- length(unique(mark_recapture_data$site))
 
   # get numbers for looping in BUGs code - pCap model
   # number of efficiency experiments completed
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |> nrow() # nrow(mark_recapture_data) this depends on whether you have lifestage or not
   # years where efficiency experiments were done
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
-  # number of sites (for pCap calculations)
-  # Ntribs <- 8
-  Ntribs <- length(unique(mark_recapture_data$site))
-  # indices of those sites where efficiency trials were performed
+  # indices of those sites where efficiency trials were performed, can be length = 0
   indices_sites_pCap <- which(unique(mark_recapture_data$site) == site)
   # indices of efficiency experiments in catch data
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
@@ -138,7 +145,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                             is.na(input_data$standardized_flow))
   # indices (in mark-recap data) for each site
   indices_site_mark_recapture <- mark_recapture_data |>
-    group_by(site) |> # TODO confirm this, not stream?
+    group_by(site) |> # TODO should this be stream?
     mutate(ID = cur_group_id()) |>
     pull(ID)
   # number of weeks (in mark-recap data) where effiency experiments were performed
@@ -168,7 +175,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   if(effort_adjust) {
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
   } else {
-    weekly_catch_data <- input_data$catch_standardized_by_hours_fished
+    weekly_catch_data <- input_data$count
   }
 
   # full data list
@@ -199,6 +206,10 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     filter(site == !!site) |>
     nrow()
 
+  if(number_experiments_at_site == 1) {
+    cli::cli_abort("There is only one experiment at the selected site, and no model
+                   is available yet for that case")
+  }
   # if efficiency trials occurred in the site
   if(number_experiments_at_site > 1) {
     if(number_weeks_without_mark_recapture == 0) {
