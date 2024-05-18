@@ -435,39 +435,25 @@ build_spline_data <- function(number_weeks_catch, k_int) {
               "b_spline_matrix" = b_spline_matrix))
 }
 
-#' @title Extract Years BT-SPAS-X results
+#' @title Extract total juvenile abundance estimates
 #' @description TODO
 #' @keywords internal
 #' @md
-get_years_from_juvenile_model_fits <- function(juvenile_model_fits_summary) {
-  years <- test$summary_output |>
-    as.data.frame() |>
-    cbind(par_names = rownames(test$summary_output)) |>
-    janitor::clean_names() |>
-    filter(stringr::str_detect(par_names, "N\\[")) |>
-    mutate(year_index = parse_number(par_names)) |>
-    pull(year_index)
-
-  years
-}
-
-#' @title Extract Abundance estimates from BT-SPAS-X results
-#' @description TODO
-#' @keywords internal
-#' @md
-get_juvenile_abundance_estimates <- function(juvenile_model_fits_summary) {
+get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
   abundance_data <- test$summary_output |>
     as.data.frame() |>
     cbind(par_names = rownames(test$summary_output)) |>
     janitor::clean_names() |>
-    filter(stringr::str_detect(par_names, "N\\[")) |>
-    mutate(year_index = parse_number(par_names),
-           mean_abundance = mean,
+    filter(stringr::str_detect(par_names, "Ntot")) |>
+    mutate(parameter = "total_abundance") |>
+    # filter(stringr::str_detect(par_names, "N\\[")) |>
+    #mutate(index = parse_number(par_names),
+    mutate(mean_abundance = mean,
            sd_abundance = sd,
            lcl_97_5 = x2_5_percent,
            median_abundance = x50_percent,
            ucl_97_5 = x97_5_percent) |>
-    select(year_index, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
-
+    select(parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
+  rownames(abundance_data) = NULL
   abundance_data
 }
