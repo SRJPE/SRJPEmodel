@@ -4,7 +4,6 @@ library(rstan)
 library(R2WinBUGS)
 
 # bt-spas-x ---------------------------------------------------------------
-# TODO test for different sites - put in stop if running on a site with no data in catch
 
 updated_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
   group_by(year, week, stream, site, run_year) |>
@@ -100,7 +99,7 @@ deer_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                    bugs_directory = here::here("data-raw", "WinBUGS14"),
                                    debug_mode = TRUE)
 
-deer_2023 <- readRDS(here::here("data-raw", "juvenile_abundance",
+deer_2023 <- readRDS(here::here("data-raw",
                                 "juvenile_abundancedeer_2023_model_fits.rds"))
 
 test <- extract_bt_spas_x_results(deer_2023$results$model_results)
@@ -114,7 +113,6 @@ get_weekly_juvenile_abundance(test$summary_output) |>
   theme_minimal()
 
 
-# TODO this still isn't working
 mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                   bt_spas_x_input_data = deer_mill_2023_input,
                                   site = "mill creek",
@@ -124,3 +122,13 @@ mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                   mainstem_version = F,
                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
                                   debug_mode = TRUE)
+
+mill_2023 <- extract_bt_spas_x_results(mill_2023_btspas$results$model_results)
+get_total_juvenile_abundance(mill_2023$summary_output)
+get_weekly_juvenile_abundance(mill_2023$summary_output) |>
+  ggplot(aes(x = week_index, y = median_abundance)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5),
+              alpha = 0.2) +
+  theme_minimal()
+
