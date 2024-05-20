@@ -89,18 +89,18 @@ deer_mill_2023_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
   ungroup() %>%
   bind_rows(deer_2023)
 
-deer_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                   bt_spas_x_input_data = deer_mill_2023_input,
-                                   site = "deer creek",
-                                   run_year = 2023,
-                                   effort_adjust = T,
-                                   multi_run_mode = F,
-                                   mainstem_version = F,
-                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                   debug_mode = TRUE)
+# deer_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+#                                    bt_spas_x_input_data = deer_mill_2023_input,
+#                                    site = "deer creek",
+#                                    run_year = 2023,
+#                                    effort_adjust = T,
+#                                    multi_run_mode = F,
+#                                    mainstem_version = F,
+#                                    bugs_directory = here::here("data-raw", "WinBUGS14"),
+#                                    debug_mode = TRUE)
 
-deer_2023 <- readRDS(here::here("data-raw",
-                                "juvenile_abundancedeer_2023_model_fits.rds"))
+deer_2023 <- readRDS(here::here("data-raw", "juvenile_abundance",
+                                "deer_2023_model_fits.rds"))
 
 test <- extract_bt_spas_x_results(deer_2023$results$model_results)
 get_total_juvenile_abundance(test$summary_output)
@@ -113,15 +113,18 @@ get_weekly_juvenile_abundance(test$summary_output) |>
   theme_minimal()
 
 
-mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                  bt_spas_x_input_data = deer_mill_2023_input,
-                                  site = "mill creek",
-                                  run_year = 2023,
-                                  effort_adjust = F,
-                                  multi_run_mode = F,
-                                  mainstem_version = F,
-                                  bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                  debug_mode = TRUE)
+# mill_2023_btspas <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+#                                   bt_spas_x_input_data = deer_mill_2023_input,
+#                                   site = "mill creek",
+#                                   run_year = 2023,
+#                                   effort_adjust = F,
+#                                   multi_run_mode = F,
+#                                   mainstem_version = F,
+#                                   bugs_directory = here::here("data-raw", "WinBUGS14"),
+#                                   debug_mode = TRUE)
+
+mill_2023_btspas <- readRDS(here::here("data-raw", "juvenile_abundance",
+                                "mill_2023_model_fits.rds"))
 
 mill_2023 <- extract_bt_spas_x_results(mill_2023_btspas$results$model_results)
 get_total_juvenile_abundance(mill_2023$summary_output)
