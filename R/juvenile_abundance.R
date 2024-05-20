@@ -119,8 +119,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
               catch_standardized_by_hours_fished, lgN_prior))
 
   # number of sites (for pCap calculations)
-  Ntribs <- 8
-  # Ntribs <- length(unique(mark_recapture_data$site)) # right now only works if 8
+  # Ntribs <- 8
+  Ntribs <- length(unique(mark_recapture_data$site)) # right now only works if 8
 
   # get numbers for looping in BUGs code - pCap model
   # number of efficiency experiments completed
