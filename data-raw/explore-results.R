@@ -135,3 +135,33 @@ get_weekly_juvenile_abundance(mill_2023$summary_output) |>
               alpha = 0.2) +
   theme_minimal()
 
+yearling <- SRJPEdata::weekly_juvenile_abundance_model_data %>%
+  bind_rows(SRJPEdata::weekly_juvenile_abundance_model_data_mill_deer_2022_2023) %>%
+  filter(life_stage == "yearling")
+# TODO group by and sum so that there are no repeat weeks
+
+YOY <- SRJPEdata::weekly_juvenile_abundance_model_data %>%
+  bind_rows(SRJPEdata::weekly_juvenile_abundance_model_data_mill_deer_2022_2023) %>%
+  filter(life_stage %in% c("fry", "smolt"))
+# TODO group by and sum so that there are no repeat weeks
+
+mill_yearling <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                               bt_spas_x_input_data = yearling,
+                               site = "mill creek",
+                               run_year = 2023,
+                               effort_adjust = F,
+                               multi_run_mode = F,
+                               mainstem_version = F,
+                               bugs_directory = here::here("data-raw", "WinBUGS14"),
+                               debug_mode = FALSE)
+
+mill_YOY <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                               bt_spas_x_input_data = YOY,
+                               site = "mill creek",
+                               run_year = 2023,
+                               effort_adjust = F,
+                               multi_run_mode = F,
+                               mainstem_version = F,
+                               bugs_directory = here::here("data-raw", "WinBUGS14"),
+                               debug_mode = FALSE)
+
