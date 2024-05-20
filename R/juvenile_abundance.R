@@ -436,16 +436,15 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @title Extract total juvenile abundance estimates
 #' @description TODO
 #' @keywords internal
+#' @export
 #' @md
 get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
-  abundance_data <- test$summary_output |>
+  abundance_data <- juvenile_model_fits_summary |>
     as.data.frame() |>
-    cbind(par_names = rownames(test$summary_output)) |>
+    cbind(par_names = rownames(juvenile_model_fits_summary)) |>
     janitor::clean_names() |>
     filter(stringr::str_detect(par_names, "Ntot")) |>
     mutate(parameter = "total_abundance") |>
-    # filter(stringr::str_detect(par_names, "N\\[")) |>
-    #mutate(index = parse_number(par_names),
     mutate(mean_abundance = mean,
            sd_abundance = sd,
            lcl_97_5 = x2_5_percent,
@@ -459,11 +458,12 @@ get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
 #' @title Extract weekly juvenile abundance
 #' @description TODO
 #' @keywords internal
+#' @export
 #' @md
 get_weekly_juvenile_abundance <- function(juvenile_model_fits_summary) {
-  abundance_data <- test$summary_output |>
+  abundance_data <- juvenile_model_fits_summary |>
     as.data.frame() |>
-    cbind(par_names = rownames(test$summary_output)) |>
+    cbind(par_names = rownames(juvenile_model_fits_summary)) |>
     janitor::clean_names() |>
     filter(stringr::str_detect(par_names, "N\\[")) |>
     mutate(parameter = "weekly_abundance") |>
