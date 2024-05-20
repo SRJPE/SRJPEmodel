@@ -457,3 +457,25 @@ get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
   rownames(abundance_data) = NULL
   abundance_data
 }
+
+#' @title Extract weekly juvenile abundance
+#' @description TODO
+#' @keywords internal
+#' @md
+get_weekly_juvenile_abundance <- function(juvenile_model_fits_summary) {
+  abundance_data <- test$summary_output |>
+    as.data.frame() |>
+    cbind(par_names = rownames(test$summary_output)) |>
+    janitor::clean_names() |>
+    filter(stringr::str_detect(par_names, "N\\[")) |>
+    mutate(parameter = "weekly_abundance") |>
+    mutate(week_index = parse_number(par_names),
+           mean_abundance = mean,
+           sd_abundance = sd,
+           lcl_97_5 = x2_5_percent,
+           median_abundance = x50_percent,
+           ucl_97_5 = x97_5_percent) |>
+    select(week_index, parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
+  rownames(abundance_data) = NULL
+  abundance_data
+}

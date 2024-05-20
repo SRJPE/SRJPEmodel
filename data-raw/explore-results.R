@@ -105,6 +105,13 @@ deer_2023 <- readRDS(here::here("data-raw", "juvenile_abundance",
 
 test <- extract_bt_spas_x_results(deer_2023$results$model_results)
 get_total_juvenile_abundance(test$summary_output)
+# how to get the weeks modeled?
+get_weekly_juvenile_abundance(test$summary_output) |>
+  ggplot(aes(x = week_index, y = median_abundance)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5),
+              alpha = 0.2) +
+  theme_minimal()
 
 
 # TODO this still isn't working
