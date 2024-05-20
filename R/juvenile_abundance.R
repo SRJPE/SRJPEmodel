@@ -114,15 +114,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
-                  !is.na(number_recaptured),
-                  #site %in% c(tribs_for_pCap)) %>%
-                  site != "mill creek") %>% # TODO fix this - why does adding mill creek efficiency throw errors?
+                  !is.na(number_recaptured)) %>%
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
 
   # number of sites (for pCap calculations)
-  # Ntribs <- 8
-  Ntribs <- length(unique(mark_recapture_data$site))
+  Ntribs <- 8
+  # Ntribs <- length(unique(mark_recapture_data$site)) # right now only works if 8
 
   # get numbers for looping in BUGs code - pCap model
   # number of efficiency experiments completed

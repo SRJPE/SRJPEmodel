@@ -73,7 +73,12 @@ deer_2023 <- SRJPEdata::weekly_juvenile_abundance_model_data_mill_deer_2022_2023
             catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished),
             standardized_efficiency_flow = mean(standardized_efficiency_flow, na.rm = T),
             lgN_prior = mean(lgN_prior, na.rm = T)) |>
-  ungroup()
+  ungroup()  %>%  # mill creek efficiency trial - doesn't have associated catch data
+  mutate(number_released = ifelse(stream == "mill creek", NA, number_released),
+       number_recaptured = ifelse(stream == "mill creek", NA, number_recaptured)) #%>%
+  # mutate(number_released = ifelse(stream == "mill creek" & week == 4, 300, number_released),
+  #        number_recaptured = ifelse(stream == "mill creek" & week == 4, 20, number_recaptured),
+  #        week = ifelse(stream == "mill creek" & run_year == 2023 & week == 24, 22, week))
 
 deer_mill_2023_input <- SRJPEdata::weekly_juvenile_abundance_model_data |>
   group_by(year, week, stream, site, run_year) |>
