@@ -4,7 +4,7 @@
 \alias{get_total_juvenile_abundance}
 \title{Extract total juvenile abundance estimates}
 \usage{
-get_total_juvenile_abundance(juvenile_model_fits_summary)
+get_total_juvenile_abundance(model_fit_object)
 }
 \description{
 TODO

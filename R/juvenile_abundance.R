@@ -439,10 +439,10 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @keywords internal
 #' @export
 #' @md
-get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
-  abundance_data <- juvenile_model_fits_summary |>
+get_total_juvenile_abundance <- function(model_fit_object) {
+  abundance_data <- model_fit_object$results$model_results$summary |>
     as.data.frame() |>
-    cbind(par_names = rownames(juvenile_model_fits_summary)) |>
+    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
     janitor::clean_names() |>
     filter(stringr::str_detect(par_names, "Ntot")) |>
     mutate(parameter = "total_abundance") |>
@@ -478,4 +478,28 @@ get_weekly_juvenile_abundance <- function(model_fit_object) {
     select(week_index, week, parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
   rownames(abundance_data) = NULL
   abundance_data
+}
+
+#' @title Extract weekly pCap from BT-SPAS-X object
+#' @description TODO
+#' @keywords internal
+#' @export
+#' @md
+get_weekly_pCap <- function(model_fit_object) {
+  pCap_data <- model_fit_object$results$model_results$summary |>
+    as.data.frame() |>
+    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
+    janitor::clean_names() |>
+    filter(stringr::str_detect(par_names, "pCap_U\\[")) |>
+    mutate(parameter = "pCap",
+           week = model_fit_object$weeks_fit,
+           week_index = parse_number(par_names),
+           mean_pCap = mean,
+           sd_pCap = sd,
+           lcl_97_5 = x2_5_percent,
+           median_pCap = x50_percent,
+           ucl_97_5 = x97_5_percent) |>
+    select(week_index, week, parameter, mean_pCap, median_pCap, sd_pCap, lcl_97_5, ucl_97_5)
+  rownames(pCap_data) = NULL
+  pCap_data
 }

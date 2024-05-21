@@ -4,7 +4,7 @@
 \alias{get_weekly_juvenile_abundance}
 \title{Extract weekly juvenile abundance}
 \usage{
-get_weekly_juvenile_abundance(juvenile_model_fits_summary)
+get_weekly_juvenile_abundance(model_fit_object)
 }
 \description{
 TODO
