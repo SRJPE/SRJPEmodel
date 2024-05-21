@@ -503,3 +503,22 @@ get_weekly_pCap <- function(model_fit_object) {
   rownames(pCap_data) = NULL
   pCap_data
 }
+
+#' @title Extract hierarchical parameters from BT-SPAS-X
+#' @description TODO
+#' @keywords internal
+#' @export
+#' @md
+get_hierarchical_parameter_estimates <- function(model_fit_object) {
+  params <- model_fit_object$results$model_results$summary |>
+    as.data.frame() |>
+    cbind(parameter = rownames(model_fit_object$results$model_results$summary)) |>
+    janitor::clean_names() |>
+    filter(stringr::str_detect(parameter, "trib_mu|trib_sd|flow_mu|flow_sd|pro_sd")) |>
+    mutate(lcl_97_5 = x2_5_percent,
+           median = x50_percent,
+           ucl_97_5 = x97_5_percent) |>
+    select(parameter, mean, sd, median, lcl_97_5, ucl_97_5)
+  rownames(params) = NULL
+  params
+}

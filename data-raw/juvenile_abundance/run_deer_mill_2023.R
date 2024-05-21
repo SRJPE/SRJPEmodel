@@ -257,3 +257,37 @@ get_weekly_pCap(deer_yearling) |>
        y = "pCap",
        title = "Predicted pCap on Deer Creek (run year 2023)")
 
+get_weekly_pCap(mill_yearling) |>
+  mutate(Lifestage = "Yearling") |>
+  bind_rows(get_weekly_pCap(mill_YOY) |>
+              mutate(Lifestage = "YOY")) |>
+  mutate(date = ifelse(week >= 40, paste(1990, week, 1, sep="-"),
+                       paste(1991, week, 1, sep="-")),
+         date = as.Date(date, , "%Y-%U-%u")) |>
+  ggplot(aes(x = date, y = median_pCap)) +
+  geom_errorbar(aes(ymin = lcl_97_5, ymax = ucl_97_5),
+                width = 0.2) +
+  geom_point(aes(color = Lifestage), size = 2) +
+  theme_minimal() +
+  # facet_wrap(~Lifestage, scales = "free_y", nrow = 2) +
+  scale_color_manual(values = palette) +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b-%d") +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Week",
+       y = "pCap",
+       title = "Predicted pCap on Mill Creek (run year 2023)")
+
+# mean pCap
+get_hierarchical_parameter_estimates(mill_yearling) |>
+  mutate(stream = "mill creek",
+         lifestage = "yearling") |>
+  bind_rows(get_hierarchical_parameter_estimates(mill_YOY) |>
+              mutate(stream = "mill creek",
+                     lifestage = "YOY")) |>
+  bind_rows(get_hierarchical_parameter_estimates(deer_yearling) |>
+              mutate(stream = "deer creek",
+                     lifestage = "yearling")) |>
+  bind_rows(get_hierarchical_parameter_estimates(deer_YOY) |>
+              mutate(stream = "deer creek",
+                     lifestage = "YOY"))
