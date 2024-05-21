@@ -174,37 +174,45 @@ big_palette <- colorRampPalette(palette)(20)
 deer_yearling <- readRDS("data-raw/juvenile_abundance/deer_2023_yearling_model_fits.rds")
 deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_model_fits.rds")
 
-get_weekly_juvenile_abundance(deer_yearling$results$model_results$summary) |>
+get_weekly_juvenile_abundance(deer_yearling) |>
   mutate(life_stage = "yearling") |>
-  bind_rows(get_weekly_juvenile_abundance(deer_YOY$results$model_results$summary) |>
+  bind_rows(get_weekly_juvenile_abundance(deer_YOY) |>
               mutate(life_stage = "YOY")) |>
-  ggplot(aes(x = week_index, y = median_abundance)) +
-  geom_line(aes(color = life_stage), linewidth = 1) +
-  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5, group = life_stage),
-              alpha = 0.2) +
+  mutate(date = as.Date(paste(1990, week, 1, sep="-"), "%Y-%U-%u")) |>
+  ggplot(aes(x = date, y = median_abundance)) +
+  geom_point(aes(color = life_stage)) +
+  geom_errorbar(aes(ymin = lcl_97_5, ymax = ucl_97_5),
+              width = 0.2) +
   theme_minimal() +
   facet_wrap(~life_stage, nrow = 2) +
   scale_color_manual(values = palette) +
-  theme(legend.position = "bottom") +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b-%d") +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(x = "Week",
-       y = "Abundance")
+       y = "Abundance",
+       title = "Predicted juvenile abundance on Deer Creek (run year 2023)")
 
 
 # mill
 mill_yearling <- readRDS("data-raw/juvenile_abundance/mill_2023_yearling_model_fits.rds")
 mill_YOY <- readRDS("data-raw/juvenile_abundance/mill_2023_YOY_model_fits.rds")
 
-get_weekly_juvenile_abundance(mill_yearling$results$model_results$summary) |>
+get_weekly_juvenile_abundance(mill_yearling) |>
   mutate(life_stage = "yearling") |>
-  bind_rows(get_weekly_juvenile_abundance(mill_YOY$results$model_results$summary) |>
+  bind_rows(get_weekly_juvenile_abundance(mill_YOY) |>
               mutate(life_stage = "YOY")) |>
-  ggplot(aes(x = week_index, y = median_abundance)) +
-  geom_line(aes(color = life_stage), linewidth = 1) +
-  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5, group = life_stage),
-              alpha = 0.2) +
+  mutate(date = as.Date(paste(1990, week, 1, sep="-"), "%Y-%U-%u")) |>
+  ggplot(aes(x = date, y = median_abundance)) +
+  geom_point(aes(color = life_stage)) +
+  geom_errorbar(aes(ymin = lcl_97_5, ymax = ucl_97_5),
+                width = 0.2) +
   theme_minimal() +
   facet_wrap(~life_stage, scales = "free_y", nrow = 2) +
   scale_color_manual(values = palette) +
-  theme(legend.position = "bottom") +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b-%d") +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(x = "Week",
-       y = "Abundance")
+       y = "Abundance",
+       title = "Predicted juvenile abundance on Mill Creek (run year 2023)")

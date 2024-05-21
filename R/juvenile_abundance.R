@@ -461,20 +461,21 @@ get_total_juvenile_abundance <- function(juvenile_model_fits_summary) {
 #' @keywords internal
 #' @export
 #' @md
-get_weekly_juvenile_abundance <- function(juvenile_model_fits_summary) {
-  abundance_data <- juvenile_model_fits_summary |>
+get_weekly_juvenile_abundance <- function(model_fit_object) {
+  abundance_data <- model_fit_object$results$model_results$summary |>
     as.data.frame() |>
-    cbind(par_names = rownames(juvenile_model_fits_summary)) |>
+    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
     janitor::clean_names() |>
     filter(stringr::str_detect(par_names, "N\\[")) |>
-    mutate(parameter = "weekly_abundance") |>
-    mutate(week_index = parse_number(par_names),
+    mutate(parameter = "weekly_abundance",
+           week = model_fit_object$weeks_fit,
+           week_index = parse_number(par_names),
            mean_abundance = mean,
            sd_abundance = sd,
            lcl_97_5 = x2_5_percent,
            median_abundance = x50_percent,
            ucl_97_5 = x97_5_percent) |>
-    select(week_index, parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
+    select(week_index, week, parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
   rownames(abundance_data) = NULL
   abundance_data
 }
