@@ -165,3 +165,46 @@ mill_YOY <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
 
 readr::write_rds(mill_YOY, "data-raw/juvenile_abundance/mill_2023_YOY_model_fits.rds")
 
+
+# analysis and plotting ---------------------------------------------------
+palette <- c("#453F3C", "#C2847A", "#63A088", "#255F85", "#EEE0CB")
+big_palette <- colorRampPalette(palette)(20)
+
+# deer
+deer_yearling <- readRDS("data-raw/juvenile_abundance/deer_2023_yearling_model_fits.rds")
+deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_model_fits.rds")
+
+get_weekly_juvenile_abundance(deer_yearling$results$model_results$summary) |>
+  mutate(life_stage = "yearling") |>
+  bind_rows(get_weekly_juvenile_abundance(deer_YOY$results$model_results$summary) |>
+              mutate(life_stage = "YOY")) |>
+  ggplot(aes(x = week_index, y = median_abundance)) +
+  geom_line(aes(color = life_stage), linewidth = 1) +
+  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5, group = life_stage),
+              alpha = 0.2) +
+  theme_minimal() +
+  facet_wrap(~life_stage, nrow = 2) +
+  scale_color_manual(values = palette) +
+  theme(legend.position = "bottom") +
+  labs(x = "Week",
+       y = "Abundance")
+
+
+# mill
+mill_yearling <- readRDS("data-raw/juvenile_abundance/mill_2023_yearling_model_fits.rds")
+mill_YOY <- readRDS("data-raw/juvenile_abundance/mill_2023_YOY_model_fits.rds")
+
+get_weekly_juvenile_abundance(mill_yearling$results$model_results$summary) |>
+  mutate(life_stage = "yearling") |>
+  bind_rows(get_weekly_juvenile_abundance(mill_YOY$results$model_results$summary) |>
+              mutate(life_stage = "YOY")) |>
+  ggplot(aes(x = week_index, y = median_abundance)) +
+  geom_line(aes(color = life_stage), linewidth = 1) +
+  geom_ribbon(aes(ymin = lcl_97_5, ymax = ucl_97_5, group = life_stage),
+              alpha = 0.2) +
+  theme_minimal() +
+  facet_wrap(~life_stage, scales = "free_y", nrow = 2) +
+  scale_color_manual(values = palette) +
+  theme(legend.position = "bottom") +
+  labs(x = "Week",
+       y = "Abundance")

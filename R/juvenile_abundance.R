@@ -284,7 +284,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                             bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
   return(list("results" = results,
               "site" = site,
-              "run_year" = run_year))
+              "run_year" = run_year,
+              "weeks_fit" = input_data$week[data$Uwc_ind]))
 }
 
 
