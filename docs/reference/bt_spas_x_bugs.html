@@ -70,34 +70,77 @@
 <span>  <span class="va">model_name</span>,</span>
 <span>  <span class="va">bt_spas_x_bayes_params</span>,</span>
 <span>  <span class="va">number_mcmc</span>,</span>
-<span>  <span class="va">bugs_directory</span></span>
+<span>  <span class="va">bugs_directory</span>,</span>
+<span>  <span class="va">debug_mode</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>data</dt>
-<dd><p>a list containing the following elements:</p><ul><li><p><strong>number_efficiency_experiments</strong> number of unique mark-recapture experiments performed across tributaries, years and weeks</p></li>
-<li><p><strong>number_sites_pCap</strong> number of tributaries to use for the pCap component of the model</p></li>
-<li><p><strong>number_weeks_catch</strong> number of weeks with catch data</p></li>
-<li><p><strong>number_weeks_with_mark_recapture</strong> number of weeks in catch data with associated pCap and flow data</p></li>
-<li><p><strong>number_weeks_without_mark_recapture</strong> number of weeks in catch data without associated pCap and flow data</p></li>
-<li><p><strong>number_weeks_with_catch</strong> number of weeks in catch data with catch data (RST fished)</p></li>
+<dd><p>a list containing the following elements:</p><ul><li><p><strong>Nmr</strong> number of unique mark-recapture experiments performed across tributaries, years and weeks</p></li>
+<li><p><strong>Ntribs</strong> number of tributaries to use for the pCap component of the model</p></li>
+<li><p><strong>Nstrata</strong> number of weeks with catch data</p></li>
+<li><p><strong>Uwc_ind</strong> number of weeks in catch data with associated pCap and flow data</p></li>
+<li><p><strong>Nwomr</strong> number of weeks in catch data without associated pCap and flow data</p></li>
+<li><p><strong>Nstrata_wc</strong> number of weeks in catch data with catch data (RST fished)</p></li>
 <li><p><strong>indices_site_pCap</strong> tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.</p></li>
-<li><p><strong>indices_site_mark_recapture</strong> indices (1:number_sites_pCap) assigned to the mark-recapture experiment table for use in BUGs</p></li>
-<li><p><strong>indices_pCap</strong> indices of weeks in mark-recapture table for U strata being estimated</p></li>
-<li><p><strong>indices_without_mark_recapture</strong> indices of weeks in catch data without associated pCap and flow data</p></li>
-<li><p><strong>indices_with_mark_recapture</strong> indices of weeks in catch data with associated pCap and flow data</p></li>
-<li><p><strong>indices_with_catch</strong> indices of weeks in catch data with catch data</p></li>
-<li><p><strong>number_released</strong> number of fish released for each mark-recapture experiment</p></li>
-<li><p><strong>number_recaptured</strong> number of fish recaptured for each mark-recapture experiment</p></li>
-<li><p><strong>weekly_catch</strong> weekly abundance</p></li>
-<li><p><strong>standardized_efficiency_flow</strong> standardized flow, averaged over recapture days (&lt; 1 week)</p></li>
+<li><p><strong>ind_trib</strong> indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs</p></li>
+<li><p><strong>ind_pCap</strong> indices of weeks in mark-recapture table for U strata being estimated</p></li>
+<li><p><strong>Uind_woMR</strong> indices of weeks in catch data without associated pCap and flow data</p></li>
+<li><p><strong>Uind_wMR</strong> indices of weeks in catch data with associated pCap and flow data</p></li>
+<li><p><strong>Uwc_ind</strong> indices of weeks in catch data with catch data</p></li>
+<li><p><strong>Releases</strong> number of fish released for each mark-recapture experiment</p></li>
+<li><p><strong>Recaptures</strong> number of fish recaptured for each mark-recapture experiment</p></li>
+<li><p><strong>u</strong> weekly abundance</p></li>
+<li><p><strong>mr_flow</strong> standardized flow, averaged over recapture days (&lt; 1 week)</p></li>
 <li><p><strong>catch_flow</strong> standardized flow, averaged by week</p></li>
 <li><p><strong>K</strong> number of columns in the bspline basis matrix</p></li>
-<li><p><strong>b_spline_matrix</strong> The b_spline_matrix (bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots)</p></li>
+<li><p><strong>ZP</strong> The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)</p></li>
 <li><p><strong>lgN_max</strong> maxmimum possible value for log N across strata</p></li>
 </ul></dd>
+
+
+<dt>inits</dt>
+<dd><p>a list containing initial values for the following parameters:</p><ul><li><p><strong>trib_mu.P</strong> mean of hyper-distribution for site-effect</p></li>
+<li><p><strong>b0_pCap</strong> site effect on trap efficiency for each site</p></li>
+<li><p><strong>flow_mu.P</strong> mean of hyper-distribution for flow effect</p></li>
+<li><p><strong>b_flow</strong> flow effect on trap efficiency for each site</p></li>
+<li><p><strong>trib_tau.P</strong> used to estimate standard deviation of hyper-distribution for site effect</p></li>
+<li><p><strong>flow_tau.P</strong> used to estimate standard deviation of hyper-distribution for flow effect</p></li>
+<li><p><strong>pro_tau.P</strong> used to estimate standard deviation of zero-centered normal distribution for unexplained error</p></li>
+<li><p><strong>b_sp</strong> basis function of each spline node</p></li>
+<li><p><strong>lg_N</strong> predicted weekly abundance</p></li>
+</ul></dd>
+
+
+<dt>parameters</dt>
+<dd><p>a list of parameters to be estimated in the model:</p><ul><li><p><strong>trib_mu.P</strong> mean of hyper-distribution for site-effect</p></li>
+<li><p><strong>trib_sd.P</strong> standard deviation of hyper-distribution for site effect</p></li>
+<li><p><strong>flow_mu.P</strong> mean of hyper-distribution for flow effect</p></li>
+<li><p><strong>flow_sd.P</strong> standard deviation of hyper-distribution for flow effect</p></li>
+<li><p><strong>pro_sd.P</strong> standard deviation of zero-centered normal distribution for unexplained error</p></li>
+<li><p><strong>b0_pCap</strong> site effect on trap efficiency for each site</p></li>
+<li><p><strong>b_flow</strong> flow effect on trap efficiency for each site</p></li>
+<li><p><strong>pCap_U</strong> weekly trap efficiency (capture probability)</p></li>
+<li><p><strong>N</strong> weekly juvenile abundance</p></li>
+<li><p><strong>Ntot</strong> total juvenile abundance for the year</p></li>
+<li><p><strong>sd.N</strong> standard deviation controlling flexibility of spline weekly abundance curve</p></li>
+<li><p><strong>sd.Ne</strong> standard deviation controlling extent of non-spline variation in weekly abundance</p></li>
+</ul></dd>
+
+
+<dt>model_name</dt>
+<dd><p>model to be called based on number of efficiency trials available for the selected site. Either</p><ul><li><p><strong>all_mark_recap.bug</strong> all weeks with catch have corresponding efficiency trials</p></li>
+<li><p><strong>missing_mark_recap.bug</strong> some weeks with catch have corresponding efficiency trials</p></li>
+<li><p><strong>no_mark_recap_no_trib.bug</strong> the selected site has no efficiency data at all</p></li>
+<li><p><strong>no_mark_recap.bug</strong> no weeks with catch have corresponding efficiency trials</p></li>
+</ul></dd>
+
+
+<dt>bugs_directory</dt>
+<dd><p>a filepath indicating where to find the <code>WinBUGS14/</code> file. This needs
+to be in a character format ending with <code>/WinBUGS14</code>.</p></dd>
 
 
 <dt>bt_spas_x_bayes_params:</dt>
@@ -109,9 +152,13 @@ and <code>number_chains</code>.</p></dd>
     <h2>Value</h2>
     
 
-<p>either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
-of the model run.</p>
-    </div>
+<p>if running on a Mac operating system, returns a list of all inputs formatted
+to pass to <code>bugs</code>. If running on a PC or another operating system capable of running WinBUGS,
+returns a nested list containing the following elements:</p><ul><li><p><strong>model_results</strong> the <code>BUGs</code> object from fitting the model</p></li>
+<li><p><strong>model_called</strong> the model called on the data</p></li>
+<li><p><strong>data_inputs</strong> the data passed to the model</p></li>
+<li><p><strong>init_inputs</strong> the initial values passed to the model</p></li>
+</ul></div>
     <div id="details">
     <h2>Details</h2>
     <p>This function is called within <code><a href="run_single_bt_spas_x.html">run_single_bt_spas_x()</a></code> and calls the WinBUGS code</p>

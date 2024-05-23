@@ -70,27 +70,61 @@
 <span>  <span class="va">run_year</span>,</span>
 <span>  effort_adjust <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">T</span>, <span class="cn">F</span><span class="op">)</span>,</span>
 <span>  mainstem_version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">F</span>, <span class="cn">T</span><span class="op">)</span>,</span>
-<span>  <span class="va">special_priors_data</span>,</span>
-<span>  <span class="va">bugs_directory</span></span>
+<span>  <span class="va">bugs_directory</span>,</span>
+<span>  <span class="va">debug_mode</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
-    <dl><dt>bt_spas_x_bayes_params:</dt>
+    <dl><dt>site</dt>
+<dd><p>site for which you want to fit the model</p></dd>
+
+
+<dt>run_year</dt>
+<dd><p>run year for which you want to fit the model</p></dd>
+
+
+<dt>effort_adjust</dt>
+<dd><p>whether or not you want to use catch adjusted by effort</p></dd>
+
+
+<dt>mainstem_version</dt>
+<dd><p>whether or not this is run on mainstem tributaries</p></dd>
+
+
+<dt>bugs_directory</dt>
+<dd><p>where the <code>WinBUGS.exe</code> file can be found. Needs to end in <code>/WinBUGS</code></p></dd>
+
+
+<dt>debug_mode</dt>
+<dd><p>whether you want to run <code>bugs</code> in debug mode.</p></dd>
+
+
+<dt>bt_spas_x_bayes_params:</dt>
 <dd><p>a list containing <code>number_mcmc</code>, <code>number_burnin</code>, <code>number_thin</code>,
-and <code>number_chains</code></p></dd>
+and <code>number_chains</code>. Can use <code><a href="bt_spas_x_bayes_params.html">SRJPEmodel::bt_spas_x_bayes_params</a></code>.</p></dd>
+
+
+<dt>bt_spas_x_input_data:</dt>
+<dd><p>a data frame containing the same variables as
+<code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_model_data.html" class="external-link">?SRJPEdata::weekly_juvenile_abundance_model_data</a></code></p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
     
 
-<p>TODO</p>
-    </div>
+<p>a list:</p><ul><li><p><strong>results</strong> model results - see <code>?bt_spas_x_bugs()</code> for details.</p></li>
+<li><p><strong>site</strong> the site used to fit the model</p></li>
+<li><p><strong>run_year</strong> the run year used to fit the model</p></li>
+<li><p><strong>weeks_fit</strong> the weeks with catch used to fit the model (for analysis and plotting)</p></li>
+<li><p><strong>knots_output</strong> knot positions for the weekly abundance spline curve</p></li>
+</ul></div>
     <div id="details">
     <h2>Details</h2>
-    <p>This function is called within <code><a href="run_bt_spas_x.html">run_bt_spas_x()</a></code></p>
+    <p>This function is called within <code>run_bt_spas_x()</code> or can be run by itself
+on a single site/run year combination.</p>
     </div>
 
   </div>

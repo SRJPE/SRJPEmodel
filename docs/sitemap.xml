@@ -19,6 +19,9 @@
     <loc>https://SRJPE.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html</loc>
   </url>
   <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/articles/survival_submodel_documentation.html</loc>
+  </url>
+  <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/authors.html</loc>
   </url>
   <url>
@@ -37,6 +40,9 @@
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/bt_spas_x_bugs.html</loc>
   </url>
   <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/build_spline_data.html</loc>
+  </url>
+  <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/calculate_ss_tot.html</loc>
   </url>
   <url>
@@ -46,13 +52,28 @@
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/compare_P2S_model_covariates.html</loc>
   </url>
   <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/extract_bt_spas_x_results.html</loc>
+  </url>
+  <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_all_pars.html</loc>
   </url>
   <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_bt_spas_x_data_list.html</loc>
   </url>
   <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_hyper_distribution_parameter_estimates.html</loc>
+  </url>
+  <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_predicted_spawners_from_P2S.html</loc>
+  </url>
+  <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_total_juvenile_abundance.html</loc>
+  </url>
+  <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_weekly_juvenile_abundance.html</loc>
+  </url>
+  <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_weekly_trap_efficiency.html</loc>
   </url>
   <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/get_years_from_P2S_model_fits.html</loc>
@@ -62,6 +83,9 @@
   </url>
   <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_bt_spas_x.html</loc>
+  </url>
+  <url>
+    <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_multiple_bt_spas_x.html</loc>
   </url>
   <url>
     <loc>https://SRJPE.github.io/SRJPEmodel/reference/run_passage_to_spawner_model.html</loc>
