@@ -1,73 +1,65 @@
-#' Call BT-SPAS-X model
-#' @details TODO
+#' Call BT-SPAS-X model on all site/run years
+#' @details This calls `run_single_bt_spas_x()` on all site and run year combinations
+#' present in the input data.
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
-#' and `number_chains`.
-#' @param bt_spas_x_input_data
-#' @param site
-#' @param run_year
-#' @param life_stage
-#' @param effort_adjust
-#' @param multi_run_mode
-#' @param mainstem_version
-#' @param bugs_directory
-#' @param debug_mode
-#' @returns TODO
+#' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
+#' @param bt_spas_x_input_data data frame containing the same variables as
+#' `?SRJPEdata::weekly_juvenile_abundance_model_data`
+#' @param effort_adjust whether or not you want to use catch adjusted by effort
+#' @param mainstem_version whether or not this is run on mainstem tributaries
+#' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
+#' @param debug_mode whether you want to run `bugs` in debug mode.
+#' @returns a list containing the results for every unique `site` and `run year` combination
+#' in the input data.
 #' @export
 #' @md
-run_bt_spas_x <- function(bt_spas_x_bayes_params,
-                          bt_spas_x_input_data, site, run_year, life_stage,
-                          effort_adjust, multi_run_mode,
-                          mainstem_version, bugs_directory, debug_mode) {
-  if(!multi_run_mode) {
-    run_single_bt_spas_x(bt_spas_x_bayes_params,
-                         bt_spas_x_input_data, site, run_year,
-                         life_stage, effort_adjust, mainstem_version,
-                         bugs_directory, debug_mode)
-  } else if (multi_run_mode) {
+run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
+                                   bt_spas_x_input_data,
+                                   effort_adjust, mainstem_version,
+                                   bugs_directory, debug_mode) {
 
-    all_results <- list()
+  site_run_year_combinations <- bt_spas_x_input_data |>
+    distinct(site, run_year)
 
-    for(i in unique(bt_spas_x_input_data$site)) {
+  multiple_bt_spas_run <- function(site, run_year) {
+    cli::cli_process_start(paste0("running bt-spas-x on ", site, " and run year ", run_year))
 
-      # TODO clean this up
-      available_years <- bt_spas_x_input_data |>
-        filter(site == i) |>
-        distinct(run_year) |>
-        arrange(run_year) |>
-        pull(run_year)
-
-      for(j in available_years)
-        cli::cli_process_start(paste0("Running BT-SPAS-X for site ", i,
-                                      " and run year ", j))
-
-        all_results[[i]] <- run_single_bt_spas_x(bt_spas_x_bayes_params,
-                                                 bt_spas_x_input_data,
-                                                 site = i,
-                                                 run_year = j,
-                                                 life_stage = !!life_stage,
-                                                 effort_adjust, mainstem_version,
-                                                 bugs_directory, debug_mode)
-    }
+    single_results <- run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
+                                           site, run_year, effort_adjust, mainstem_version,
+                                           bugs_directory, debug_mode)
+    return(single_results)
   }
+
+  all_results <- purrr::map2(site_run_year_combinations$site,
+                             site_run_year_combinations$run_year,
+                             multiple_bt_spas_run)
+
+  return(all_results)
 }
 
 #' Call BT-SPAS-X on a single site/run year combination
-#' @details This function is called within `run_bt_spas_x()`
+#' @details This function is called within `run_bt_spas_x()` or can be run by itself
+#' on a single site/run year combination.
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
-#' and `number_chains`
-#' @param bt_spas_x_input_data
-#' @param site
-#' @param run_year
-#' @param effort_adjust
-#' @param mainstem_version
-#' @param bugs_directory
-#' @param debug_mode
-#' @returns TODO
+#' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
+#' @param bt_spas_x_input_data: a data frame containing the same variables as
+#' `?SRJPEdata::weekly_juvenile_abundance_model_data`
+#' @param site site for which you want to fit the model
+#' @param run_year run year for which you want to fit the model
+#' @param effort_adjust whether or not you want to use catch adjusted by effort
+#' @param mainstem_version whether or not this is run on mainstem tributaries
+#' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
+#' @param debug_mode whether you want to run `bugs` in debug mode.
+#' @returns a list:
+#' * **results** model results - see `?bt_spas_x_bugs()` for details.
+#' * **site** the site used to fit the model
+#' * **run_year** the run year used to fit the model
+#' * **weeks_fit** the weeks with catch used to fit the model (for analysis and plotting)
+#' * **knots_output** knot positions for the weekly abundance spline curve
 #' @export
 #' @md
 run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year,
-                                 life_stage,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T),
                                  bugs_directory, debug_mode) {
 
@@ -313,23 +305,45 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' * **K** number of columns in the bspline basis matrix
 #' * **ZP** The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)
 #' * **lgN_max** maxmimum possible value for log N across strata
-#' @param inits a list containing the following parameters to be estimated:
+#' @param inits a list containing initial values for the following parameters:
 #' * **trib_mu.P** mean of hyper-distribution for site-effect
 #' * **b0_pCap** site effect on trap efficiency for each site
 #' * **flow_mu.P** mean of hyper-distribution for flow effect
 #' * **b_flow** flow effect on trap efficiency for each site
-#' * **trib_tau.P** standard deviation of hyper-distribution for site effect
-#' * **flow_tau.P** standard deviation of hyper-distribution for flow effect
-#' * **pro_tau.P** standard deviation of zero-centered normal distribution for unexplained error
+#' * **trib_tau.P** used to estimate standard deviation of hyper-distribution for site effect
+#' * **flow_tau.P** used to estimate standard deviation of hyper-distribution for flow effect
+#' * **pro_tau.P** used to estimate standard deviation of zero-centered normal distribution for unexplained error
 #' * **b_sp** basis function of each spline node
 #' * **lg_N** predicted weekly abundance
-#' @param parameters
-#' @param model_name TODO
+#' @param parameters a list of parameters to be estimated in the model:
+#' * **trib_mu.P** mean of hyper-distribution for site-effect
+#' * **trib_sd.P** standard deviation of hyper-distribution for site effect
+#' * **flow_mu.P** mean of hyper-distribution for flow effect
+#' * **flow_sd.P** standard deviation of hyper-distribution for flow effect
+#' * **pro_sd.P** standard deviation of zero-centered normal distribution for unexplained error
+#' * **b0_pCap** site effect on trap efficiency for each site
+#' * **b_flow** flow effect on trap efficiency for each site
+#' * **pCap_U** weekly trap efficiency (capture probability)
+#' * **N** weekly juvenile abundance
+#' * **Ntot** total juvenile abundance for the year
+#' * **sd.N** standard deviation controlling flexibility of spline weekly abundance curve
+#' * **sd.Ne** standard deviation controlling extent of non-spline variation in weekly abundance
+#' @param model_name model to be called based on number of efficiency trials available for the selected site. Either
+#' * **all_mark_recap.bug** all weeks with catch have corresponding efficiency trials
+#' * **missing_mark_recap.bug** some weeks with catch have corresponding efficiency trials
+#' * **no_mark_recap_no_trib.bug** the selected site has no efficiency data at all
+#' * **no_mark_recap.bug** no weeks with catch have corresponding efficiency trials
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
 #' and `number_chains`.
-#' @param bugs_directory
-#' @returns either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
-#' of the model run.
+#' @param bugs_directory a filepath indicating where to find the `WinBUGS14/` file. This needs
+#' to be in a character format ending with `/WinBUGS14`.
+#' @returns if running on a Mac operating system, returns a list of all inputs formatted
+#' to pass to `bugs`. If running on a PC or another operating system capable of running WinBUGS,
+#' returns a nested list containing the following elements:
+#' * **model_results** the `BUGs` object from fitting the model
+#' * **model_called** the model called on the data
+#' * **data_inputs** the data passed to the model
+#' * **init_inputs** the initial values passed to the model
 #' @export
 #' @md
 bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_params,
@@ -377,9 +391,11 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 #' Prepare Data Object for BT-SPAS-X WinBUGs call
 #' @details This function is called within `run_single_bt_spas_x()` and prepares the data lists
 #' based on which model will be run.
-#' @param model_name
-#' @param full_data_list
+#' @param model_name which model to call on the data. Either `all_mark_recap.bug`,
+#' `missing_mark_recap.bug`, `no_mark_recap.bug`, or `no_mark_recap_no_trib.bug`
+#' @param full_data_list a list containing all possible data objects to use in the model.
 #' @returns a named list with the required elements for that model run.
+#' @keywords internal
 #' @export
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
@@ -408,9 +424,11 @@ get_bt_spas_x_data_list <- function(model_name, full_data_list) {
 #' Prepare spline parameters object for BT-SPAS-X WinBUGs call
 #' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
 #' to pass to the data list
-#' @param number_weeks_catch
-#' @param k_int
+#' @param number_weeks_catch number of weeks with catch data.
+#' @param k_int number of knots to use in building spline for abundance data.
+#' Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
 #' @returns a named list containing *K* and *b_spline_matrix* for passing to WinBUGS
+#' @keywords internal
 #' @export
 #' @md
 build_spline_data <- function(number_weeks_catch, k_int) {
@@ -453,7 +471,17 @@ get_total_juvenile_abundance <- function(model_fit_object) {
 #' @title Extract weekly juvenile abundance
 #' @description This function can be run on objects produced by `run_bt_spas_x()`.
 #' It extracts estimates for `N`, or abundance, by week.
-#' @keywords internal
+#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
+#' for a given site and run year.
+#' @returns a tibble with the following variables:
+#' * **week_index** sequential identifier for weeks in the model
+#' * **week** the julian week associated with abundance estimate
+#' * **parameter** parameter name
+#' * **mean_abundance** mean predicted weekly abundance
+#' * **median_abundance** median predicted weekly abundance
+#' * **sd_abundance** standard deviation of predicted weekly abundance
+#' * **lcl_97_5** lower confidence limit (2.5%) of weekly predicted abundance
+#' * **ucl_97_5** upper confidence limit (97.5%) of weekly predicted abundance
 #' @export
 #' @md
 get_weekly_juvenile_abundance <- function(model_fit_object) {
@@ -478,7 +506,17 @@ get_weekly_juvenile_abundance <- function(model_fit_object) {
 #' @title Extract weekly trap efficiency from BT-SPAS-X object
 #' @description This function can be run on objects produced by `run_bt_spas_x()`.
 #' It extracts estimates for `pCap` by week, aka weekly trap efficiency.
-#' @keywords internal
+#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
+#' for a given site and run year.
+#' @returns a tibble with the following variables:
+#' * **week_index** sequential identifier for weeks in the model
+#' * **week** the julian week associated with weekly trap efficiency estimate
+#' * **parameter** parameter name
+#' * **mean_pCap** mean predicted weekly trap efficiency
+#' * **median_pCap** median predicted weekly trap efficiency
+#' * **sd_pCap** standard deviation of predicted weekly trap efficiency
+#' * **lcl_97_5** lower confidence limit (2.5%) of weekly predicted trap efficiency
+#' * **ucl_97_5** upper confidence limit (97.5%) of weekly predicted trap efficiency
 #' @export
 #' @md
 get_weekly_trap_efficiency <- function(model_fit_object) {
@@ -503,7 +541,14 @@ get_weekly_trap_efficiency <- function(model_fit_object) {
 #' @title Extract hyper-distribution parameters from BT-SPAS-X
 #' @description This function can be run on objects produced by `run_bt_spas_x()`.
 #' It extracts estimates for `trib_mu`, `trib_sd`, `flow_mu`, `flow_sd`, and `pro_sd`.
-#' @keywords internal
+#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
+#' for a given site and run year.
+#' @returns a tibble with the following variables:
+#' * **parameter** parameter name
+#' * **mean** mean parameter estimate
+#' * **mean** median parameter estimate
+#' * **mean** lower confidence limit (2.5%) of parameter estimate
+#' * **mean** upper confidence limit (97.5%) of parameter estimate
 #' @export
 #' @md
 get_hyper_distribution_parameter_estimates <- function(model_fit_object) {
@@ -522,9 +567,14 @@ get_hyper_distribution_parameter_estimates <- function(model_fit_object) {
 
 #' Extract results from BT-SPAS-X bugs object
 #' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
-#' to pass to the data list
-#' @param model_result_object TODO
-#' @returns TODO
+#' to pass to the data list. These are helpful for model diagnostics for a given model run.
+#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
+#' for a given site and run year.
+#' @returns a named list with the following elements:
+#' * **posterior_output** the posterior simulations produced by the `BUGs` object
+#' * **summary_output** the summary produced by the `BUGs` object
+#' * **dic_output** DIC for the `BUGs` object
+#' * **knots_output** the knot positions produced for the weekly abundance spline curve
 #' @export
 #' @md
 extract_bt_spas_x_results <- function(model_fit_object) {
