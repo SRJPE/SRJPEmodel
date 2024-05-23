@@ -7,6 +7,7 @@
 get_weekly_juvenile_abundance(model_fit_object)
 }
 \description{
-TODO
+This function can be run on objects produced by \code{run_bt_spas_x()}.
+It extracts estimates for \code{N}, or abundance, by week.
 }
 \keyword{internal}

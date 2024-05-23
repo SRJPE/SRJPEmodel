@@ -285,7 +285,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   return(list("results" = results,
               "site" = site,
               "run_year" = run_year,
-              "weeks_fit" = input_data$week[data$Uwc_ind]))
+              "weeks_fit" = input_data$week[data$Uwc_ind],
+              "knots_output" = spline_data$knot_positions))
 }
 
 
@@ -312,9 +313,18 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' * **K** number of columns in the bspline basis matrix
 #' * **ZP** The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)
 #' * **lgN_max** maxmimum possible value for log N across strata
-#' @param inits
+#' @param inits a list containing the following parameters to be estimated:
+#' * **trib_mu.P** mean of hyper-distribution for site-effect
+#' * **b0_pCap** site effect on trap efficiency for each site
+#' * **flow_mu.P** mean of hyper-distribution for flow effect
+#' * **b_flow** flow effect on trap efficiency for each site
+#' * **trib_tau.P** standard deviation of hyper-distribution for site effect
+#' * **flow_tau.P** standard deviation of hyper-distribution for flow effect
+#' * **pro_tau.P** standard deviation of zero-centered normal distribution for unexplained error
+#' * **b_sp** basis function of each spline node
+#' * **lg_N** predicted weekly abundance
 #' @param parameters
-#' @param model_name
+#' @param model_name TODO
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
 #' and `number_chains`.
 #' @param bugs_directory
@@ -361,24 +371,6 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 
     return(model_results)
   }
-}
-
-#' Extract results from BT-SPAS-X bugs object
-#' @details TODO
-#' @param model_result_object TODO
-#' @returns TODO
-#' @export
-#' @md
-extract_bt_spas_x_results <- function(model_result_object) {
-  posterior_output <- model_result_object$sims.list
-  summary_output <- round(model_result_object$summary, 3)
-  dic_output <- c(model_result_object$pD, model_result_object$DIC)
-  #knots_output <- knot_positions
-
-  return(list("posterior_output" = posterior_output,
-              "summary_output" = summary_output,
-              "dic_output" = dic_output))
-              #"knots_output" = knots_output))
 }
 
 
@@ -431,11 +423,13 @@ build_spline_data <- function(number_weeks_catch, k_int) {
   K <- ncol(b_spline_matrix)
 
   return(list("K" = K,
-              "b_spline_matrix" = b_spline_matrix))
+              "b_spline_matrix" = b_spline_matrix,
+              "knot_positions" = knot_positions))
 }
 
 #' @title Extract total juvenile abundance estimates
-#' @description TODO
+#' @description This function can be run on objects produced by `run_bt_spas_x()`.
+#' It extracts the estimate for `Ntot`, or total abundance.
 #' @keywords internal
 #' @export
 #' @md
@@ -457,7 +451,8 @@ get_total_juvenile_abundance <- function(model_fit_object) {
 }
 
 #' @title Extract weekly juvenile abundance
-#' @description TODO
+#' @description This function can be run on objects produced by `run_bt_spas_x()`.
+#' It extracts estimates for `N`, or abundance, by week.
 #' @keywords internal
 #' @export
 #' @md
@@ -480,12 +475,13 @@ get_weekly_juvenile_abundance <- function(model_fit_object) {
   abundance_data
 }
 
-#' @title Extract weekly pCap from BT-SPAS-X object
-#' @description TODO
+#' @title Extract weekly trap efficiency from BT-SPAS-X object
+#' @description This function can be run on objects produced by `run_bt_spas_x()`.
+#' It extracts estimates for `pCap` by week, aka weekly trap efficiency.
 #' @keywords internal
 #' @export
 #' @md
-get_weekly_pCap <- function(model_fit_object) {
+get_weekly_trap_efficiency <- function(model_fit_object) {
   pCap_data <- model_fit_object$results$model_results$summary |>
     as.data.frame() |>
     cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
@@ -504,12 +500,13 @@ get_weekly_pCap <- function(model_fit_object) {
   pCap_data
 }
 
-#' @title Extract hierarchical parameters from BT-SPAS-X
-#' @description TODO
+#' @title Extract hyper-distribution parameters from BT-SPAS-X
+#' @description This function can be run on objects produced by `run_bt_spas_x()`.
+#' It extracts estimates for `trib_mu`, `trib_sd`, `flow_mu`, `flow_sd`, and `pro_sd`.
 #' @keywords internal
 #' @export
 #' @md
-get_hierarchical_parameter_estimates <- function(model_fit_object) {
+get_hyper_distribution_parameter_estimates <- function(model_fit_object) {
   params <- model_fit_object$results$model_results$summary |>
     as.data.frame() |>
     cbind(parameter = rownames(model_fit_object$results$model_results$summary)) |>
@@ -521,4 +518,24 @@ get_hierarchical_parameter_estimates <- function(model_fit_object) {
     select(parameter, mean, sd, median, lcl_97_5, ucl_97_5)
   rownames(params) = NULL
   params
+}
+
+#' Extract results from BT-SPAS-X bugs object
+#' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
+#' to pass to the data list
+#' @param model_result_object TODO
+#' @returns TODO
+#' @export
+#' @md
+extract_bt_spas_x_results <- function(model_fit_object) {
+  posterior_output <- model_fit_object$results$model_results$sims.list
+  summary_output <- round(model_fit_object$results$model_results$summary, 3)
+  dic_output <- c(model_fit_object$results$model_results$pD,
+                  model_fit_object$results$model_results$DIC)
+  knots_output <- model_fit_object$knots_output
+
+  return(list("posterior_output" = posterior_output,
+              "summary_output" = summary_output,
+              "dic_output" = dic_output,
+              "knots_output" = knots_output))
 }

@@ -4,7 +4,7 @@
 \alias{extract_bt_spas_x_results}
 \title{Extract results from BT-SPAS-X bugs object}
 \usage{
-extract_bt_spas_x_results(model_result_object)
+extract_bt_spas_x_results(model_fit_object)
 }
 \arguments{
 \item{model_result_object}{TODO}
@@ -16,5 +16,6 @@ TODO
 Extract results from BT-SPAS-X bugs object
 }
 \details{
-TODO
+This function is called within \code{run_single_bt_spas_x()} and prepares spline parameters
+to pass to the data list
 }
