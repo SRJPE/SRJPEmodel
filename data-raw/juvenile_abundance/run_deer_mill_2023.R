@@ -236,9 +236,9 @@ get_total_juvenile_abundance(mill_yearling) |>
                      lifestage = "YOY"))
 
 # trap efficiency
-get_weekly_pCap(deer_yearling) |>
+get_weekly_trap_efficiency(deer_yearling) |>
   mutate(Lifestage = "Yearling") |>
-  bind_rows(get_weekly_pCap(deer_YOY) |>
+  bind_rows(get_weekly_trap_efficiency(deer_YOY) |>
               mutate(Lifestage = "YOY")) |>
   mutate(date = ifelse(week >= 40, paste(1990, week, 1, sep="-"),
                        paste(1991, week, 1, sep="-")),
@@ -257,9 +257,9 @@ get_weekly_pCap(deer_yearling) |>
        y = "pCap",
        title = "Predicted pCap on Deer Creek (run year 2023)")
 
-get_weekly_pCap(mill_yearling) |>
+get_weekly_trap_efficiency(mill_yearling) |>
   mutate(Lifestage = "Yearling") |>
-  bind_rows(get_weekly_pCap(mill_YOY) |>
+  bind_rows(get_weekly_trap_efficiency(mill_YOY) |>
               mutate(Lifestage = "YOY")) |>
   mutate(date = ifelse(week >= 40, paste(1990, week, 1, sep="-"),
                        paste(1991, week, 1, sep="-")),
@@ -279,15 +279,15 @@ get_weekly_pCap(mill_yearling) |>
        title = "Predicted pCap on Mill Creek (run year 2023)")
 
 # mean pCap
-get_hierarchical_parameter_estimates(mill_yearling) |>
+get_hyper_distribution_parameter_estimates(mill_yearling) |>
   mutate(stream = "mill creek",
          lifestage = "yearling") |>
-  bind_rows(get_hierarchical_parameter_estimates(mill_YOY) |>
+  bind_rows(get_hyper_distribution_parameter_estimates(mill_YOY) |>
               mutate(stream = "mill creek",
                      lifestage = "YOY")) |>
-  bind_rows(get_hierarchical_parameter_estimates(deer_yearling) |>
+  bind_rows(get_hyper_distribution_parameter_estimates(deer_yearling) |>
               mutate(stream = "deer creek",
                      lifestage = "yearling")) |>
-  bind_rows(get_hierarchical_parameter_estimates(deer_YOY) |>
+  bind_rows(get_hyper_distribution_parameter_estimates(deer_YOY) |>
               mutate(stream = "deer creek",
                      lifestage = "YOY"))
