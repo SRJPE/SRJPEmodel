@@ -6,8 +6,24 @@
 \usage{
 get_weekly_trap_efficiency(model_fit_object)
 }
+\arguments{
+\item{model_fit_object}{the object produced by running \code{run_single_bt_spas_x()}
+for a given site and run year.}
+}
+\value{
+a tibble with the following variables:
+\itemize{
+\item \strong{week_index} sequential identifier for weeks in the model
+\item \strong{week} the julian week associated with weekly trap efficiency estimate
+\item \strong{parameter} parameter name
+\item \strong{mean_pCap} mean predicted weekly trap efficiency
+\item \strong{median_pCap} median predicted weekly trap efficiency
+\item \strong{sd_pCap} standard deviation of predicted weekly trap efficiency
+\item \strong{lcl_97_5} lower confidence limit (2.5\%) of weekly predicted trap efficiency
+\item \strong{ucl_97_5} upper confidence limit (97.5\%) of weekly predicted trap efficiency
+}
+}
 \description{
 This function can be run on objects produced by \code{run_bt_spas_x()}.
 It extracts estimates for \code{pCap} by week, aka weekly trap efficiency.
 }
-\keyword{internal}

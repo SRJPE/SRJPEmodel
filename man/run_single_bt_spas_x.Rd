@@ -9,7 +9,6 @@ run_single_bt_spas_x(
   bt_spas_x_input_data,
   site,
   run_year,
-  life_stage,
   effort_adjust = c(T, F),
   mainstem_version = c(F, T),
   bugs_directory,
@@ -17,15 +16,38 @@ run_single_bt_spas_x(
 )
 }
 \arguments{
+\item{site}{site for which you want to fit the model}
+
+\item{run_year}{run year for which you want to fit the model}
+
+\item{effort_adjust}{whether or not you want to use catch adjusted by effort}
+
+\item{mainstem_version}{whether or not this is run on mainstem tributaries}
+
+\item{bugs_directory}{where the \code{WinBUGS.exe} file can be found. Needs to end in \verb{/WinBUGS}}
+
+\item{debug_mode}{whether you want to run \code{bugs} in debug mode.}
+
 \item{bt_spas_x_bayes_params:}{a list containing \code{number_mcmc}, \code{number_burnin}, \code{number_thin},
-and \code{number_chains}}
+and \code{number_chains}. Can use \code{SRJPEmodel::bt_spas_x_bayes_params}.}
+
+\item{bt_spas_x_input_data:}{a data frame containing the same variables as
+\code{?SRJPEdata::weekly_juvenile_abundance_model_data}}
 }
 \value{
-TODO
+a list:
+\itemize{
+\item \strong{results} model results - see \code{?bt_spas_x_bugs()} for details.
+\item \strong{site} the site used to fit the model
+\item \strong{run_year} the run year used to fit the model
+\item \strong{weeks_fit} the weeks with catch used to fit the model (for analysis and plotting)
+\item \strong{knots_output} knot positions for the weekly abundance spline curve
+}
 }
 \description{
 Call BT-SPAS-X on a single site/run year combination
 }
 \details{
-This function is called within \code{run_bt_spas_x()}
+This function is called within \code{run_bt_spas_x()} or can be run by itself
+on a single site/run year combination.
 }

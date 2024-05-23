@@ -6,6 +6,12 @@
 \usage{
 get_bt_spas_x_data_list(model_name, full_data_list)
 }
+\arguments{
+\item{model_name}{which model to call on the data. Either \code{all_mark_recap.bug},
+\code{missing_mark_recap.bug}, \code{no_mark_recap.bug}, or \code{no_mark_recap_no_trib.bug}}
+
+\item{full_data_list}{a list containing all possible data objects to use in the model.}
+}
 \value{
 a named list with the required elements for that model run.
 }
@@ -16,3 +22,4 @@ Prepare Data Object for BT-SPAS-X WinBUGs call
 This function is called within \code{run_single_bt_spas_x()} and prepares the data lists
 based on which model will be run.
 }
+\keyword{internal}

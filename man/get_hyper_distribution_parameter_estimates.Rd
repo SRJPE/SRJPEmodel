@@ -6,8 +6,21 @@
 \usage{
 get_hyper_distribution_parameter_estimates(model_fit_object)
 }
+\arguments{
+\item{model_fit_object}{the object produced by running \code{run_single_bt_spas_x()}
+for a given site and run year.}
+}
+\value{
+a tibble with the following variables:
+\itemize{
+\item \strong{parameter} parameter name
+\item \strong{mean} mean parameter estimate
+\item \strong{mean} median parameter estimate
+\item \strong{mean} lower confidence limit (2.5\%) of parameter estimate
+\item \strong{mean} upper confidence limit (97.5\%) of parameter estimate
+}
+}
 \description{
 This function can be run on objects produced by \code{run_bt_spas_x()}.
 It extracts estimates for \code{trib_mu}, \code{trib_sd}, \code{flow_mu}, \code{flow_sd}, and \code{pro_sd}.
 }
-\keyword{internal}

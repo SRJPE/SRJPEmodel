@@ -6,6 +6,12 @@
 \usage{
 build_spline_data(number_weeks_catch, k_int)
 }
+\arguments{
+\item{number_weeks_catch}{number of weeks with catch data.}
+
+\item{k_int}{number of knots to use in building spline for abundance data.
+Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)}
+}
 \value{
 a named list containing \emph{K} and \emph{b_spline_matrix} for passing to WinBUGS
 }
@@ -16,3 +22,4 @@ Prepare spline parameters object for BT-SPAS-X WinBUGs call
 This function is called within \code{run_single_bt_spas_x()} and prepares spline parameters
 to pass to the data list
 }
+\keyword{internal}

@@ -40,12 +40,59 @@ bt_spas_x_bugs(
 \item \strong{lgN_max} maxmimum possible value for log N across strata
 }}
 
+\item{inits}{a list containing initial values for the following parameters:
+\itemize{
+\item \strong{trib_mu.P} mean of hyper-distribution for site-effect
+\item \strong{b0_pCap} site effect on trap efficiency for each site
+\item \strong{flow_mu.P} mean of hyper-distribution for flow effect
+\item \strong{b_flow} flow effect on trap efficiency for each site
+\item \strong{trib_tau.P} used to estimate standard deviation of hyper-distribution for site effect
+\item \strong{flow_tau.P} used to estimate standard deviation of hyper-distribution for flow effect
+\item \strong{pro_tau.P} used to estimate standard deviation of zero-centered normal distribution for unexplained error
+\item \strong{b_sp} basis function of each spline node
+\item \strong{lg_N} predicted weekly abundance
+}}
+
+\item{parameters}{a list of parameters to be estimated in the model:
+\itemize{
+\item \strong{trib_mu.P} mean of hyper-distribution for site-effect
+\item \strong{trib_sd.P} standard deviation of hyper-distribution for site effect
+\item \strong{flow_mu.P} mean of hyper-distribution for flow effect
+\item \strong{flow_sd.P} standard deviation of hyper-distribution for flow effect
+\item \strong{pro_sd.P} standard deviation of zero-centered normal distribution for unexplained error
+\item \strong{b0_pCap} site effect on trap efficiency for each site
+\item \strong{b_flow} flow effect on trap efficiency for each site
+\item \strong{pCap_U} weekly trap efficiency (capture probability)
+\item \strong{N} weekly juvenile abundance
+\item \strong{Ntot} total juvenile abundance for the year
+\item \strong{sd.N} standard deviation controlling flexibility of spline weekly abundance curve
+\item \strong{sd.Ne} standard deviation controlling extent of non-spline variation in weekly abundance
+}}
+
+\item{model_name}{model to be called based on number of efficiency trials available for the selected site. Either
+\itemize{
+\item \strong{all_mark_recap.bug} all weeks with catch have corresponding efficiency trials
+\item \strong{missing_mark_recap.bug} some weeks with catch have corresponding efficiency trials
+\item \strong{no_mark_recap_no_trib.bug} the selected site has no efficiency data at all
+\item \strong{no_mark_recap.bug} no weeks with catch have corresponding efficiency trials
+}}
+
+\item{bugs_directory}{a filepath indicating where to find the \verb{WinBUGS14/} file. This needs
+to be in a character format ending with \verb{/WinBUGS14}.}
+
 \item{bt_spas_x_bayes_params:}{a list containing \code{number_mcmc}, \code{number_burnin}, \code{number_thin},
 and \code{number_chains}.}
 }
 \value{
-either a list of the required inputs for a WinBUGS model (if running on a Mac), or the results
-of the model run.
+if running on a Mac operating system, returns a list of all inputs formatted
+to pass to \code{bugs}. If running on a PC or another operating system capable of running WinBUGS,
+returns a nested list containing the following elements:
+\itemize{
+\item \strong{model_results} the \code{BUGs} object from fitting the model
+\item \strong{model_called} the model called on the data
+\item \strong{data_inputs} the data passed to the model
+\item \strong{init_inputs} the initial values passed to the model
+}
 }
 \description{
 Execute BT-SPAS-X in WinBUGs

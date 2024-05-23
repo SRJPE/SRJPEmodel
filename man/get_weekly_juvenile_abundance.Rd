@@ -6,8 +6,24 @@
 \usage{
 get_weekly_juvenile_abundance(model_fit_object)
 }
+\arguments{
+\item{model_fit_object}{the object produced by running \code{run_single_bt_spas_x()}
+for a given site and run year.}
+}
+\value{
+a tibble with the following variables:
+\itemize{
+\item \strong{week_index} sequential identifier for weeks in the model
+\item \strong{week} the julian week associated with abundance estimate
+\item \strong{parameter} parameter name
+\item \strong{mean_abundance} mean predicted weekly abundance
+\item \strong{median_abundance} median predicted weekly abundance
+\item \strong{sd_abundance} standard deviation of predicted weekly abundance
+\item \strong{lcl_97_5} lower confidence limit (2.5\%) of weekly predicted abundance
+\item \strong{ucl_97_5} upper confidence limit (97.5\%) of weekly predicted abundance
+}
+}
 \description{
 This function can be run on objects produced by \code{run_bt_spas_x()}.
 It extracts estimates for \code{N}, or abundance, by week.
 }
-\keyword{internal}
