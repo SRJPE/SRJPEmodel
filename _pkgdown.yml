@@ -16,8 +16,8 @@ reference:
   desc: Functions to run BTSPAS-X
 - contents:
   - bt_spas_x_bugs
-  - run_multiple_bt_spas_x
   - run_single_bt_spas_x
+  - run_multiple_bt_spas_x
 - subtitle: P2S
   desc: Functions to run P2S
 - contents:
@@ -28,7 +28,7 @@ reference:
   - run_survival_model
 
 - title: Model Results
-  desc: Data objects produced by models
+  desc: Data objsects produced by models
 - contents:
   - P2S_model_fits
   - P2S_comparison_results
@@ -41,17 +41,14 @@ reference:
 - title: Helper Functions
   desc: Functions used as to generate model data / format model outputs
 - contents:
-  - build_spline_data
-  - extract_bt_spas_x_results
   - get_bt_spas_x_data_list
-  - get_hyper_distribution_parameter_estimates
   - get_predicted_spawners_from_P2S
-  - get_total_juvenile_abundance
-  - get_weekly_juvenile_abundance
-  - get_weekly_trap_efficiency
   - compare_P2S_model_covariates
   - compare_P2S_covariates_within_stream
-
+  - extract_bt_spas_x_results
+  - get_hyper_distribution_parameter_estimates
+  - get_weekly_juvenile_abundance
+  - get_weekly_trap_efficiency
 
 navbar:
   structure:
