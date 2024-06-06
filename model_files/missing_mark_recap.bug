@@ -31,23 +31,25 @@ tau.Ne~dgamma(1,0.05);sd.Ne<-1/pow(tau.Ne,0.5) #0.1,0.1Prior on extra-spline var
 
 #Priors on spline coefficients
 #b_sp[1]~dflat()
-b_sp[1]~dnorm(0,1.0)	
+b_sp[1]~dnorm(0,1.0)
 b_sp[2]~dflat()	#in cases with u=NA at start of time series large values of b_sp[1:2] lead to unrealistically high values of U[1:2]
 for(i in 3:K){
-      xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b 
-      b_sp[i] ~ dnorm(xi[i-2],tau.N) 	 #The higher the estimated precision of tau.N, the lower the flexibility in b[i]'s, and hence a smoother the curve. 
+      xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b
+      b_sp[i] ~ dnorm(xi[i-2],tau.N) 	 #The higher the estimated precision of tau.N, the lower the flexibility in b[i]'s, and hence a smoother the curve.
 }
 
 #Assign estimated pCaps to U estimation strata
-for(i in 1:Nwmr){pCap_U[Uind_wMR[i]]<-cut(pCap[ind_pCap[i]])}
+# for(i in 1:Nwmr){pCap_U[Uind_wMR[i]]<-cut(pCap[ind_pCap[i]])}
+for(i in 1:Nwmr){pCap_U[Uind_wMR[i]]<-pCap[ind_pCap[i]]}
 
-#For U strata without MR data, simulate pCaps from hyper distributions. 
+#For U strata without MR data, simulate pCaps from hyper distributions.
 #This version assumes that the tributary being modelled was also in the MR estimation
 #If it isn't then you have to simulate b0_pCap from hyper parameters
 for(i in 1:Nwomr){
 	pro_dev[i]~dnorm(0,pro_tau.P)
 	logit_pCap_Sim[i]<- b0_pCap[use_trib] + b_flow[use_trib]*catch_flow[Uind_woMR[i]] + pro_dev[i]
-	logit(pCap_U[Uind_woMR[i]])<-cut(logit_pCap_Sim[i])
+	#logit(pCap_U[Uind_woMR[i]])<-cut(logit_pCap_Sim[i])
+	logit(pCap_U[Uind_woMR[i]])<-logit_pCap_Sim[i]
 }
 
 #beta_dev~dnorm(0,1.0E-03)
@@ -61,10 +63,10 @@ Ntot<-sum(N[])
 
 #Only loop through strata with unmarked catch observations
 for(i in 1:Nstrata_wc){
-	u[Uwc_ind[i]]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]]) 
-	
+	u[Uwc_ind[i]]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]])
+
 	#exp_u[Uwc_ind[i]]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]]
 	#u[Uwc_ind[i]]~dpois(exp_u[Uwc_ind[i]])
-}	
+}
 
 }
