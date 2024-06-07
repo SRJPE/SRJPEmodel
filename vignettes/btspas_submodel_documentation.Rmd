@@ -42,7 +42,7 @@ BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a w
 
 *Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model highlighted in red.*
 
-![](images/BTSPASX jpe diagram.png)
+![](images/BTSPASX%20jpe%20diagram.png)
 
 ## Submodel Architecture
 
