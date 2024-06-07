@@ -39,10 +39,11 @@ The model also estimates a `conversion rate`, or proportion of adults that pass 
 
 ## Conceptual model
 
-This is a DRAFT conceptual model detailing where submodels fit into the overall SRJPE model ecosystem. 
+P2S estimates adult abundance needed for the stock recruit model. See figure 1 below to see how it fits into the full JPE model system. 
 
+Figure 1: Conceptual Diagram of SRJPE model. P2S sub-model highlighted in yellow 
 ```{r, echo = FALSE, out.width = "500px"}
-knitr::include_graphics(path = here::here("vignettes", "images", "SRJPE Conceptual Model - 2-15-2024.png"),
+knitr::include_graphics(path = here::here("vignettes", "images", "P2S jpe diagram.png"),
                         rel_path = FALSE)
 ```
 
@@ -51,7 +52,7 @@ knitr::include_graphics(path = here::here("vignettes", "images", "SRJPE Conceptu
 The submodel takes observed data (in orange) and predicts spawner counts (in pink). Parameters estimated by the model are light pink; for more information, see documentation.
 
 ```{r, echo = FALSE, out.width = "500px"}
-knitr::include_graphics(path = here::here("vignettes", "images", "parameter_diagram.png"),
+knitr::include_graphics(path = here::here("vignettes", "images", "P2S_for_dashboard.png"),
                         rel_path = FALSE)
 ```
 
