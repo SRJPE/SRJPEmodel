@@ -87,6 +87,13 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # analyze efficiency trials for all relevant sites (do not filter to site)
 
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
+  if(site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+    mainstem_version = FALSE
+  } else {
+    mainstem_version = TRUE
+  }
+
+  # TODO remove this as an arg
   if(!mainstem_version) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else if(mainstem_version) {
@@ -274,11 +281,20 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # run the bugs model
   results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params,
                             bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
-  return(list("results" = results,
-              "site" = site,
-              "run_year" = run_year,
-              "weeks_fit" = input_data$week[data$Uwc_ind],
-              "knots_output" = spline_data$knot_positions))
+
+  final_results <- get_summary_table(results, site, run_year,
+                                     weeks_fit = input_data$week[data$Uwc_ind],
+                                     model_name = model_name)
+
+  # TODO decide where and when to return these
+  diagnostic_results <- list("input_data" = data,
+                             "input_initial_values" = inits[[1]],
+                             "bayes_params" = bt_spas_x_bayes_params,
+                             "knots_output" = spline_data$knot_positions,
+                             "full_model_object" = results)
+
+  return(final_results)
+
 }
 
 
@@ -378,12 +394,12 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      debug = debug_mode, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                                      bugs.directory = bugs_directory)
 
-    return(list("model_results" = model_results,
-                "model_called" = sub(".*/", "", model_name_full),
-                "data_inputs" = data,
-                "init_inputs" = inits))
-
     return(model_results)
+
+    # return(list("model_results" = model_results,
+    #             "model_called" = sub(".*/", "", model_name_full),
+    #             "data_inputs" = data,
+    #             "init_inputs" = inits))
   }
 }
 
@@ -445,124 +461,40 @@ build_spline_data <- function(number_weeks_catch, k_int) {
               "knot_positions" = knot_positions))
 }
 
-#' @title Extract total juvenile abundance estimates
-#' @description This function can be run on objects produced by `run_bt_spas_x()`.
-#' It extracts the estimate for `Ntot`, or total abundance.
+
+#' @title Extract summary in table
+#' @description TODO
 #' @keywords internal
 #' @export
 #' @md
-get_total_juvenile_abundance <- function(model_fit_object) {
-  abundance_data <- model_fit_object$results$model_results$summary |>
-    as.data.frame() |>
-    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
-    janitor::clean_names() |>
-    filter(stringr::str_detect(par_names, "Ntot")) |>
-    mutate(parameter = "total_abundance") |>
-    mutate(mean_abundance = mean,
-           sd_abundance = sd,
-           lcl_97_5 = x2_5_percent,
-           median_abundance = x50_percent,
-           ucl_97_5 = x97_5_percent) |>
-    select(parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
-  rownames(abundance_data) = NULL
-  abundance_data
-}
+get_summary_table <- function(model_fit_object, site, run_year,
+                              weeks_fit, model_name) {
 
-#' @title Extract weekly juvenile abundance
-#' @description This function can be run on objects produced by `run_bt_spas_x()`.
-#' It extracts estimates for `N`, or abundance, by week.
-#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
-#' for a given site and run year.
-#' @returns a tibble with the following variables:
-#' * **week_index** sequential identifier for weeks in the model
-#' * **week** the julian week associated with abundance estimate
-#' * **parameter** parameter name
-#' * **mean_abundance** mean predicted weekly abundance
-#' * **median_abundance** median predicted weekly abundance
-#' * **sd_abundance** standard deviation of predicted weekly abundance
-#' * **lcl_97_5** lower confidence limit (2.5%) of weekly predicted abundance
-#' * **ucl_97_5** upper confidence limit (97.5%) of weekly predicted abundance
-#' @export
-#' @md
-get_weekly_juvenile_abundance <- function(model_fit_object) {
-  abundance_data <- model_fit_object$results$model_results$summary |>
+  summary_table <- model_fit_object$summary |>
     as.data.frame() |>
-    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
+    cbind(par_names = rownames(model_fit_object$summary)) |>
     janitor::clean_names() |>
-    filter(stringr::str_detect(par_names, "N\\[")) |>
-    mutate(parameter = "weekly_abundance",
-           week = model_fit_object$weeks_fit,
-           week_index = parse_number(par_names),
-           mean_abundance = mean,
-           sd_abundance = sd,
-           lcl_97_5 = x2_5_percent,
-           median_abundance = x50_percent,
-           ucl_97_5 = x97_5_percent) |>
-    select(week_index, week, parameter, mean_abundance, median_abundance, sd_abundance, lcl_97_5, ucl_97_5)
-  rownames(abundance_data) = NULL
-  abundance_data
-}
+    # don't extract index for parameters estimated by stream, not week
+    mutate(week_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"), NA,
+                               suppressWarnings(readr::parse_number(par_names))),
+           site = site,
+           run_year = run_year,
+           model_called = model_name)
 
-#' @title Extract weekly trap efficiency from BT-SPAS-X object
-#' @description This function can be run on objects produced by `run_bt_spas_x()`.
-#' It extracts estimates for `pCap` by week, aka weekly trap efficiency.
-#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
-#' for a given site and run year.
-#' @returns a tibble with the following variables:
-#' * **week_index** sequential identifier for weeks in the model
-#' * **week** the julian week associated with weekly trap efficiency estimate
-#' * **parameter** parameter name
-#' * **mean_pCap** mean predicted weekly trap efficiency
-#' * **median_pCap** median predicted weekly trap efficiency
-#' * **sd_pCap** standard deviation of predicted weekly trap efficiency
-#' * **lcl_97_5** lower confidence limit (2.5%) of weekly predicted trap efficiency
-#' * **ucl_97_5** upper confidence limit (97.5%) of weekly predicted trap efficiency
-#' @export
-#' @md
-get_weekly_trap_efficiency <- function(model_fit_object) {
-  pCap_data <- model_fit_object$results$model_results$summary |>
-    as.data.frame() |>
-    cbind(par_names = rownames(model_fit_object$results$model_results$summary)) |>
-    janitor::clean_names() |>
-    filter(stringr::str_detect(par_names, "pCap_U\\[")) |>
-    mutate(parameter = "pCap",
-           week = model_fit_object$weeks_fit,
-           week_index = parse_number(par_names),
-           mean_pCap = mean,
-           sd_pCap = sd,
-           lcl_97_5 = x2_5_percent,
-           median_pCap = x50_percent,
-           ucl_97_5 = x97_5_percent) |>
-    select(week_index, week, parameter, mean_pCap, median_pCap, sd_pCap, lcl_97_5, ucl_97_5)
-  rownames(pCap_data) = NULL
-  pCap_data
-}
+  rownames(summary_table) = NULL
 
-#' @title Extract hyper-distribution parameters from BT-SPAS-X
-#' @description This function can be run on objects produced by `run_bt_spas_x()`.
-#' It extracts estimates for `trib_mu`, `trib_sd`, `flow_mu`, `flow_sd`, and `pro_sd`.
-#' @param model_fit_object the object produced by running `run_single_bt_spas_x()`
-#' for a given site and run year.
-#' @returns a tibble with the following variables:
-#' * **parameter** parameter name
-#' * **mean** mean parameter estimate
-#' * **mean** median parameter estimate
-#' * **mean** lower confidence limit (2.5%) of parameter estimate
-#' * **mean** upper confidence limit (97.5%) of parameter estimate
-#' @export
-#' @md
-get_hyper_distribution_parameter_estimates <- function(model_fit_object) {
-  params <- model_fit_object$results$model_results$summary |>
-    as.data.frame() |>
-    cbind(parameter = rownames(model_fit_object$results$model_results$summary)) |>
-    janitor::clean_names() |>
-    filter(stringr::str_detect(parameter, "trib_mu|trib_sd|flow_mu|flow_sd|pro_sd")) |>
-    mutate(lcl_97_5 = x2_5_percent,
-           median = x50_percent,
-           ucl_97_5 = x97_5_percent) |>
-    select(parameter, mean, sd, median, lcl_97_5, ucl_97_5)
-  rownames(params) = NULL
-  params
+  weeks_fit_lookup <- tibble(week_fit = weeks_fit) |>
+    mutate(week_index = row_number())
+
+  summary_table_final <- summary_table |>
+    left_join(weeks_fit_lookup, by = "week_index") |>
+    select(site, run_year, week_fit, parameter = par_names,
+           mean, sd, `2.5` = x2_5_percent,
+           `25` = x25_percent, `50` = x50_percent,
+           `75` = x75_percent, `97.5` = x97_5_percent,
+           rhat, n_eff, model_called)
+
+  summary_table_final
 }
 
 #' Extract results from BT-SPAS-X bugs object
