@@ -88,29 +88,27 @@ get_weekly_juvenile_abundance(test$summary_output) |>
   theme_minimal()
 
 # YOY vs Yearling
-deer_yearling <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                               bt_spas_x_input_data = yearling,
-                               site = "deer creek",
-                               run_year = 2023,
-                               effort_adjust = F,
-                               multi_run_mode = F,
-                               mainstem_version = F,
-                               bugs_directory = here::here("data-raw", "WinBUGS14"),
-                               debug_mode = FALSE)
+deer_yearling <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                      bt_spas_x_input_data = yearling,
+                                      site = "deer creek",
+                                      run_year = 2023,
+                                      effort_adjust = F,
+                                      mainstem_version = F,
+                                      bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                      debug_mode = FALSE)
 
 readr::write_rds(deer_yearling, "data-raw/juvenile_abundance/deer_2023_yearling_model_fits.rds")
 
-deer_YOY <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+deer_YOY <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                           bt_spas_x_input_data = YOY,
                           site = "deer creek",
                           run_year = 2023,
                           effort_adjust = F,
-                          multi_run_mode = F,
                           mainstem_version = F,
                           bugs_directory = here::here("data-raw", "WinBUGS14"),
                           debug_mode = FALSE)
 
-readr::write_rds(deer_YOY, "data-raw/juvenile_abundance/deer_2023_YOY_model_fits.rds")
+readr::write_rds(deer_YOY, "data-raw/juvenile_abundance/deer_2023_YOY_results.rds")
 
 
 
@@ -146,7 +144,6 @@ mill_yearling <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                site = "mill creek",
                                run_year = 2023,
                                effort_adjust = F,
-                               multi_run_mode = F,
                                mainstem_version = F,
                                bugs_directory = here::here("data-raw", "WinBUGS14"),
                                debug_mode = FALSE)
@@ -158,7 +155,6 @@ mill_YOY <- run_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                           site = "mill creek",
                           run_year = 2023,
                           effort_adjust = F,
-                          multi_run_mode = F,
                           mainstem_version = F,
                           bugs_directory = here::here("data-raw", "WinBUGS14"),
                           debug_mode = FALSE)

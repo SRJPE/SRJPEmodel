@@ -87,11 +87,11 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # analyze efficiency trials for all relevant sites (do not filter to site)
 
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  if(site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
-    mainstem_version = FALSE
-  } else {
-    mainstem_version = TRUE
-  }
+  # if(site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+  #   mainstem_version = FALSE
+  # } else {
+  #   mainstem_version = TRUE
+  # }
 
   # TODO remove this as an arg
   if(!mainstem_version) {
