@@ -121,7 +121,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
-                  !is.na(number_recaptured)) %>%
+                  !is.na(number_recaptured)) |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior))
 
@@ -304,8 +304,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
     # TODO build workflow to upload this to the cloud
     # TODO split these out and document
-    diagnostic_results <- list("input_data" = data,
-                               "input_initial_values" = inits[[1]],
+    diagnostic_results <- list("input_data" = data, # TODO may not need if we store SRJPEdata version
+                               "input_initial_values" = inits[[1]], # TODO may not need if storing SRJPEdata version
                                "bayes_params" = bt_spas_x_bayes_params,
                                "knots_output" = spline_data$knot_positions,
                                "full_model_object" = results)
@@ -402,6 +402,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
   } else {
 
     cli::cli_process_start("WinBUGS model running")
+    # TODO wrap this in a tryCatch
     # run bugs model
     model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = model_name_full,
                                      n.chains = bt_spas_x_bayes_params$number_chains,
@@ -510,7 +511,9 @@ get_summary_table <- function(model_fit_object, site, run_year,
            mean, sd, `2.5` = x2_5_percent,
            `25` = x25_percent, `50` = x50_percent,
            `75` = x75_percent, `97.5` = x97_5_percent,
-           rhat, n_eff, model_called)
+           rhat, n_eff, model_name = model_called) |>
+    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
+    pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
 
   summary_table_final
 }
