@@ -7,8 +7,8 @@ library(R2WinBUGS)
 
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
-                                          site = "ubc",
-                                          run_year = 2004,
+                                          site = "eye riffle",
+                                          run_year = 1998,
                                           lifestage = "fry",
                                           effort_adjust = T,
                                           mainstem_version = F,
@@ -17,7 +17,7 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           # WinBUGS folder needs to be in a folder where you have write permissions
                                           # because this errors out frequently
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                          debug_mode = FALSE)
+                                          debug_mode = TRUE)
 
 
 # passage to spawner ------------------------------------------------------
