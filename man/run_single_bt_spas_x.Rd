@@ -9,6 +9,7 @@ run_single_bt_spas_x(
   bt_spas_x_input_data,
   site,
   run_year,
+  lifestage,
   effort_adjust = c(T, F),
   mainstem_version = c(F, T),
   bugs_directory,
@@ -33,6 +34,8 @@ and \code{number_chains}. Can use \code{SRJPEmodel::bt_spas_x_bayes_params}.}
 
 \item{bt_spas_x_input_data:}{a data frame containing the same variables as
 \code{?SRJPEdata::weekly_juvenile_abundance_model_data}}
+
+\item{lifetage}{the lifestage for which you want tor run the model. One of \code{yearling}, \code{fry}, and \code{smolt}.}
 }
 \value{
 a list:

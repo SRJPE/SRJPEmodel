@@ -168,7 +168,7 @@ big_palette <- colorRampPalette(palette)(20)
 
 # deer
 deer_yearling <- readRDS("data-raw/juvenile_abundance/deer_2023_yearling_model_fits.rds")
-deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_model_fits.rds")
+deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_results.rds")
 
 get_weekly_juvenile_abundance(deer_yearling) |>
   mutate(Lifestage = "Yearling") |>

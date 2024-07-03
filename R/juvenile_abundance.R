@@ -5,6 +5,7 @@
 #' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
 #' @param bt_spas_x_input_data data frame containing the same variables as
 #' `?SRJPEdata::weekly_juvenile_abundance_model_data`
+#' @param lifestage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
 #' @param mainstem_version whether or not this is run on mainstem tributaries
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
@@ -15,23 +16,26 @@
 #' @md
 run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                    bt_spas_x_input_data,
+                                   lifestage,
                                    effort_adjust, mainstem_version,
                                    bugs_directory, debug_mode) {
 
   site_run_year_combinations <- bt_spas_x_input_data |>
-    distinct(site, run_year)
+    distinct(site, run_year, lifestage)
 
   multiple_bt_spas_run <- function(site, run_year) {
-    cli::cli_process_start(paste0("running bt-spas-x on ", site, " and run year ", run_year))
+    cli::cli_process_start(paste0("running bt-spas-x on ", site, " run year ", run_year, " and lifestage ", lifestage))
 
     single_results <- run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
-                                           site, run_year, effort_adjust, mainstem_version,
+                                           site, run_year, lifestage, effort_adjust, mainstem_version,
                                            bugs_directory, debug_mode)
     return(single_results)
   }
 
+  # TODO check this
   all_results <- purrr::map2(site_run_year_combinations$site,
                              site_run_year_combinations$run_year,
+                             site_run_year_combinations$lifestage,
                              multiple_bt_spas_run)
 
   return(all_results)
@@ -46,6 +50,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' `?SRJPEdata::weekly_juvenile_abundance_model_data`
 #' @param site site for which you want to fit the model
 #' @param run_year run year for which you want to fit the model
+#' @param lifetage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
 #' @param mainstem_version whether or not this is run on mainstem tributaries
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
@@ -59,22 +64,25 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @export
 #' @md
 run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
-                                 bt_spas_x_input_data, site, run_year,
+                                 bt_spas_x_input_data, site, run_year, lifestage,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T),
                                  bugs_directory, debug_mode) {
 
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
   input_data <- bt_spas_x_input_data |>
-    dplyr::filter(run_year == !!run_year,
-                  site == !!site,
-                  week %in% c(seq(45, 53), seq(1, 22))) |> # TODO check
+    mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
+    filter(!filter_out,
+           run_year == !!run_year,
+           site == !!site,
+           week %in% c(seq(45, 53), seq(1, 22)),
+           life_stage %in% c(lifestage, NA)) |>
     mutate(count = round(count, 0),
            catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
 
   if(nrow(input_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
-                                  " and run year ", run_year, ". Please try with a different combination of site and year."))
+                                  ", run year ", run_year, ", and lifestage ", lifestage, ". Please try with a different combination of site and year."))
     return(NULL)
   }
 
@@ -204,6 +212,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     nrow()
 
   if(number_experiments_at_site == 1) {
+    # TODO issue will be the inter-trial variance, and maybe we need a better
+    # TODO informative prior
     cli::cli_abort("There is only one experiment at the selected site, and no model
                    is available yet for that case")
   }
@@ -282,19 +292,26 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params,
                             bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
 
-  final_results <- get_summary_table(results, site, run_year,
-                                     weeks_fit = input_data$week[data$Uwc_ind],
-                                     model_name = model_name)
+  # get operating system - bugs can't run on a mac without serious set-up
+  operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
+  if(operating_system == "mac") {
+    cli::cli_bullets("Run on a mac, not able to run full model")
+    return(results)
+  } else {
+    final_results <- get_summary_table(results, site, run_year, lifestage,
+                                       weeks_fit = input_data$week[data$Uwc_ind],
+                                       model_name = model_name)
 
-  # TODO decide where and when to return these
-  diagnostic_results <- list("input_data" = data,
-                             "input_initial_values" = inits[[1]],
-                             "bayes_params" = bt_spas_x_bayes_params,
-                             "knots_output" = spline_data$knot_positions,
-                             "full_model_object" = results)
+    # TODO build workflow to upload this to the cloud
+    # TODO split these out and document
+    diagnostic_results <- list("input_data" = data,
+                               "input_initial_values" = inits[[1]],
+                               "bayes_params" = bt_spas_x_bayes_params,
+                               "knots_output" = spline_data$knot_positions,
+                               "full_model_object" = results)
 
-  return(final_results)
-
+    return(final_results)
+  }
 }
 
 
@@ -468,7 +485,7 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @export
 #' @md
 get_summary_table <- function(model_fit_object, site, run_year,
-                              weeks_fit, model_name) {
+                              lifestage, weeks_fit, model_name) {
 
   summary_table <- model_fit_object$summary |>
     as.data.frame() |>
@@ -479,6 +496,7 @@ get_summary_table <- function(model_fit_object, site, run_year,
                                suppressWarnings(readr::parse_number(par_names))),
            site = site,
            run_year = run_year,
+           life_stage = lifestage,
            model_called = model_name)
 
   rownames(summary_table) = NULL
@@ -488,7 +506,7 @@ get_summary_table <- function(model_fit_object, site, run_year,
 
   summary_table_final <- summary_table |>
     left_join(weeks_fit_lookup, by = "week_index") |>
-    select(site, run_year, week_fit, parameter = par_names,
+    select(site, run_year, life_stage, week_fit, parameter = par_names,
            mean, sd, `2.5` = x2_5_percent,
            `25` = x25_percent, `50` = x50_percent,
            `75` = x75_percent, `97.5` = x97_5_percent,
