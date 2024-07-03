@@ -16,27 +16,33 @@
 #' @md
 run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                    bt_spas_x_input_data,
-                                   lifestage,
                                    effort_adjust, mainstem_version,
                                    bugs_directory, debug_mode) {
 
   site_run_year_combinations <- bt_spas_x_input_data |>
-    distinct(site, run_year, lifestage)
+    distinct(site, run_year, life_stage)
 
-  multiple_bt_spas_run <- function(site, run_year) {
-    cli::cli_process_start(paste0("running bt-spas-x on ", site, " run year ", run_year, " and lifestage ", lifestage))
+  # TODO move this function out
+  multiple_bt_spas_run <- function(site, run_year, lifestage) {
+    cli::cli_bullets(paste0("running bt-spas-x on ", site, " run year ", run_year, " and lifestage ", lifestage))
 
-    single_results <- run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
-                                           site, run_year, lifestage, effort_adjust, mainstem_version,
-                                           bugs_directory, debug_mode)
-    return(single_results)
+    single_results <- tryCatch({run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
+                                          site, run_year, lifestage, effort_adjust, mainstem_version,
+                                          bugs_directory, debug_mode)
+      return(single_results)
+    },
+    error = function(e) return(1e12)
+    )
   }
 
-  # TODO check this
-  all_results <- purrr::map2(site_run_year_combinations$site,
-                             site_run_year_combinations$run_year,
-                             site_run_year_combinations$lifestage,
-                             multiple_bt_spas_run)
+  all_results <- list()
+  # TODO convert to purrr::map2
+  for(i in 1:nrow(site_run_year_combinations)) {
+    all_results[i] <- multiple_bt_spas_run(site_run_year_combinations$site[i],
+                                        site_run_year_combinations$run_year[i],
+                                        site_run_year_combinations$life_stage[i])
+  }
+  # TODO bind results (minus errors) into df
 
   return(all_results)
 }
