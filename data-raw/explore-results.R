@@ -19,6 +19,15 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
                                           debug_mode = TRUE)
 
+# test with smaller df
+multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                            SRJPEdata::weekly_juvenile_abundance_model_data,
+                                            effort_adjust = T,
+                                            mainstem_version = F,
+                                            bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                            debug_mode = F)
+readr::write_rds(multi_run_results, "data-raw/juvenile_abundance/multi_run_results.rds")
+
 
 # passage to spawner ------------------------------------------------------
 

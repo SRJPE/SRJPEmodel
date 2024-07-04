@@ -4,7 +4,14 @@
 \alias{get_summary_table}
 \title{Extract summary in table}
 \usage{
-get_summary_table(model_fit_object, site, run_year, weeks_fit, model_name)
+get_summary_table(
+  model_fit_object,
+  site,
+  run_year,
+  lifestage,
+  weeks_fit,
+  model_name
+)
 }
 \description{
 TODO

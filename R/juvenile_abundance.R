@@ -22,30 +22,31 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
   site_run_year_combinations <- bt_spas_x_input_data |>
     distinct(site, run_year, life_stage)
 
-  # TODO move this function out
-  multiple_bt_spas_run <- function(site, run_year, lifestage) {
-    cli::cli_bullets(paste0("running bt-spas-x on ", site, " run year ", run_year, " and lifestage ", lifestage))
-
-    single_results <- tryCatch({run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
-                                          site, run_year, lifestage, effort_adjust, mainstem_version,
-                                          bugs_directory, debug_mode)
-      return(single_results)
-    },
-    error = function(e) return(1e12)
-    )
-  }
+  # TODO REMOVE! this is to test on shorter
+  site_run_year_combinations <- head(site_run_year_combinations, 6)
 
   all_results <- list()
   # TODO convert to purrr::map2
   for(i in 1:nrow(site_run_year_combinations)) {
-    all_results[i] <- multiple_bt_spas_run(site_run_year_combinations$site[i],
-                                        site_run_year_combinations$run_year[i],
-                                        site_run_year_combinations$life_stage[i])
-  }
-  # TODO bind results (minus errors) into df
+
+    cli::cli_bullets(paste0("running bt-spas-x on ", site_run_year_combinations$site[i],
+                            " run year ", site_run_year_combinations$run_year[i],
+                            " and lifestage ", site_run_year_combinations$life_stage[i]))
+
+      all_results[[i]] <- tryCatch({run_single_bt_spas_x(bt_spas_x_bayes_params, bt_spas_x_input_data,
+                                                          site_run_year_combinations$site[i],
+                                                          site_run_year_combinations$run_year[i],
+                                                          site_run_year_combinations$life_stage[i],
+                                                          effort_adjust, mainstem_version,
+                                                          bugs_directory, debug_mode)
+        },
+        error = function(e) return(1e12)
+      )
+      }
 
   return(all_results)
 }
+
 
 #' Call BT-SPAS-X on a single site/run year combination
 #' @details This function is called within `run_bt_spas_x()` or can be run by itself
