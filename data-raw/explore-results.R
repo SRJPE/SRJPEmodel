@@ -26,8 +26,43 @@ multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                             mainstem_version = F,
                                             bugs_directory = here::here("data-raw", "WinBUGS14"),
                                             debug_mode = F)
-readr::write_rds(multi_run_results, "data-raw/juvenile_abundance/multi_run_results.rds")
+# readr::write_rds(multi_run_results, "data-raw/juvenile_abundance/multi_run_results.rds")
 
+# explore multi run results
+load("data-raw/juvenile_abundance/multi_run_results.rds")
+non_errored_results <- unlist(lapply(multi_run_results, function(x) is_tibble(x)))
+multi_run_df <- multi_run_results[non_errored_results] |>
+  bind_rows()
+
+# this plot code is stolen from juvenile_abundance_plots.R, will be functionalized
+julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/btspas_model_code/Jwk_Dates.txt", header = F) |>
+  tibble() |>
+  filter(V1 != "Jwk") |>
+  mutate(V1 = as.numeric(V1)) |>
+  select(Jwk = V1, date = V2)
+
+# plot
+multi_run_df |>
+  filter(site == "ubc",
+         str_detect(parameter, "N\\["),
+         life_stage == "fry") |>
+  left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
+  pivot_wider(id_cols = c("date", "site", "run_year", "life_stage", "week_fit"),
+              names_from = "statistic",
+              values_from = "value") |>
+  mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
+                            paste0(run_year, "-", date)),
+         fake_date = as.Date(fake_date, format = "%Y-%b-%d"),
+         week = factor(week_fit,
+                       levels = c(35:53, 1:34))) |>
+  ggplot(aes(x = week, y = `50`)) +
+  geom_bar(stat = "identity", fill = "grey") +
+  geom_errorbar(aes(x = week, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+  facet_wrap(~run_year, scales = "free", nrow = 4) +
+  theme_minimal() +
+  labs(x = "Date", y = "Abundance",
+       title = "Upper Battle Creek") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # passage to spawner ------------------------------------------------------
 
