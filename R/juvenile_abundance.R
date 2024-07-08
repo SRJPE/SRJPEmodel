@@ -22,9 +22,6 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
   site_run_year_combinations <- bt_spas_x_input_data |>
     distinct(site, run_year, life_stage)
 
-  # TODO REMOVE! this is to test on shorter
-  site_run_year_combinations <- head(site_run_year_combinations, 6)
-
   all_results <- list()
   # TODO convert to purrr::map2
   for(i in 1:nrow(site_run_year_combinations)) {
