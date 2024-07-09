@@ -26,7 +26,7 @@ multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                             mainstem_version = F,
                                             bugs_directory = here::here("data-raw", "WinBUGS14"),
                                             debug_mode = F)
-# readr::write_rds(multi_run_results, "data-raw/juvenile_abundance/multi_run_results.rds")
+readr::write_rds(multi_run_results, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), ".rds"))
 
 # explore multi run results
 multi_run_results <- read_rds("data-raw/juvenile_abundance/multi_run_results.rds")

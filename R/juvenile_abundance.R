@@ -39,8 +39,8 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
         },
         error = function(e) return(1e12)
       )
-      if(all_run_results[[i]] %in% c(1e12, NULL)) {
-        all_run_results[[i]] <- tibble("site" = site_run_year_combinations$site[i],
+      if(!is_tibble(all_results[[i]])) {
+        all_results[[i]] <- tibble("site" = site_run_year_combinations$site[i],
                                        "run_year" = site_run_year_combinations$run_year[i],
                                        "life_stage" = site_run_year_combinations$life_stage[i],
                                        "statistic" = "error")
