@@ -29,7 +29,7 @@ multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
 # readr::write_rds(multi_run_results, "data-raw/juvenile_abundance/multi_run_results.rds")
 
 # explore multi run results
-load("data-raw/juvenile_abundance/multi_run_results.rds")
+multi_run_results <- read_rds("data-raw/juvenile_abundance/multi_run_results.rds")
 non_errored_results <- unlist(lapply(multi_run_results, function(x) is_tibble(x)))
 multi_run_df <- multi_run_results[non_errored_results] |>
   bind_rows()
@@ -43,25 +43,28 @@ julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/bts
 
 # plot
 multi_run_df |>
-  filter(site == "ubc",
+  filter(site == "eye riffle",
          str_detect(parameter, "N\\["),
          life_stage == "fry") |>
   left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
   pivot_wider(id_cols = c("date", "site", "run_year", "life_stage", "week_fit"),
               names_from = "statistic",
               values_from = "value") |>
-  mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
-                            paste0(run_year, "-", date)),
+  mutate(fake_date = ifelse(week_fit > 35, paste0(1969, "-", date),
+                            paste0(1970, "-", date)),
+           # fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
+           #                  paste0(run_year, "-", date)),
          fake_date = as.Date(fake_date, format = "%Y-%b-%d"),
          week = factor(week_fit,
                        levels = c(35:53, 1:34))) |>
-  ggplot(aes(x = week, y = `50`)) +
+  ggplot(aes(x = fake_date, y = `50`)) +
   geom_bar(stat = "identity", fill = "grey") +
-  geom_errorbar(aes(x = week, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-  facet_wrap(~run_year, scales = "free", nrow = 4) +
+  # geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+  facet_wrap(~run_year, scales = "free_y", nrow = 4) +
   theme_minimal() +
   labs(x = "Date", y = "Abundance",
        title = "Upper Battle Creek") +
+  scale_x_date(breaks = "1 week", date_labels = "%b-%d") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # passage to spawner ------------------------------------------------------
