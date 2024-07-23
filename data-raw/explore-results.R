@@ -7,17 +7,17 @@ library(R2WinBUGS)
 
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
-                                          site = "eye riffle",
-                                          run_year = 1998,
+                                          site = "ubc",
+                                          run_year = 2004,
                                           lifestage = "fry",
-                                          effort_adjust = T,
+                                          effort_adjust = F,
                                           mainstem_version = F,
                                           # when running on remote computer, we have the WinBUGS14 in this folder
                                           # however, messaging should be included here to say that the
                                           # WinBUGS folder needs to be in a folder where you have write permissions
                                           # because this errors out frequently
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                          debug_mode = TRUE)
+                                          debug_mode = FALSE)
 
 # test with smaller df
 multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,

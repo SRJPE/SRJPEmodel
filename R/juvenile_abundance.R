@@ -135,7 +135,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                   !is.na(number_released) &
                   !is.na(number_recaptured)) |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
-              catch_standardized_by_hours_fished, lgN_prior))
+              catch_standardized_by_hours_fished, lgN_prior)) %>%
+    # TODO remove this once we fix this in data prep
+    distinct(site, run_year, week, .keep_all = TRUE)
 
   # number of sites (for pCap calculations)
   # Ntribs <- 8
@@ -250,13 +252,16 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   data <- get_bt_spas_x_data_list(model_name, full_data_list)
 
-  # check data list for NaNs
-  cli::cli_process_start("Checking data inputs")
+  # check data list for NaNs and Infs
+  cli::cli_process_start("Checking data inputs",
+                         msg_done = "Data checked",
+                         msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
-    if(any(is.nan(data[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, " please check your input data."))
+    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
     }
   }))
+  cli::cli_process_done()
 
   parameters <- c("trib_mu.P", "trib_sd.P", "flow_mu.P", "flow_sd.P", "pro_sd.P",
                    "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
@@ -267,7 +272,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     irows = which(indices_site_mark_recapture == i)
     ini_b0_pCap[i] = gtools::logit(sum(mark_recapture_data$number_recaptured[irows]) /
                                      sum(mark_recapture_data$number_released[irows]))
-    if(is.nan(ini_b0_pCap[i])) {
+    if(is.nan(ini_b0_pCap[i]) | is.infinite(ini_b0_pCap[i])) {
+      # -Inf happens when number recaptured == 0, logit of 0 is -Inf
       ini_b0_pCap[i] <- NA
     }
   }
@@ -291,12 +297,15 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                     lg_N = ini_lgN)
 
 
-  cli::cli_process_start("Checking init inputs")
+  cli::cli_process_start("Checking init inputs",
+                         msg_done = "Inits checked",
+                         msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
-    if(any(is.nan(init_list[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, " please check your input data."))
+    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
     }
   }))
+  cli::cli_process_done()
 
   inits <- list(init_list, init_list, init_list)
 
@@ -322,7 +331,12 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                "knots_output" = spline_data$knot_positions,
                                "full_model_object" = results)
 
-    return(final_results)
+    # return(final_results)
+
+    # TODO delete this, just testing
+    return(list("final_results" = final_results,
+                "full_object" = results))
+
   }
 }
 
