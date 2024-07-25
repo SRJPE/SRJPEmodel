@@ -112,18 +112,72 @@ cut_comparison_all <- bind_rows(cut_results_ubc_2004$final_results %>%
 
 saveRDS(cut_comparison_all, file = "data-raw/juvenile_abundance/cut_comparison_results_2024-07-25.rds")
 
+palette <- c("#798E87", "#C27D38", "#CCC591", "#29211F")
 
+compare <- readRDS("data-raw/juvenile_abundance/cut_comparison_results_2024-07-25.rds")
 
-compare_ubc_2004 <- cut_results_ubc_2004$final_results %>%
-  left_join(no_cut_results_ubc_2004$final_results %>%
-              rename(no_cut_value = value)) %>%
-  filter(statistic == "mean") %>%
-  mutate(cut_diff = value - no_cut_value) %>%
-  glimpse()
-
-compare_ubc_2004 %>%
-  ggplot(aes(x = cut_diff, fill = parameter)) +
-  geom_histogram() +
-  facet_wrap(~parameter, scales = "free") +
+compare |>
+  filter(str_detect(parameter, "N\\[")) |>
+  pivot_wider(id_cols = c(site:srjpedata_version, cut),
+              values_from = "value",
+              names_from = "statistic") |>
+  ggplot(aes(x = week_fit, y = `50`, color = cut)) +
+  geom_point() +
+  geom_errorbar(aes(x = week_fit, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  facet_wrap(~site, scales = "free") +
+  scale_color_manual(values = palette) +
   theme_minimal() +
-  theme(legend.position = "none")
+  theme(legend.position = "bottom") +
+  labs(x = "Week", y = "Median weekly abundance",
+       title = "Cut vs. no cut model runs for weekly abundance N[]")
+
+compare |>
+  filter(str_detect(parameter, "b0_pCap\\[")) |>
+  mutate(index = substr(parameter, 3, length(parameter)),
+         index = readr::parse_number(index)) |>
+  pivot_wider(id_cols = c(site:srjpedata_version, cut, index),
+              values_from = "value",
+              names_from = "statistic") |>
+  ggplot(aes(x = index, y = `50`, color = cut)) +
+  geom_point() +
+  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  facet_wrap(~site, scales = "free") +
+  scale_color_manual(values = palette) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(x = "Trib index", y = "b0_pCap for all tribs",
+       title = "Cut vs. no cut model runs for b0_pCap")
+
+compare |>
+  filter(str_detect(parameter, "trib_mu")) |>
+  pivot_wider(id_cols = c(site:srjpedata_version, cut),
+              values_from = "value",
+              names_from = "statistic") |>
+  ggplot(aes(x = 1, y = `50`, color = cut)) +
+  geom_point() +
+  geom_errorbar(aes(x = 1, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  facet_wrap(~site, scales = "free") +
+  scale_color_manual(values = palette) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(x = "", y = "trib_mu",
+       title = "Cut vs. no cut model runs for trib_mu")
+
+compare |>
+  filter(str_detect(parameter, "pCap_U\\[")) |>
+  mutate(index = substr(parameter, 3, length(parameter)),
+         index = readr::parse_number(index)) |>
+  pivot_wider(id_cols = c(site:srjpedata_version, cut, index),
+              values_from = "value",
+              names_from = "statistic") |>
+  ggplot(aes(x = index, y = `50`, color = cut)) +
+  geom_point() +
+  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  facet_wrap(~site, scales = "free") +
+  scale_color_manual(values = palette) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(x = "Week", y = "pCap_U for all tribs",
+       title = "Cut vs. no cut model runs for pCap_U")
+
+
