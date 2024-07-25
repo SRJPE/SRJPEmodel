@@ -35,7 +35,8 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                                           site_run_year_combinations$run_year[i],
                                                           site_run_year_combinations$life_stage[i],
                                                           effort_adjust, mainstem_version,
-                                                          bugs_directory, debug_mode)
+                                                          bugs_directory, debug_mode,
+                                                         no_cut)
         },
         error = function(e) return(1e12)
       )
@@ -78,7 +79,8 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year, lifestage,
                                  effort_adjust = c(T, F), mainstem_version = c(F, T),
-                                 bugs_directory, debug_mode) {
+                                 bugs_directory, debug_mode,
+                                 no_cut = c(F, T)) {
 
   # filter datasets to match site, run_year, and weeks
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
@@ -311,7 +313,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   # run the bugs model
   results <- bt_spas_x_bugs(data, inits, parameters, model_name, bt_spas_x_bayes_params,
-                            bugs_directory = paste0(bugs_directory), debug_mode = debug_mode)
+                            bugs_directory = paste0(bugs_directory), debug_mode = debug_mode,
+                            no_cut = no_cut)
 
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
@@ -406,11 +409,17 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @export
 #' @md
 bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_params,
-                           number_mcmc, bugs_directory, debug_mode) {
+                           number_mcmc, bugs_directory, debug_mode,
+                           no_cut) {
 
-  # set model name directory
-  model_name_full <- here::here("model_files", model_name)
- # model_name_full <- paste0("model_files/", model_name)
+  # TODO remove - this is for testing no_cut models
+  if(no_cut) {
+    # set model name directory
+    model_name_full <- here::here("model_files", model_name)
+    # model_name_full <- paste0("model_files/", model_name)
+  } else {
+    model_name_full <- here::here("model_files", "no_cut_bt_spas", paste0("no_cut_", model_name))
+  }
 
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")

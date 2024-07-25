@@ -1,8 +1,10 @@
 library(scales)
 library(tidyverse)
 
-deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_results.rds")
-site <- "deer creek"
+results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
+# deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_results.rds")
+site <- "ubc"
+run_year <- 2004
 lcl <- 0.025
 ucl <- 0.975
 
@@ -21,18 +23,22 @@ julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/bts
 # read in input data
 input_data <- SRJPEdata::weekly_juvenile_abundance_model_data |>
   filter(site == "ubc",
-         run_year == 2009,
+         run_year == 2004,
          week %in% c(seq(45, 53), seq(1, 22))) |> # TODO update with arguments
   mutate(lincoln_peterson_abundance = count * (number_released / number_recaptured)) # TODO sd calculation is what
          # lincoln_peterson_abundance_sd = (number_released * number_recaptured * (number_released - number_recaptured) * count) /
          #   (number_recaptured^2 * number_recaptured))
 
-summary_output <- deer_YOY |>
+summary_output <- results$final_results |>
+  select(-c(model_name, srjpedata_version)) |>
+  pivot_wider(id_cols = site:parameter,
+              values_from = value,
+              names_from = statistic) |>
   mutate(cv = round(100 * (sd / mean), digits = 0)) # TODO confirm we use cv for more than just Ntot plot
 # TODO what do we need from "input data" besides Nstrata (which we can get from result object?)
 # TODO output from larger model results object
-sims_list_output <- deer_yearling$results$model_results$sims.list # TODO what do we use this for? in separate object
-n_sims <- deer_yearling$results$model_results$n.sims
+sims_list_output <- results$full_object$sims.list # TODO what do we use this for? in separate object
+n_sims <- results$full_object$n.sims
 
 total_abundance <- summary_output |>
   filter(parameter == "Ntot")

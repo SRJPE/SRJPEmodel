@@ -46,8 +46,8 @@ for(i in 1:Nstrata){
 	lg_N[i]~dnorm(Usp[i],tau.Ne)I(,lgN_max[i])	#spline + extra-spline variation estimate of log U
 	#log(N[i])<-lg_N[i]			#Convert lg_N to N
 	N[i]<-exp(lg_N[i])*1000.0
-	pCap_U[i] <- pCap[ind_pCap[i]]
-	# pCap_U[i]<-cut(pCap[ind_pCap[i]])	#assign pCap for current trib-yr-wk from large vector computed above (for all tribs, years, and weeks with MR data)
+	# pCap_U[i] <- pCap[ind_pCap[i]]
+	pCap_U[i]<-cut(pCap[ind_pCap[i]])	#assign pCap for current trib-yr-wk from large vector computed above (for all tribs, years, and weeks with MR data)
 }
 Ntot<-sum(N[])
 
