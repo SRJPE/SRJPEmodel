@@ -7,7 +7,6 @@
 #' `?SRJPEdata::weekly_juvenile_abundance_model_data`
 #' @param lifestage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
-#' @param mainstem_version whether or not this is run on mainstem tributaries
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
 #' @param debug_mode whether you want to run `bugs` in debug mode.
 #' @returns a list containing the results for every unique `site` and `run year` combination
@@ -16,7 +15,7 @@
 #' @md
 run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                    bt_spas_x_input_data,
-                                   effort_adjust, mainstem_version,
+                                   effort_adjust,
                                    bugs_directory, debug_mode) {
 
   site_run_year_combinations <- bt_spas_x_input_data |>
@@ -34,7 +33,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                                           site_run_year_combinations$site[i],
                                                           site_run_year_combinations$run_year[i],
                                                           site_run_year_combinations$life_stage[i],
-                                                          effort_adjust, mainstem_version,
+                                                          effort_adjust,
                                                           bugs_directory, debug_mode,
                                                          no_cut)
         },
@@ -65,7 +64,6 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @param run_year run year for which you want to fit the model
 #' @param lifetage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
-#' @param mainstem_version whether or not this is run on mainstem tributaries
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
 #' @param debug_mode whether you want to run `bugs` in debug mode.
 #' @returns a list:
@@ -78,7 +76,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @md
 run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bt_spas_x_input_data, site, run_year, lifestage,
-                                 effort_adjust = c(T, F), mainstem_version = c(F, T),
+                                 effort_adjust = c(T, F),
                                  bugs_directory, debug_mode,
                                  no_cut = c(F, T)) {
 
@@ -109,17 +107,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # analyze efficiency trials for all relevant sites (do not filter to site)
 
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  # if(site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
-  #   mainstem_version = FALSE
-  # } else {
-  #   mainstem_version = TRUE
-  # }
-
-  # TODO remove this as an arg
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
-  #if(!mainstem_version) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
-  } else if(mainstem_version) {
+  } else {
     remove_sites <- c("deer creek", "eye riffle", "live oak",
                       "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
                       "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",

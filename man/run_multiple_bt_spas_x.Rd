@@ -8,7 +8,6 @@ run_multiple_bt_spas_x(
   bt_spas_x_bayes_params,
   bt_spas_x_input_data,
   effort_adjust,
-  mainstem_version,
   bugs_directory,
   debug_mode
 )
@@ -18,8 +17,6 @@ run_multiple_bt_spas_x(
 \code{?SRJPEdata::weekly_juvenile_abundance_model_data}}
 
 \item{effort_adjust}{whether or not you want to use catch adjusted by effort}
-
-\item{mainstem_version}{whether or not this is run on mainstem tributaries}
 
 \item{bugs_directory}{where the \code{WinBUGS.exe} file can be found. Needs to end in \verb{/WinBUGS}}
 

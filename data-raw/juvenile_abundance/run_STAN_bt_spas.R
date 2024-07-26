@@ -25,7 +25,6 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                            site = "eye riffle",
                                            run_year = 2005,
                                            effort_adjust = T,
-                                           mainstem_version = F,
                                            # when running on remote computer, we have the WinBUGS14 in this folder
                                            # however, messaging should be included here to say that the
                                            # WinBUGS folder needs to be in a folder where you have write permissions

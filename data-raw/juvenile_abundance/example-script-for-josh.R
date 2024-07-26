@@ -24,7 +24,6 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           run_year = 1998,
                                           lifestage = "fry",
                                           effort_adjust = T,
-                                          mainstem_version = F,
                                           # put your bugs_directory in here as a filepath
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
                                           debug_mode = FALSE)

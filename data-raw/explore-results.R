@@ -13,13 +13,14 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           run_year = 2004,
                                           lifestage = "fry",
                                           effort_adjust = F,
-                                          mainstem_version = F,
                                           # when running on remote computer, we have the WinBUGS14 in this folder
                                           # however, messaging should be included here to say that the
                                           # WinBUGS folder needs to be in a folder where you have write permissions
                                           # because this errors out frequently
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                          debug_mode = FALSE)
+                                          debug_mode = FALSE,
+                                          # TODO remove once we make a decision
+                                          no_cut = T)
 results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
 
 # plot single run results
@@ -30,7 +31,6 @@ plot_weekly_capture_probability(results$final_results)
 multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                             SRJPEdata::weekly_juvenile_abundance_model_data,
                                             effort_adjust = T,
-                                            mainstem_version = F,
                                             bugs_directory = here::here("data-raw", "WinBUGS14"),
                                             debug_mode = F)
 readr::write_rds(multi_run_results, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), ".rds"))

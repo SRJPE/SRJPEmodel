@@ -69,7 +69,6 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                          site = "ubc",
                                          run_year = 2004,
                                          effort_adjust = T,
-                                         mainstem_version = F,
                                          bugs_directory = here::here("data-raw", "WinBUGS14"),
                                          debug_mode = FALSE)
 
@@ -82,7 +81,6 @@ In the multi run mode, BTSPAS-X is run for all stream sites and run years at onc
 bt_spas_x_multiple_system_results <- run_multiple_bt_spas_x(bt_spas_x_bayes_params = SRJPEmodel::bt_spas_x_bayes_params,
                                                             bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
                                                             effort_adjust = T, 
-                                                            mainstem_version = F,
                                                             bugs_directory = here::here("data-raw", "WinBUGS14"), 
                                                             debug_mode = FALSE)
 ```

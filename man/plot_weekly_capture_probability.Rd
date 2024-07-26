@@ -4,10 +4,7 @@
 \alias{plot_weekly_capture_probability}
 \title{Plot weekly estimated capture probability}
 \usage{
-plot_weekly_capture_probability(
-  bt_spas_x_results_clean,
-  mainstem_version = c(F, T)
-)
+plot_weekly_capture_probability(bt_spas_x_results_clean)
 }
 \arguments{
 \item{bt_spas_x_results_clean:}{the \code{final_results} element from the object produced by running

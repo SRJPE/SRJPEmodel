@@ -11,7 +11,6 @@ run_single_bt_spas_x(
   run_year,
   lifestage,
   effort_adjust = c(T, F),
-  mainstem_version = c(F, T),
   bugs_directory,
   debug_mode,
   no_cut = c(F, T)
@@ -23,8 +22,6 @@ run_single_bt_spas_x(
 \item{run_year}{run year for which you want to fit the model}
 
 \item{effort_adjust}{whether or not you want to use catch adjusted by effort}
-
-\item{mainstem_version}{whether or not this is run on mainstem tributaries}
 
 \item{bugs_directory}{where the \code{WinBUGS.exe} file can be found. Needs to end in \verb{/WinBUGS}}
 
