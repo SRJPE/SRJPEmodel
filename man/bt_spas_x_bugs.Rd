@@ -12,7 +12,8 @@ bt_spas_x_bugs(
   bt_spas_x_bayes_params,
   number_mcmc,
   bugs_directory,
-  debug_mode
+  debug_mode,
+  no_cut
 )
 }
 \arguments{

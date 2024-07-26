@@ -2,9 +2,11 @@ library(tidyverse)
 library(SRJPEdata)
 library(rstan)
 library(R2WinBUGS)
+library(scales)
 
 # bt-spas-x ---------------------------------------------------------------
 
+# single run
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
                                           site = "ubc",
@@ -18,6 +20,10 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           # because this errors out frequently
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
                                           debug_mode = FALSE)
+results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
+
+# plot single run results
+plot_juvenile_abundance(results$final_results)
 
 # test with smaller df
 multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,

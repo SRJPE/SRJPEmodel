@@ -29,6 +29,7 @@ input_data <- SRJPEdata::weekly_juvenile_abundance_model_data |>
          # lincoln_peterson_abundance_sd = (number_released * number_recaptured * (number_released - number_recaptured) * count) /
          #   (number_recaptured^2 * number_recaptured))
 
+
 summary_output <- results$final_results |>
   select(-c(model_name, srjpedata_version)) |>
   pivot_wider(id_cols = site:parameter,

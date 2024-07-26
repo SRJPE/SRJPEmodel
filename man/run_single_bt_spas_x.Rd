@@ -13,7 +13,8 @@ run_single_bt_spas_x(
   effort_adjust = c(T, F),
   mainstem_version = c(F, T),
   bugs_directory,
-  debug_mode
+  debug_mode,
+  no_cut = c(F, T)
 )
 }
 \arguments{
