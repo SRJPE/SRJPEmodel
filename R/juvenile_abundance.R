@@ -116,7 +116,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   # }
 
   # TODO remove this as an arg
-  if(!mainstem_version) {
+  if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+  #if(!mainstem_version) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else if(mainstem_version) {
     remove_sites <- c("deer creek", "eye riffle", "live oak",
