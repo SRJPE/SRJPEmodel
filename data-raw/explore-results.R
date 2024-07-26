@@ -24,6 +24,7 @@ results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
 
 # plot single run results
 plot_juvenile_abundance(results$final_results)
+plot_weekly_capture_probability(results$final_results)
 
 # test with smaller df
 multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,

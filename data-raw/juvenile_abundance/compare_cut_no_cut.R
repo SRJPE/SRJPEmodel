@@ -181,3 +181,45 @@ compare |>
        title = "Cut vs. no cut model runs for pCap_U")
 
 
+# total abundance
+compare |>
+  filter(site == "lower feather river", run_year == 2022, life_stage == "fry",
+         cut) |>
+  plot_juvenile_abundance()
+
+compare |>
+  filter(site == "deer creek", run_year == 1996, life_stage == "fry",
+         cut) |>
+  plot_juvenile_abundance()
+
+compare |>
+  filter(site == "ubc", run_year == 2004, life_stage == "fry",
+         cut) |>
+  plot_juvenile_abundance()
+
+compare |>
+  filter(site == "knights landing", run_year == 2020, life_stage == "fry",
+         cut) |>
+  plot_juvenile_abundance()
+
+# capture probability
+compare |>
+  filter(site == "lower feather river", run_year == 2022, life_stage == "fry",
+         cut) |>
+  plot_weekly_capture_probability()
+
+compare |>
+  filter(site == "deer creek", run_year == 1996, life_stage == "fry",
+         cut) |>
+  plot_weekly_capture_probability()
+
+compare |>
+  filter(site == "ubc", run_year == 2004, life_stage == "fry",
+         cut) |>
+  plot_weekly_capture_probability()
+
+compare |>
+  filter(site == "knights landing", run_year == 2020, life_stage == "fry", cut) |>
+  plot_weekly_capture_probability()
+
+
