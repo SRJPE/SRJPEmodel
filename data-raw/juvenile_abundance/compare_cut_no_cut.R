@@ -125,6 +125,7 @@ compare |>
 
 compare |>
   filter(str_detect(parameter, "b0_pCap\\[")) |>
+  mutate(value = exp(value) / (1 + exp(value))) |>
   mutate(index = substr(parameter, 3, length(parameter)),
          index = readr::parse_number(index)) |>
   pivot_wider(id_cols = c(site:srjpedata_version, cut, index),
@@ -142,6 +143,7 @@ compare |>
 
 compare |>
   filter(str_detect(parameter, "trib_mu")) |>
+  mutate(value = exp(value) / (1 + exp(value))) |>
   pivot_wider(id_cols = c(site:srjpedata_version, cut),
               values_from = "value",
               names_from = "statistic") |>
