@@ -96,7 +96,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   if(nrow(input_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
                                   ", run year ", run_year, ", and lifestage ", lifestage, ". Please try with a different combination of site and year."))
-    return(NULL)
+    return(-99)
   }
 
   # get numbers for looping in BUGs code - abundance model
@@ -179,7 +179,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   if(number_weeks_catch < 4) {
     cli::cli_alert_warning(paste0("There are fewer than 4 weeks with catch data for ",
                                   site, " and run year ", run_year, ". Spline parameters cannot function with fewer than 4 data points."))
-    return(NULL)
+    return(-99)
   }
 
   # spline parameter calculation

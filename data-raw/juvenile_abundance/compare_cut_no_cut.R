@@ -225,15 +225,23 @@ multi_run_results_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_para
                                             bugs_directory = here::here("data-raw", "WinBUGS14"),
                                             debug_mode = F,
                                             no_cut = F)
-readr::write_rds(multi_run_results, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_cut.rds"))
+readr::write_rds(multi_run_results_cut, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_cut.rds"))
+
+sites_that_ran <- multi_run_results_cut %>%
+  mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage))
+
+sites_to_compare <- SRJPEdata::weekly_juvenile_abundance_model_data %>%
+  distinct(site, life_stage, run_year) %>%
+  mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage)) %>%
+  filter(compare_sites %in% sites_that_ran$compare_sites)
 
 multi_run_results_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                                SRJPEdata::weekly_juvenile_abundance_model_data,
+                                                   sites_to_compare,
                                                 effort_adjust = T,
                                                 bugs_directory = here::here("data-raw", "WinBUGS14"),
                                                 debug_mode = F,
                                                 no_cut = T)
-readr::write_rds(multi_run_results, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_no_cut.rds"))
+readr::write_rds(multi_run_results_no_cut, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_no_cut.rds"))
 
 
 
