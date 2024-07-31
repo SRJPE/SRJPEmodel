@@ -111,6 +111,18 @@ model_pin_board <- function(storage_account, container, ...) {
 #'   description = "model results dataframe and model object"
 #' )
 #'
+#' # search storeage for pins
+#' model_board |> pins::pin_search()
+#'
+#' # A tibble: 3 × 6
+#' #   name                 type  title                created               file_size meta
+#' #   <chr>                <chr> <chr>                <dttm>              <fs::bytes> <list>
+#' # 1 full_model_object    rds   Model with new value 2024-07-31 14:02:13       2.42M <pins_met>
+#' # 2 full_model_object_V2 rds   Model with new value 2024-07-31 14:26:42       2.42M <pins_met>
+#' # 3 some numbers         rds   some numbers         2024-07-31 14:23:15          61 <pins_met>
+#'
+#' # retrieve a pin
+#' model_data <- pins::pin_read(model_board, "full_model_object")
 #' }
 #'
 #'
