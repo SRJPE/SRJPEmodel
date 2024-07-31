@@ -85,21 +85,21 @@ no_cut_results_deer_1996 <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_par
                                                debug_mode = FALSE,
                                                no_cut = TRUE)
 
-cut_comparison_all <- bind_rows(cut_results_ubc_2004$final_results %>%
+cut_comparison_all <- bind_rows(cut_results_ubc_2004$final_results |>
                                   mutate(cut = T),
-                                no_cut_results_ubc_2004$final_results %>%
+                                no_cut_results_ubc_2004$final_results |>
                                   mutate(cut = F),
-                                cut_results_kdl_2020$final_results %>%
+                                cut_results_kdl_2020$final_results |>
                                   mutate(cut = T),
-                                no_cut_results_kdl_2020$final_results %>%
+                                no_cut_results_kdl_2020$final_results |>
                                   mutate(cut = F),
-                                cut_results_lf_2022$final_results %>%
+                                cut_results_lf_2022$final_results |>
                                   mutate(cut = T),
-                                no_cut_results_lf_2022$final_results %>%
+                                no_cut_results_lf_2022$final_results |>
                                   mutate(cut = F),
-                                cut_results_deer_1996$final_results %>%
+                                cut_results_deer_1996$final_results |>
                                   mutate(cut = T),
-                                no_cut_results_deer_1996$final_results %>%
+                                no_cut_results_deer_1996$final_results |>
                                   mutate(cut = F))
 
 saveRDS(cut_comparison_all, file = "data-raw/juvenile_abundance/cut_comparison_results_2024-07-25.rds")
@@ -113,9 +113,11 @@ compare |>
   pivot_wider(id_cols = c(site:srjpedata_version, cut),
               values_from = "value",
               names_from = "statistic") |>
+  filter(rhat <= 1.05) |>
   ggplot(aes(x = week_fit, y = `50`, color = cut)) +
-  geom_point() +
-  geom_errorbar(aes(x = week_fit, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  geom_point(position = "jitter") +
+  geom_errorbar(aes(x = week_fit, ymin = `2.5`, ymax = `97.5`, color = cut),
+                position = "jitter", width = 0.2) +
   facet_wrap(~site, scales = "free") +
   scale_color_manual(values = palette) +
   theme_minimal() +
@@ -132,8 +134,9 @@ compare |>
               values_from = "value",
               names_from = "statistic") |>
   ggplot(aes(x = index, y = `50`, color = cut)) +
-  geom_point() +
-  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  geom_point(position = "jitter") +
+  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut),
+                position = "jitter", width = 0.2) +
   facet_wrap(~site, scales = "free") +
   scale_color_manual(values = palette) +
   theme_minimal() +
@@ -165,14 +168,34 @@ compare |>
               values_from = "value",
               names_from = "statistic") |>
   ggplot(aes(x = index, y = `50`, color = cut)) +
-  geom_point() +
-  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut), width = 0.2) +
+  geom_point(position = "jitter") +
+  geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut),
+                width = 0.2, position = "jitter") +
   facet_wrap(~site, scales = "free") +
   scale_color_manual(values = palette) +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(x = "Week", y = "pCap_U for all tribs",
        title = "Cut vs. no cut model runs for pCap_U")
+
+compare |>
+  filter(str_detect(parameter, "Ntot")) |>
+  pivot_wider(id_cols = c(site:srjpedata_version, cut),
+              values_from = "value",
+              names_from = "statistic") |>
+  mutate(run_year = as.factor(run_year)) |>
+  ggplot(aes(x = run_year, y = `50`, color = cut)) +
+  geom_point(position = "jitter") +
+  geom_errorbar(aes(x = run_year, ymin = `2.5`, ymax = `97.5`, color = cut),
+                position = "jitter", width = 0.2) +
+  facet_wrap(~site, scales = "free") +
+  scale_color_manual(values = palette) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(x = "Run year", y = "Median total abundance",
+       title = "Cut vs. no cut model runs for total abundance N[]")
+
+
 
 
 # total abundance
@@ -228,12 +251,12 @@ multi_run_results_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_para
                                             no_cut = F)
 readr::write_rds(multi_run_results_cut, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_cut.rds"))
 
-sites_that_ran <- multi_run_results_cut %>%
+sites_that_ran <- multi_run_results_cut |>
   mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage))
 
-sites_to_compare <- SRJPEdata::weekly_juvenile_abundance_model_data %>%
-  mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage)) %>%
-  filter(compare_sites %in% sites_that_ran$compare_sites) %>%
+sites_to_compare <- SRJPEdata::weekly_juvenile_abundance_model_data |>
+  mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage)) |>
+  filter(compare_sites %in% sites_that_ran$compare_sites) |>
   distinct(site, run_year, life_stage)
 
 multi_run_results_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
@@ -272,37 +295,59 @@ analysis_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
 write_rds(analysis_cut, file = "data-raw/juvenile_abundance/analysis_cut_20_sites.rds")
 write_rds(analysis_no_cut, file = "data-raw/juvenile_abundance/analysis_no_cut_20_sites.rds")
 
+analysis_cut <- read_rds("data-raw/juvenile_abundance/analysis_cut_20_sites.rds")
+analysis_no_cut <- read_rds("data-raw/juvenile_abundance/analysis_no_cut_20_sites.rds")
+
 # compare
-analysis_cut %>%
-  filter(statistic == "error") %>%
+analysis_cut |>
+  filter(statistic == "error") |>
   distinct(site, run_year, life_stage)
 
-analysis_no_cut %>%
-  filter(statistic == "error") %>%
+analysis_no_cut |>
+  filter(statistic == "error") |>
   distinct(site, run_year, life_stage)
 
 # tisdale ran with no cut, but not with cut function
-data_to_plot <- bind_rows(analysis_cut %>%
+data_to_plot <- bind_rows(analysis_cut |>
                             mutate(cut = T),
-                          analysis_no_cut %>%
-                            mutate(cut = F)) %>%
-  filter(statistic != "error") %>%
-  mutate(site_run_year_life_stage_combo = paste(site, run_year, life_stage, sep = "_"))
+                          analysis_no_cut |>
+                            mutate(cut = F)) |>
+  filter(statistic != "error")
 
-plot_comparison <- function(data, site_run_year_life_stage_combo) {
+combos <- data_to_plot |>
+  distinct(site, run_year, life_stage)
 
-  site_arg <- str_split(site_run_year_life_stage_combo)[[1]][1]
-  run_year_arg <- str_split(site_run_year_life_stage_combo)[[1]][2]
-  life_stage_arg <- str_split(site_run_year_life_stage_combo)[[1]][3]
+for(i in 1:nrow(combos)) {
+  cut_abundance_plot <- data_to_plot |>
+    filter(site == combos$site[i],
+           run_year == combos$run_year[i],
+           life_stage == combos$life_stage[i],
+           cut) |>
+    plot_juvenile_abundance()
 
-  data <- data %>%
-    filter(site == site_arg,
-           run_year == run_year_arg,
-           life_stage == run_year_arg) %>%
-    plot_juvenile_abundance()  +
-    facet_wrap(~cut, nrow = 2)
+   no_cut_abundance_plot <- data_to_plot |>
+    filter(site == combos$site[i],
+           run_year == combos$run_year[i],
+           life_stage == combos$life_stage[i],
+           !cut) |>
+    plot_juvenile_abundance()
+
+  cut_pcap_plot <- data_to_plot |>
+    filter(site == combos$site[i],
+           run_year == combos$run_year[i],
+           life_stage == combos$life_stage[i],
+           cut) |>
+    plot_weekly_capture_probability()
+
+  no_cut_pcap_plot <- data_to_plot |>
+    filter(site == combos$site[i],
+           run_year == combos$run_year[i],
+           life_stage == combos$life_stage[i],
+           !cut) |>
+    plot_weekly_capture_probability()
+
+  gridExtra::grid.arrange(cut_abundance_plot, cut_pcap_plot,
+               no_cut_abundance_plot, no_cut_pcap_plot,
+               ncol = 2)
 
 }
-
-purrr::map2(data_to_plot$site_run_year_life_stage_combo, plot_comparison, data_to_plot)
-

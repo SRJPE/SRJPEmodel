@@ -352,6 +352,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     return(list("final_results" = final_results,
                 "full_object" = results))
 
+    # TODO check for convergence (rhat > 1.05)
+
   }
 }
 
@@ -559,7 +561,8 @@ get_summary_table <- function(model_fit_object, site, run_year,
            `25` = x25_percent, `50` = x50_percent,
            `75` = x75_percent, `97.5` = x97_5_percent,
            rhat, n_eff, model_name = model_called) |>
-    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
+    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")),
+           converged = ifelse(rhat <= 1.05, TRUE, FALSE)) |>
     pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
 
   summary_table_final

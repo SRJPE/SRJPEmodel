@@ -6,6 +6,7 @@ library(scales)
 
 # bt-spas-x ---------------------------------------------------------------
 
+# TODO added check in get_summary_table() that filters out non convergence
 # single run
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,

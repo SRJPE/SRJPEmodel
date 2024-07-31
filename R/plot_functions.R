@@ -38,8 +38,10 @@ plot_juvenile_abundance <- function(bt_spas_x_results_clean) {
   }
 
   summary_output <- bt_spas_x_results_clean |>
-    select(-c(model_name, srjpedata_version)) |>
-    pivot_wider(id_cols = site:parameter,
+    select(site, run_year, life_stage, statistic, week_fit,
+           parameter, value) |>
+    #select(-c(model_name, srjpedata_version)) |>
+    pivot_wider(id_cols = c(site, run_year, life_stage, week_fit, parameter),
                 values_from = value,
                 names_from = statistic) |>
     mutate(cv = round(100 * (sd / mean), digits = 0)) # TODO confirm we use cv for more than just Ntot plot
@@ -59,6 +61,7 @@ plot_juvenile_abundance <- function(bt_spas_x_results_clean) {
 
   # abundance bar plot
   plot_title <- paste0(str_to_title(site_arg), " ", run_year_arg, " predicted ", life_stage_arg, " annual abundance = ",
+                       "\n",
                        prettyNum(round(total_abundance$`50`, 0), big.mark = ","), " (",
                        prettyNum(round(total_abundance$`2.5`, 0), big.mark = ","), "-",
                        prettyNum(round(total_abundance$`97.5`, 0), big.mark = ","), ")")
