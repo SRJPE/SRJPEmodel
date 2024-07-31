@@ -5,6 +5,7 @@
 #' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
 #' @param bt_spas_x_input_data data frame containing the same variables as
 #' `?SRJPEdata::weekly_juvenile_abundance_model_data`
+#' @param sites_to_run a subset of site/run year/lifestage combinations in tibble format to run
 #' @param lifestage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
@@ -41,15 +42,15 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                                           site_run_year_combinations$life_stage[i],
                                                           effort_adjust,
                                                           bugs_directory, debug_mode,
-                                                         no_cut)
+                                                          no_cut)
         },
         error = function(e) return(1e12)
       )
-      if(!is_tibble(all_results[[i]])) {
+      if(!is_tibble(all_results[[i]]$final_results)) {
         all_results[[i]] <- tibble("site" = site_run_year_combinations$site[i],
-                                       "run_year" = site_run_year_combinations$run_year[i],
-                                       "life_stage" = site_run_year_combinations$life_stage[i],
-                                       "statistic" = "error")
+                                   "run_year" = site_run_year_combinations$run_year[i],
+                                   "life_stage" = site_run_year_combinations$life_stage[i],
+                                   "statistic" = "error")
       }
   }
 

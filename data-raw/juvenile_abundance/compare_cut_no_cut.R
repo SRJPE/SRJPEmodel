@@ -219,6 +219,7 @@ compare |>
 
 # all sites ---------------------------------------------------------------
 
+# run
 multi_run_results_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                             SRJPEdata::weekly_juvenile_abundance_model_data,
                                             effort_adjust = T,
@@ -243,6 +244,25 @@ multi_run_results_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_p
                                                 debug_mode = F,
                                                 no_cut = T)
 readr::write_rds(multi_run_results_no_cut, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_no_cut.rds"))
+
+# read in results
+
+cut <- readRDS("data-raw/juvenile_abundance/multi_run_results_2024-07-30_cut.rds") |>
+  glimpse()
+
+no_cut <- readRDS("data-raw/juvenile_abundance/multi_run_results_2024-07-31_no_cut.rds") |>
+  glimpse()
+
+test_sites <- sites_to_compare |>
+  arrange(desc(run_year)) |>
+  head(5)
+test <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                               SRJPEdata::weekly_juvenile_abundance_model_data,
+                               test_sites,
+                               effort_adjust = T,
+                               bugs_directory = here::here("data-raw", "WinBUGS14"),
+                               debug_mode = F,
+                               no_cut = T)
 
 
 
