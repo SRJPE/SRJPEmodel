@@ -9,7 +9,8 @@ run_multiple_bt_spas_x(
   bt_spas_x_input_data,
   effort_adjust,
   bugs_directory,
-  debug_mode
+  debug_mode,
+  no_cut = c(F, T)
 )
 }
 \arguments{
