@@ -2,7 +2,7 @@
 % Please edit documentation in R/storage.R
 \name{model_pin_board}
 \alias{model_pin_board}
-\title{Model Data Pin}
+\title{Model Data Pin Board}
 \usage{
 model_pin_board(storage_account, container, ...)
 }

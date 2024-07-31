@@ -64,7 +64,58 @@ model_pin_board <- function(storage_account, container, ...) {
 #' @param title title for data
 #' @param ... additional named arguments passed is as metadata to the pin
 #'
+#' @examples
+#' \dontrun{
+#'
+#' # first create a board connected to the azure account you with to use
+#' model_board <- model_pin_board("storage-account-name", "model-results")
+#'
+#' # next run a model
+#' bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+#'   bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
+#'   site = "ubc",
+#'   run_year = 2004,
+#'   lifestage = "fry",
+#'   effort_adjust = F,
+#'   bugs_directory = here::here("data-raw", "WinBUGS14"),
+#'   debug_mode = FALSE, no_cut = T
+#' )
+#'
+#' # now pin the model
+#' pin_model_data(
+#'   model_board,
+#'   bt_spas_x_results,
+#'   name = "BT Spas at Butte",
+#'   title = "bt spas results",
+#'   description = "model results dataframe and model object"
+#' )
+#'
+#' # run again
+#' bt_spas_x_results <- run_single_bt_spas_x(...)
+#'
+#' # pin with same name to create a new version of the data, all previous versions are stored
+#' pin_model_data(
+#'   model_board,
+#'   bt_spas_x_results,
+#'   name = "BT Spas at Butte",
+#'   title = "bt spas results",
+#'   description = "model results dataframe and model object"
+#' )
+#'
+#' # or assign it a new name to create a new object on the board
+#' pin_model_data(
+#'   model_board,
+#'   bt_spas_x_results,
+#'   name = "BT Spas at Butte V2",
+#'   title = "bt spas results",
+#'   description = "model results dataframe and model object"
+#' )
+#'
+#' }
+#'
+#'
 #' @export
+#' @md
 pin_model_data <- function(board, data, name, title, description, ...) {
   pin_metadata <- list(...)
   pins::pin_write(board,
