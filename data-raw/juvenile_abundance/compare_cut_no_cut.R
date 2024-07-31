@@ -245,24 +245,64 @@ multi_run_results_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_p
                                                 no_cut = T)
 readr::write_rds(multi_run_results_no_cut, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), "_no_cut.rds"))
 
-# read in results
+# the above code didn't work (bug in writing results)
 
-cut <- readRDS("data-raw/juvenile_abundance/multi_run_results_2024-07-30_cut.rds") |>
-  glimpse()
-
-no_cut <- readRDS("data-raw/juvenile_abundance/multi_run_results_2024-07-31_no_cut.rds") |>
-  glimpse()
+# run with fewer sites for smaller analysis
 
 test_sites <- sites_to_compare |>
   arrange(desc(run_year)) |>
-  head(5)
-test <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+  head(20)
+
+analysis_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                SRJPEdata::weekly_juvenile_abundance_model_data,
                                test_sites,
                                effort_adjust = T,
                                bugs_directory = here::here("data-raw", "WinBUGS14"),
                                debug_mode = F,
-                               no_cut = T)
+                               no_cut = F)
 
+analysis_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                       SRJPEdata::weekly_juvenile_abundance_model_data,
+                                       test_sites,
+                                       effort_adjust = T,
+                                       bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                       debug_mode = F,
+                                       no_cut = T)
 
+write_rds(analysis_cut, file = "data-raw/juvenile_abundance/analysis_cut_20_sites.rds")
+write_rds(analysis_no_cut, file = "data-raw/juvenile_abundance/analysis_no_cut_20_sites.rds")
+
+# compare
+analysis_cut %>%
+  filter(statistic == "error") %>%
+  distinct(site, run_year, life_stage)
+
+analysis_no_cut %>%
+  filter(statistic == "error") %>%
+  distinct(site, run_year, life_stage)
+
+# tisdale ran with no cut, but not with cut function
+data_to_plot <- bind_rows(analysis_cut %>%
+                            mutate(cut = T),
+                          analysis_no_cut %>%
+                            mutate(cut = F)) %>%
+  filter(statistic != "error") %>%
+  mutate(site_run_year_life_stage_combo = paste(site, run_year, life_stage, sep = "_"))
+
+plot_comparison <- function(data, site_run_year_life_stage_combo) {
+
+  site_arg <- str_split(site_run_year_life_stage_combo)[[1]][1]
+  run_year_arg <- str_split(site_run_year_life_stage_combo)[[1]][2]
+  life_stage_arg <- str_split(site_run_year_life_stage_combo)[[1]][3]
+
+  data <- data %>%
+    filter(site == site_arg,
+           run_year == run_year_arg,
+           life_stage == run_year_arg) %>%
+    plot_juvenile_abundance()  +
+    facet_wrap(~cut, nrow = 2)
+
+}
+
+purrr::map2(data_to_plot$site_run_year_life_stage_combo, plot_comparison, data_to_plot)
 

@@ -22,7 +22,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                    no_cut = c(F, T)) {
 
   if(!is.null(sites_to_run)) {
-    site_run_year_combinations <- sites_to_compare
+    site_run_year_combinations <- sites_to_run
   } else {
     site_run_year_combinations <- bt_spas_x_input_data |>
       distinct(site, run_year, life_stage)
@@ -46,15 +46,29 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
         },
         error = function(e) return(1e12)
       )
-      if(!is_tibble(all_results[[i]]$final_results)) {
+      if(!is.list(all_results[[i]])) {
         all_results[[i]] <- tibble("site" = site_run_year_combinations$site[i],
                                    "run_year" = site_run_year_combinations$run_year[i],
                                    "life_stage" = site_run_year_combinations$life_stage[i],
                                    "statistic" = "error")
+      } else {
+        all_results[[i]] <- all_results[[i]]$final_results
       }
   }
 
   all_results_df <- bind_rows(all_results)
+
+  errors <- all_results_df %>%
+    filter(statistic == "error") %>%
+    nrow()
+
+  non_errors <- all_results_df %>%
+    filter(statistic != "error") %>%
+    distinct(life_stage, run_year, site) %>%
+    nrow()
+
+  cli::cli_bullets(paste0("Of ", nrow(site_run_year_combinations), " site, run year, and life stage
+                         combinations fit, ", (errors/(errors + non_errors) * 100), "% errored out."))
 
   return(all_results_df)
 }
