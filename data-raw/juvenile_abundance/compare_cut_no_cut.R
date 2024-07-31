@@ -231,12 +231,13 @@ sites_that_ran <- multi_run_results_cut %>%
   mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage))
 
 sites_to_compare <- SRJPEdata::weekly_juvenile_abundance_model_data %>%
-  distinct(site, life_stage, run_year) %>%
   mutate(compare_sites = paste0(site, "_", run_year, "_", life_stage)) %>%
-  filter(compare_sites %in% sites_that_ran$compare_sites)
+  filter(compare_sites %in% sites_that_ran$compare_sites) %>%
+  distinct(site, run_year, life_stage)
 
 multi_run_results_no_cut <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                                   sites_to_compare,
+                                                   SRJPEdata::weekly_juvenile_abundance_model_data,
+                                                sites_to_compare,
                                                 effort_adjust = T,
                                                 bugs_directory = here::here("data-raw", "WinBUGS14"),
                                                 debug_mode = F,

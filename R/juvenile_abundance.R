@@ -15,12 +15,17 @@
 #' @md
 run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
                                    bt_spas_x_input_data,
+                                   sites_to_run = NULL,
                                    effort_adjust,
                                    bugs_directory, debug_mode,
                                    no_cut = c(F, T)) {
 
-  site_run_year_combinations <- bt_spas_x_input_data |>
-    distinct(site, run_year, life_stage)
+  if(!is.null(sites_to_run)) {
+    site_run_year_combinations <- sites_to_compare
+  } else {
+    site_run_year_combinations <- bt_spas_x_input_data |>
+      distinct(site, run_year, life_stage)
+  }
 
   all_results <- list()
   # TODO convert to purrr::map2
