@@ -1,4 +1,19 @@
+store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, ...){
 
+  model_board <- model_pin_board(storage_account, "model-results")
+
+  blob_url <- pin_model_data(
+    model_board,
+    data,
+    name = results_name,
+    ...
+  )
+
+  total_rows <- insert_model_parameters(con, data, blob_url)
+  message(glue::glue("Inserted {total_rows} into database. Uploaded results to {blob_url}."))
+
+  return(blob_url)
+}
 #' @title Azure Blob Setup
 #' @description
 #' Creates an `AzureStor` storage container object to be used by the `pins` package.
@@ -146,6 +161,73 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
+join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, final_column){
+  db_lookup_column_sym <- sym(db_lookup_column)
+  model_lookup_column_sym <- sym(model_lookup_column)
+  final_column_sym <- sym(final_column)
 
+  all_lookup_val <- unique(df[[model_lookup_column]])
+  all_val_id <- tbl(con, db_table) |>
+    filter(!!db_lookup_column_sym %in% all_lookup_val) |>
+    select(id, !!db_lookup_column_sym) |>
+    as_tibble()
+  df_with_id <- merge(df, all_val_id, by.x = model_lookup_column, by.y = db_lookup_column, all.x = TRUE)
+  colnames(df_with_id)[colnames(df_with_id) == "id"] <- final_column
+  final_df <- df_with_id |>
+    select(-model_lookup_column)
+
+  return(final_df)
+}
+
+insert_model_parameters <- function(con, model, blob_url) {
+
+  model_final_results <- model$final_results
+  model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
+  model_final_results$model_fit_filename <- model_fit_filename
+  model_final_results$blob_url <- blob_url
+  #TODO: how to extract model_name
+  model_final_results$model_name <- "BTSPASX"
+
+  model_final_results <- join_lookup(model_final_results, "model_name", "model_name", "definition", "model_name_id")
+  model_final_results <- join_lookup(model_final_results, "model_location", "site", "site", "location_id")
+  model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
+  model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
+  model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
+
+  model_final_results <-  model_final_results |>
+    select(model_name_id, location_id, run_year, week_fit, lifestage_id, srjpedata_version, model_fit_filename, parameter_id, statistic_id, value, blob_url)
+
+  query <- glue::glue_sql(
+    "INSERT INTO model_parameters (
+          model_name_id,
+          location_id,
+          run_year,
+          week_fit,
+          lifestage_id,
+          srjpedata_version,
+          model_fit_filename,
+          parameter_id,
+          statistic_id,
+          value,
+          blob_url
+        ) VALUES (
+          UNNEST(ARRAY[{model_final_results$model_name_id*}]),
+          UNNEST(ARRAY[{model_final_results$location_id*}]),
+          UNNEST(ARRAY[{model_final_results$run_year*}]),
+          UNNEST(ARRAY[{model_final_results$week_fit*}]),
+          UNNEST(ARRAY[{model_final_results$lifestage_id*}]),
+          UNNEST(ARRAY[{model_final_results$srjpedata_version*}]),
+          UNNEST(ARRAY[{model_final_results$model_fit_filename*}]),
+          UNNEST(ARRAY[{model_final_results$parameter_id*}]),
+          UNNEST(ARRAY[{model_final_results$statistic_id*}]),
+          UNNEST(ARRAY[{model_final_results$value*}]),
+          UNNEST(ARRAY[{model_final_results$blob_url*}])
+        );",
+    .con = con
+  )
+  res <- DBI::dbExecute(con, query)
+
+  return(res)
+}
 
 
