@@ -128,15 +128,22 @@ model_pin_board <- function(storage_account, container, ...) {
 #'
 #' @export
 #' @md
-pin_model_data <- function(board, data, name, title, description, ...) {
+pin_model_data <- function(board, data, name, title = NULL, description = NULL, ...) {
   pin_metadata <- list(...)
-  pins::pin_write(board,
+  data_name <- pins::pin_write(board,
                   data,
                   name = name,
                   title = title,
                   description = description,
                   metadata = pin_metadata
   )
+
+  latest_version_df <- board |> pins::pin_versions(data_name)
+  latest_version <- latest_version_df$version[1]
+
+  data_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{data_name}/{latest_version}/{data_name}.rds")
+
+  return(data_url)
 }
 
 

@@ -4,7 +4,7 @@
 \alias{pin_model_data}
 \title{Model Data Pin}
 \usage{
-pin_model_data(board, data, name, title, description, ...)
+pin_model_data(board, data, name, title = NULL, description = NULL, ...)
 }
 \arguments{
 \item{board}{a board created with \code{model_pin_board}}
