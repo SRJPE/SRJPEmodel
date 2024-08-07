@@ -1,6 +1,18 @@
+#' @title Store Model Fits
+#' @description
+#' Store a model fit object in a pre-configured Azure Blob Container and Database
+#' @param con a connection object to the database
+#' @param storage_account an azure storage account
+#' @param container_name container name in storage account (must exist)
+#' @param access_key azure storage access key with write permissions
+#' @param data the model result data object
+#' @param result_name a name to identify the model results on azure storage
+#' @param ... additional named arguments to be passed as metadata to the blob storage
+#'
+#' @export
 store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, ...){
 
-  model_board <- model_pin_board(storage_account, "model-results")
+  model_board <- model_pin_board(storage_account, container_name)
 
   blob_url <- pin_model_data(
     model_board,
@@ -10,10 +22,11 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
   )
 
   total_rows <- insert_model_parameters(con, data, blob_url)
-  message(glue::glue("Inserted {total_rows} into database. Uploaded results to {blob_url}."))
+  message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
 
   return(blob_url)
 }
+
 #' @title Azure Blob Setup
 #' @description
 #' Creates an `AzureStor` storage container object to be used by the `pins` package.
@@ -150,7 +163,7 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
                   name = name,
                   title = title,
                   description = description,
-                  metadata = pin_metadata
+                  metadata = pin_metadata, type = "rds"
   )
 
   latest_version_df <- board |> pins::pin_versions(data_name)
@@ -161,10 +174,11 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
+#' @keywords internal
 join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, final_column){
-  db_lookup_column_sym <- sym(db_lookup_column)
-  model_lookup_column_sym <- sym(model_lookup_column)
-  final_column_sym <- sym(final_column)
+  db_lookup_column_sym <- rlang::sym(db_lookup_column)
+  model_lookup_column_sym <- rlang::sym(model_lookup_column)
+  final_column_sym <- rlang::sym(final_column)
 
   all_lookup_val <- unique(df[[model_lookup_column]])
   all_val_id <- tbl(con, db_table) |>
@@ -179,6 +193,7 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
   return(final_df)
 }
 
+#' @keywords internal
 insert_model_parameters <- function(con, model, blob_url) {
 
   model_final_results <- model$final_results
