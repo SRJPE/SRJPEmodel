@@ -131,10 +131,14 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    remove_sites <- c("deer creek", "eye riffle", "live oak",
-                      "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
-                      "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
-                      "gateway riffle", "lower feather river")
+    remove_sites <- bt_spas_x_input_data |>
+      filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
+      distinct(site) |>
+      pull(site)
+    # remove_sites <- c("deer creek", "eye riffle", "live oak",
+    #                   "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
+    #                   "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
+    #                   "gateway riffle", "lower feather river")
   }
 
   # only run pCap portion of the model with the following tribs:
@@ -336,6 +340,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   } else {
     final_results <- get_summary_table(results, site, run_year, lifestage,
                                        weeks_fit = input_data$week[data$Uwc_ind],
+                                       sites_fit = unique(mark_recapture_data$site),
                                        model_name = model_name)
 
     # TODO build workflow to upload this to the cloud
@@ -535,7 +540,8 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @export
 #' @md
 get_summary_table <- function(model_fit_object, site, run_year,
-                              lifestage, weeks_fit, model_name) {
+                              lifestage, weeks_fit, sites_fit,
+                              model_name) {
 
   summary_table <- model_fit_object$summary |>
     as.data.frame() |>
@@ -544,6 +550,9 @@ get_summary_table <- function(model_fit_object, site, run_year,
     # don't extract index for parameters estimated by stream, not week
     mutate(week_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"), NA,
                                suppressWarnings(readr::parse_number(par_names))),
+           site_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"),
+                               suppressWarnings(readr::parse_number(par_names)),
+                               NA),
            site = site,
            run_year = run_year,
            life_stage = lifestage,
@@ -554,9 +563,14 @@ get_summary_table <- function(model_fit_object, site, run_year,
   weeks_fit_lookup <- tibble(week_fit = weeks_fit) |>
     mutate(week_index = row_number())
 
+  sites_fit_lookup <- tibble(site_fit_hierarchical = sites_fit) |>
+    mutate(site_index = row_number())
+
   summary_table_final <- summary_table |>
     left_join(weeks_fit_lookup, by = "week_index") |>
-    select(site, run_year, life_stage, week_fit, parameter = par_names,
+    left_join(sites_fit_lookup, by = "site_index") |>
+    select(site, run_year, life_stage, week_fit, site_fit_hierarchical,
+           parameter = par_names,
            mean, sd, `2.5` = x2_5_percent,
            `25` = x25_percent, `50` = x50_percent,
            `75` = x75_percent, `97.5` = x97_5_percent,

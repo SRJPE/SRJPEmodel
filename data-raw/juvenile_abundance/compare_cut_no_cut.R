@@ -167,6 +167,7 @@ compare |>
   pivot_wider(id_cols = c(site:srjpedata_version, cut, index),
               values_from = "value",
               names_from = "statistic") |>
+  filter(rhat <= 1.05) |>
   ggplot(aes(x = index, y = `50`, color = cut)) +
   geom_point(position = "jitter") +
   geom_errorbar(aes(x = index, ymin = `2.5`, ymax = `97.5`, color = cut),
