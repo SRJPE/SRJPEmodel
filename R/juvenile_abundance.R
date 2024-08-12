@@ -148,6 +148,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   #Ntribs <- length(tribs_for_pCap) # TODO confirm
 
   mark_recapture_data <- bt_spas_x_input_data |>
+    # TODO or do we want to filter just no number released?
     dplyr::filter(!site %in% remove_sites &
                   !is.na(standardized_flow),
                   !is.na(number_released) &
@@ -292,7 +293,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                      sum(mark_recapture_data$number_released[irows]))
     if(is.nan(ini_b0_pCap[i]) | is.infinite(ini_b0_pCap[i])) {
       # -Inf happens when number recaptured == 0, logit of 0 is -Inf
-      ini_b0_pCap[i] <- NA
+      ini_b0_pCap[i] <- -5
     }
   }
 
