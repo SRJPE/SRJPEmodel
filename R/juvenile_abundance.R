@@ -101,7 +101,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bugs_directory, debug_mode,
                                  no_cut = c(F, T)) {
 
-  # filter datasets to match site, run_year, and weeks
+  # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
   # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
   input_data <- bt_spas_x_input_data |>
     mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
@@ -121,12 +121,10 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   # get numbers for looping in BUGs code - abundance model
   number_weeks_catch <- nrow(input_data) # for looping through the catch dataset
-  # number_weeks_catch <- length(unique(input_data$week)) # number of weeks in the catch dataset
   indices_with_catch <- which(!is.na(input_data$count)) # indices of weeks with catch data
   number_weeks_with_catch <- length(indices_with_catch) # how many weeks actually have catch
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
-
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
@@ -135,18 +133,9 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
       filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
       distinct(site) |>
       pull(site)
-    # remove_sites <- c("deer creek", "eye riffle", "live oak",
-    #                   "okie dam", "mill creek", "yuba river", "herringer riffle", "ubc",
-    #                   "lcc", "ucc", "hallwood", "steep riffle", "sunset pumps", "shawn's beach",
-    #                   "gateway riffle", "lower feather river")
   }
 
-  # only run pCap portion of the model with the following tribs:
-  # tribs_for_pCap <- c("ubc", "lcc", "ucc", "eye riffle", "herringer riffle",
-  #                     "steep riffle", "gateway riffle", "sunset pumps",
-  #                     "deer creek") # TODO include mill creek, deer creek, etc.?
-  #Ntribs <- length(tribs_for_pCap) # TODO confirm
-
+  # prepare "mark recapture" dataset - all mark-recap trials in the system
   mark_recapture_data <- bt_spas_x_input_data |>
     # TODO or do we want to filter just no number released?
     dplyr::filter(!site %in% remove_sites &
@@ -155,43 +144,31 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                   !is.na(number_recaptured)) |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior)) %>%
-    # TODO remove this once we fix this in data prep
-    distinct(site, run_year, week, .keep_all = TRUE)
+    # TODO right now there's lifestage in the dataset, so we have to do distinct()
+    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
-  # number of sites (for pCap calculations)
-  # Ntribs <- 8
-  Ntribs <- length(unique(mark_recapture_data$site)) # right now only works if 8
-
-  # get numbers for looping in BUGs code - pCap model
-  # number of efficiency experiments completed
-  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |> nrow() # nrow(mark_recapture_data) this depends on whether you have lifestage or not
-  # years where efficiency experiments were done
-  years_with_efficiency_experiments <- unique(mark_recapture_data$run_year)
-  # indices of those sites where efficiency trials were performed, can be length = 0
-  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site)
-  # indices of efficiency experiments in catch data
+  # get indexing for "mark recap" dataset (pCap model)
+  Ntribs <- length(unique(mark_recapture_data$site)) # number of sites (for pCap calculations)
+  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
+    nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
+  years_with_efficiency_experiments <- unique(mark_recapture_data$run_year) # years where efficiency experiments were done
+  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # indices of those sites where efficiency trials were performed, can be length = 0
   indices_with_mark_recapture <- which(!is.na(input_data$number_released) &
-                                         !is.na(input_data$standardized_flow))
-  # weeks (in catch data) where mark recapture were performed
-  weeks_with_mark_recapture <- input_data$week[indices_with_mark_recapture]
-  # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
+                                         !is.na(input_data$standardized_flow)) # indices of efficiency experiments in catch data
+  weeks_with_mark_recapture <- input_data$week[indices_with_mark_recapture] # weeks (in catch data) where mark recapture were performed
   indices_pCap <- which(mark_recapture_data$site == site &
                           mark_recapture_data$run_year == run_year &
-                          mark_recapture_data$week %in% weeks_with_mark_recapture)
-  # indices (in catch data) where no mark recap were performed
+                          mark_recapture_data$week %in% weeks_with_mark_recapture)   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
   indices_without_mark_recapture <- which(is.na(input_data$number_released) |
-                                            is.na(input_data$standardized_flow))
-  # indices (in mark-recap data) for each site
+                                            is.na(input_data$standardized_flow))   # indices (in catch data) where no mark recap were performed
   indices_site_mark_recapture <- mark_recapture_data |>
-    group_by(site) |> # TODO should this be stream?
+    group_by(site) |>
     mutate(ID = cur_group_id()) |>
-    pull(ID)
-  # number of weeks (in mark-recap data) where effiency experiments were performed
-  number_weeks_with_mark_recapture <- length(indices_with_mark_recapture)
-  # number of weeks (in mark-recap data) where effiency experiments were not performed
-  number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)
+    pull(ID)   # indices (in mark-recap data) for each site
+  number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
+  number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
 
-  # so BUGS doesn't bomb
+  # TODO keep this? so BUGS doesn't bomb
   if(number_weeks_without_mark_recapture == 1) {
     indices_without_mark_recapture <- c(indices_without_mark_recapture, -99)
   }
@@ -208,7 +185,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   }
 
   # spline parameter calculation
-  spline_data <- build_spline_data(number_weeks_catch, k_int = 4) # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
+  spline_data <- SRJPEmodel::build_spline_data(number_weeks_catch, k_int = 4) # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
 
   if(effort_adjust) {
     weekly_catch_data <- input_data$catch_standardized_by_hours_fished
@@ -216,7 +193,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
     weekly_catch_data <- input_data$count
   }
 
-  # full data list
+  # build data list with ALL elements
   full_data_list <- list("Nmr" = number_efficiency_experiments,
                          "Ntribs" = Ntribs,
                          "ind_trib" = indices_site_mark_recapture,
@@ -238,7 +215,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                          "catch_flow" = input_data$standardized_flow,
                          "lgN_max" = input_data$lgN_prior)
 
-  # set up models and data to pass to bugs
+  # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
     distinct(site, run_year, week) |>
     filter(site == !!site) |>
