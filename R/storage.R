@@ -21,6 +21,8 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
     ...
   )
 
+  total_run_rows <- insert_model_run(con, data, blob_url)
+  message(glue::glue("Inserted new model run into database."))
   total_rows <- insert_model_parameters(con, data, blob_url)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
 
@@ -194,27 +196,58 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
+insert_model_run <- function(con, model, blob_url){
+  model_final_results <- model$final_results
+  try({
+    model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "definition", "model_name_id") |>
+      select(model_name_id) |> unique()
+    blob_storage_url <- blob_url
+    srjpedata_version <- model_final_results$srjpedata_version |> unique()
+
+    if(length(model_name_id) != 1){
+      stop("Error: There are multiple model name being uploaded. Please only upload one.")
+    }
+    else if (length(srjpedata_version) != 1){
+      stop("Error: There are multiple SRJPE data version being uploaded. Please only upload one.")
+    }
+    query <- glue::glue_sql(
+      "INSERT INTO model_run (
+          blob_storage_url,
+          model_name_id,
+          srjpedata_version
+        ) VALUES (
+          UNNEST(ARRAY[{blob_storage_url*}]),
+          UNNEST(ARRAY[{model_name_id*}]),
+          UNNEST(ARRAY[{srjpedata_version*}])
+        );",
+      .con = con
+    )
+    res <- DBI::dbExecute(con, query)
+    return(res)
+  })
+}
+
+#' @keywords internal
 insert_model_parameters <- function(con, model, blob_url) {
 
   model_final_results <- model$final_results
   model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
   model_final_results$model_fit_filename <- model_fit_filename
   model_final_results$blob_url <- blob_url
-  #TODO: how to extract model_name
-  model_final_results$model_name <- "BTSPASX"
 
-  model_final_results <- join_lookup(model_final_results, "model_name", "model_name", "definition", "model_name_id")
+
+  model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
   model_final_results <- join_lookup(model_final_results, "model_location", "site", "site", "location_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
 
   model_final_results <-  model_final_results |>
-    select(model_name_id, location_id, run_year, week_fit, lifestage_id, srjpedata_version, model_fit_filename, parameter_id, statistic_id, value, blob_url)
+    select(model_run_id, location_id, run_year, week_fit, lifestage_id, model_fit_filename, parameter_id, statistic_id, value)
 
   query <- glue::glue_sql(
     "INSERT INTO model_parameters (
-          model_name_id,
+          model_run_id,
           location_id,
           run_year,
           week_fit,
@@ -224,9 +257,8 @@ insert_model_parameters <- function(con, model, blob_url) {
           parameter_id,
           statistic_id,
           value,
-          blob_url
         ) VALUES (
-          UNNEST(ARRAY[{model_final_results$model_name_id*}]),
+          UNNEST(ARRAY[{model_final_results$model_run_id*}]),
           UNNEST(ARRAY[{model_final_results$location_id*}]),
           UNNEST(ARRAY[{model_final_results$run_year*}]),
           UNNEST(ARRAY[{model_final_results$week_fit*}]),
@@ -235,8 +267,7 @@ insert_model_parameters <- function(con, model, blob_url) {
           UNNEST(ARRAY[{model_final_results$model_fit_filename*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
-          UNNEST(ARRAY[{model_final_results$value*}]),
-          UNNEST(ARRAY[{model_final_results$blob_url*}])
+          UNNEST(ARRAY[{model_final_results$value*}])
         );",
     .con = con
   )
