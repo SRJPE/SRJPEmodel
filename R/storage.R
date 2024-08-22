@@ -176,6 +176,61 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
+#' @title Load model fit
+#' @description Load model fit from Azure JPE Database.
+#'
+#' @param con a connection object to the database.
+#' @param model_name model name stored in database.
+load_model_fit <- function(con, model_name){
+  model_id <- tbl(con, "model_name") |>
+    filter(name == model_name) |>
+    select(id) |>
+    pull()
+
+  model_run_id <- tbl(con, "model_run") |>
+    filter(model_name_id == model_id) |>
+    select(id) |>
+    pull()
+
+  model_parameters <- tbl(con, "model_parameters") |>
+    filter(model_run_id == model_run_id) |>
+    as_tibble()
+
+  stat_lookup <- tbl(con, "statistic") |>
+    as_tibble() |>
+    rename("statistic_id" = "id")
+
+  model_parameters <- model_parameters |> left_join(stat_lookup, by = "statistic_id") |>
+    select(-c("statistic_id", "updated_at.x","updated_at.y", "description")) |>
+    rename("statistic" = "definition")
+
+  location_lookup <- tbl(con, "model_location") |>
+    as_tibble() |>
+    rename("location_id" = "id")
+
+  model_parameters <- model_parameters |> left_join(location_lookup, by = "location_id") |>
+    select(-c("location_id", "updated_at", "site", "description")) |>
+    rename("location" = "stream")
+
+  lifestage_lookup <- tbl(con, "lifestage") |>
+    as_tibble() |>
+    rename("lifestage_id" = "id")
+
+  model_parameters <- model_parameters |> left_join(lifestage_lookup, by = "lifestage_id") |>
+    select(-c("lifestage_id", "updated_at", "description")) |>
+    rename("lifestage" = "definition")
+
+  parameter_lookup <- tbl(con, "parameter") |>
+    as_tibble() |>
+    rename("parameter_id" = "id")
+
+  model_parameters <- model_parameters |> left_join(parameter_lookup, by = "parameter_id") |>
+    select(-c("parameter_id", "updated_at", "description")) |>
+    rename("parameter" = "definition")
+
+  return(model_parameters)
+}
+
 #' @keywords internal
 join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, final_column){
   db_lookup_column_sym <- rlang::sym(db_lookup_column)
@@ -199,7 +254,7 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 insert_model_run <- function(con, model, blob_url){
   model_final_results <- model$final_results
   try({
-    model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "definition", "model_name_id") |>
+    model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
       select(model_name_id) |> unique()
     blob_storage_url <- blob_url
     srjpedata_version <- model_final_results$srjpedata_version |> unique()
@@ -275,5 +330,4 @@ insert_model_parameters <- function(con, model, blob_url) {
 
   return(res)
 }
-
 
