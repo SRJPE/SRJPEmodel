@@ -1,14 +1,37 @@
 #' @title Store Model Fits
-#' @description
-#' Store a model fit object in a pre-configured Azure Blob Container and Database
-#' @param con a connection object to the database
-#' @param storage_account an azure storage account
-#' @param container_name container name in storage account (must exist)
-#' @param access_key azure storage access key with write permissions
-#' @param data the model result data object
-#' @param result_name a name to identify the model results on azure storage
-#' @param ... additional named arguments to be passed as metadata to the blob storage
+#' @description This function stores a model fit object in an Azure Blob Container and the data into JPE database.
+#' It uploads the model data to Azure Blob Storage and updates the database with relevant information about the model run and parameters.
 #'
+#' @param con A connection object to the database.
+#' @param storage_account A string specifying the Azure storage account name.
+#' @param container_name A string specifying the container name in the Azure storage account.
+#' @param access_key A string specifying the Azure storage access key with write permissions.
+#' @param data The model result data object that needs to be stored.
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage.
+#' @param ... Additional named arguments to be passed as metadata to the blob storage.
+#'
+#' @return A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
+#'
+#' @examples
+#' \dontrun{
+#' con <- DBI::dbConnect(RPostgres::Postgres(),
+#'                        dbname = cfg$db_name,
+#'                        host = cfg$db_host,
+#'                        port = cfg$db_port,
+#'                        user = cfg$db_user,
+#'                        password = cfg$db_password)
+#'
+#' blob_url <- store_model_fit(con,
+#'                             storage_account = "my_storage_account",
+#'                             container_name = "my_container",
+#'                             access_key = "my_access_key",
+#'                             data = model_results,
+#'                             results_name = "model_name")
+#'
+#' print(blob_url)
+#'
+#' dbDisconnect(con)
+#'}
 #' @export
 store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, ...){
 
@@ -38,7 +61,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
 #' with the name `AZ_CONTAINER_ACCESS_KEY` is retrived, optionally you can directly pass in a value.
 #'
 #' @returns An `AzureStore` storage container object
-#' @export
+#' @
 setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
   if (access_key == "") {
     stop("access key is required in order to write and read from the azure boad", call. = FALSE)
@@ -67,7 +90,7 @@ setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_
 #' @seealso
 #' \code{\link[AzureStor]{blob_container}}
 #' \code{\link[pins]{board_azure}}
-#' @export
+#' @keywords internal
 model_pin_board <- function(storage_account, container, ...) {
   storage_client <- setup_azure_blob_backend(storage_account, ...)
 
@@ -176,12 +199,31 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
-#' @title Load model fit
-#' @description Load model fit from Azure JPE Database.
+#' @title Load Model Parameter Results
+#' @description This function retrieves model parameters and associated metadata from the Azure JPE Database.
 #'
 #' @param con a connection object to the database.
-#' @param model_name model name stored in database.
-load_model_fit <- function(con, model_name){
+#' @param model_name A string specifying the model name stored in the database. This is used to filter and retrieve
+#' the corresponding model parameters.
+#' @return A tibble containing model parameters.
+#'
+#' #' @examples
+#' \dontrun{
+#' con <- dbConnect(RPostgres::Postgres(),
+#'                  dbname = "your_db_name",
+#'                  host = "your_host",
+#'                  port = 5432,
+#'                  user = "your_username",
+#'                  password = "your_password")
+#'
+#' # Load model parameters for a given model name
+#' your_model_name = "missing_mark_recap.bug_v2"
+#' model_results <- load_model_results(con, "your_model_name")
+#' print(model_results)
+#' dbDisconnect(con)
+#' }
+#' @export
+load_model_results <- function(con, model_name){
   model_id <- tbl(con, "model_name") |>
     filter(name == model_name) |>
     select(id) |>
@@ -229,6 +271,40 @@ load_model_fit <- function(con, model_name){
     rename("parameter" = "definition")
 
   return(model_parameters)
+}
+
+#' @title Load Model Object
+#' @description This function retrieves the model object (.Rds file) from Azure Blob Storage using a specified blob URL.
+#'
+#' @param blob_url A string specifying the URL of the blob in Azure Blob Storage where the model object is stored.
+#' @param access_key A string specifying the Azure storage access key with read permissions. By default, it retrieves from the environment variable `AZ_CONTAINER_ACCESS_KEY`.
+#'
+#' @return The model object retrieved from the Azure Blob Storage.
+#' #' @examples
+#' \dontrun{
+#' # Example: Load a model object from Azure Blob Storage
+#' model_object <- load_model_object(blob_url = "https://mystorageaccount.blob.core.windows.net/mycontainer/model_name.rds")
+#'
+#' # Example: Use the loaded model object
+#' summary(model_object)
+#' }
+#' @export
+load_model_object <- function(blob_url, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
+  if (access_key == "") {
+    stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
+  }
+
+  storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", blob_url)
+  container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", blob_url)
+  blob_path <- sub("^.*model-fits/", "", blob_url)
+
+  store <- setup_azure_blob_backend(storage_account, access_key)
+  container <- AzureStor::blob_container(store, container_name)
+  temp_file <- tempfile(fileext = ".rds")
+  AzureStor::download_blob(container, src = blob_path, dest = temp_file)
+
+  model_object <- readRDS(temp_file)
+  return(model_object)
 }
 
 #' @keywords internal
