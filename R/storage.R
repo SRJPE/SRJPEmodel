@@ -199,6 +199,93 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
+#' @title Search Model Run
+#' @description This function searches for model runs in the JPE database using criteria, such as keywords, model run IDs, or an option to view all model runs.
+#'
+#' @param con A database connection object.
+#' @param keyword An optional keyword to search within the model run descriptions.
+#' @param model_run_id An optional ID to search for a specific model run. If both `keyword` and `model_run_id` are NULL, the search will pull the latest model_run.
+#' @param view_all A boolean indicating if all model runs should be displayed, ignoring other filters (default is FALSE).
+#'
+#' @return A data frame containing the search results. If `view_all` is set to TRUE, it returns all model runs. If a keyword or model_run_id is provided, it filters the results accordingly.
+#'
+#' @examples
+#' \dontrun{
+#' # Example: Search for the latest model run
+#' latest_model_run <- search_model_run(con)
+#'
+#' # Example: Search model runs by keyword
+#' keyword_search_results <- search_model_run(con, keyword = "regression")
+#'
+#' # Example: Search for a specific model run by ID
+#' specific_model_run <- search_model_run(con, model_run_id = 5)
+#'
+#' # Example: View all model runs
+#' all_model_runs <- search_model_run(con, view_all = TRUE)
+#' }
+#' @export
+search_model_run <- function(con, keyword=NULL, model_run_id=NULL, view_all=FALSE){
+
+  model_name_table <- tbl(con, "model_name")
+  model_run_table <- tbl(con, "model_run")
+  model_run_table <- model_run_table |>
+    left_join(model_name_table, by = c("model_name_id" = "id"), suffix=c("", ".y")) |>
+    select(-ends_with(".y")) |>
+    rename(model_name = name) |>
+    select(-model_name_id) |>
+    collect()
+
+  if (view_all){
+    all_model_run <- model_run_table |>
+      arrange(desc("updated_at"))
+
+    return(all_model_run)
+  } else{
+    if (is.null(keyword) && is.null(model_run_id)){
+      latest_model_run <- model_run_table |>
+        arrange(desc("updated_at")) |>
+        head(1)
+
+      return(latest_model_run)
+
+    }else if(view_all){
+
+
+    }else if(!is.null(keyword)){
+      model_run_id <- model_run_table |>
+        filter(stringr::str_detect(tolower(description), tolower(keyword))) |>
+        collect()
+      if (nrow(model_run_id)>1){
+
+        cli::cli_alert_info("Multiple model runs found with the keyword.")
+        cli::cli_ul()
+        cli::cli_li("{.emph id | description | blob_storage_url | srjpedata_version | updated_at }")
+        for (i in seq_len(nrow(model_run_id))){
+          cli::cli_li("{model_run_id$id[i]} | {model_run_id$description[i]} | {model_run_id$blob_storage_url[i]} | {model_run_id$srjpedata_version[i]} | {model_run_id$updated_at[i]}")
+        }
+        cli::cli_end()
+
+        stop("Search term resulted in more than 1 model run. Please see results in the details above and use the corresponding id to pull the specific model you want.")
+      }else if (nrow(model_run_id) == 0) {
+        stop("No model runs found with the given keyword. Please try another keyword.")
+      }
+
+      return(model_run_id)
+
+    }else{
+      model_run <- model_run_table |>
+        filter(id == model_run_id)
+
+      if (nrow(model_run) == 0){
+        stop("There is no model run with this ID. Please enter another model run ID.")
+      }
+
+      return(model_run)
+
+    }
+  }
+}
+
 #' @title Get Model Parameter Results
 #' @description This function retrieves the model parameter results from the JPE Database using a keyword(s) from the model run description or a model run ID.
 #'
@@ -229,7 +316,8 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
 
 get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 
-  model_run_id <- search_database(con, keyword, model_run_id, pull_url = FALSE)
+  model_run_id <- search_model_run(con, keyword, model_run_id) |>
+    pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
     filter(model_run_id == model_run_id) |>
@@ -287,14 +375,15 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #' # Example: Get a model object from Azure Blob Storage using a model run ID
 #' model_object <- get_model_object(con = db_connection, model_run_id = 12)
 #'
-#' summary(model_object)
+#' print(model_object$model.file)
 #' }
 #' @export
-get_model_object <- function(con, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY"), keyword=NULL, model_run_id=NULL){
+get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
-  model_run_url <- search_database(con, keyword, model_run_id, pull_url = TRUE)
+  model_run_url <- search_model_run(con, keyword, model_run_id) |>
+    pull(blob_storage_url)
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
   container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
@@ -408,76 +497,4 @@ insert_model_parameters <- function(con, model, blob_url) {
   return(res)
 }
 
-#' @keywords internal
-search_database <- function(con, keyword=NULL, model_run_id=NULL, pull_url=FALSE){
-  model_run_table <- tbl(con, "model_run")
-
-  if (is.null(keyword) && is.null(model_run_id)){
-    if(pull_url){
-      latest_model_run_url <- model_run_table |>
-        arrange(desc("updated_at")) |>
-        head(1) |>
-        pull(blob_storage_url)
-      return(latest_model_url)
-    }else{
-      latest_model_run_id <- model_run_table |>
-        arrange(desc("updated_at")) |>
-        head(1) |>
-        pull(id)
-      return(latest_model_run_id)
-    }
-
-  }else if(!is.null(keyword)){
-    model_run_id <- model_run_table |>
-      filter(stringr::str_detect(tolower(description), tolower(keyword))) |>
-      collect()
-    if (nrow(model_run_id)>1){
-
-      cli::cli_alert_info("Multiple model runs found with the keyword.")
-      cli::cli_ul()
-      cli::cli_li("{.emph id | description | blob_storage_url | srjpedata_version | updated_at }")
-      for (i in seq_len(nrow(model_run_id))){
-        cli::cli_li("{model_run_id$id[i]} | {model_run_id$description[i]} | {model_run_id$blob_storage_url[i]} | {model_run_id$srjpedata_version[i]} | {model_run_id$updated_at[i]}")
-      }
-      cli::cli_end()
-
-      stop("Search term resulted in more than 1 model run. Please see results and enter ID.")
-    }else if (nrow(model_run_id) == 0) {
-      stop("No model runs found with the given keyword. Please try another keyword.")
-    }
-    if(pull_url){
-      model_run_url <- model_run_id |>
-        pull(blob_storage_url)
-      return(model_run_url)
-    }else{
-      model_run_id <- model_run_id |> pull(id)
-      return(model_run_id)
-    }
-
-
-  }else{
-    if(pull_url){
-      model_run_url <- model_run_table |>
-        filter(id == model_run_id) |>
-        pull(blob_storage_url)
-
-      if (length(model_run_url) == 0){
-        stop("There is no model run with this ID. Please enter another model run ID.")
-      }
-
-      return(model_run_url)
-    }else{
-      model_run_id <- model_run_table |>
-        filter(id == model_run_id) |>
-        pull(id)
-
-      if (length(model_run_id) == 0){
-        stop("There is no model run with this ID. Please enter another model run ID.")
-      }
-
-      return(model_run_id)
-
-    }
-  }
-}
 
