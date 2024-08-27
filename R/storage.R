@@ -281,13 +281,12 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #' @return The model object retrieved from the Azure Blob Storage.
 #' #' @examples
 #' \dontrun{
-# Example: Load a model object from Azure Blob Storage using a keyword
+# Example: Get a model object from Azure Blob Storage using a keyword
 #' model_object <- get_model_object(con = db_connection, keyword = "model description")
 #'
-#' # Example: Load a model object from Azure Blob Storage using a model run ID
+#' # Example: Get a model object from Azure Blob Storage using a model run ID
 #' model_object <- get_model_object(con = db_connection, model_run_id = 12)
 #'
-#' # Example: Use the loaded model object
 #' summary(model_object)
 #' }
 #' @export
