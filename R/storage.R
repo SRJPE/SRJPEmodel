@@ -44,7 +44,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
     ...
   )
 
-  total_run_rows <- insert_model_run(con, data, blob_url)
+  total_run_rows <- insert_model_run(con, data, blob_url, description)
   message(glue::glue("Inserted new model run into database."))
   total_rows <- insert_model_parameters(con, data, blob_url)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
@@ -61,7 +61,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
 #' with the name `AZ_CONTAINER_ACCESS_KEY` is retrived, optionally you can directly pass in a value.
 #'
 #' @returns An `AzureStore` storage container object
-#' @
+#' @keywords internal
 setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
   if (access_key == "") {
     stop("access key is required in order to write and read from the azure boad", call. = FALSE)
@@ -199,12 +199,12 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
   return(data_url)
 }
 
-#' @title Load Model Parameter Results
-#' @description This function retrieves model parameters and associated metadata from the Azure JPE Database.
+#' @title Get Model Parameter Results
+#' @description This function retrieves the model parameter results from the JPE Database using a keyword(s) from the model run description or a model run ID.
 #'
-#' @param con a connection object to the database.
-#' @param model_name A string specifying the model name stored in the database. This is used to filter and retrieve
-#' the corresponding model parameters.
+#' @param con A connection object to the database.
+#' @param keyword An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.
+#' @param model_run_id An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither `keyword` nor `model_run_id` is provided, the latest model run is used.
 #' @return A tibble containing model parameters.
 #'
 #' #' @examples
@@ -216,23 +216,20 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
 #'                  user = "your_username",
 #'                  password = "your_password")
 #'
-#' # Load model parameters for a given model name
-#' your_model_name = "missing_mark_recap.bug_v2"
-#' model_results <- load_model_results(con, "your_model_name")
+#' # Example: get model parameters from Azure JPE Data Storage using a keyword
+#' model_results <- get_model_results_parameters(con, keyword = "model description")
 #' print(model_results)
+#'
+#' Example: get model parameters from Azure JPE Data Storage using a model run ID
+#' model_results <- get_model_results_parameters(con, keyword = "12")
+#'
 #' dbDisconnect(con)
 #' }
 #' @export
-load_model_results <- function(con, model_name){
-  model_id <- tbl(con, "model_name") |>
-    filter(name == model_name) |>
-    select(id) |>
-    pull()
 
-  model_run_id <- tbl(con, "model_run") |>
-    filter(model_name_id == model_id) |>
-    select(id) |>
-    pull()
+get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
+
+  model_run_id <- search_database(con, keyword, model_run_id, pull_url = FALSE)
 
   model_parameters <- tbl(con, "model_parameters") |>
     filter(model_run_id == model_run_id) |>
@@ -273,37 +270,40 @@ load_model_results <- function(con, model_name){
   return(model_parameters)
 }
 
-#' @title Load Model Object
-#' @description This function retrieves the model object (.Rds file) from Azure Blob Storage using a specified blob URL.
+#' @title Get Model Object
+#' @description This function retrieves the model object (.Rds file) from Azure Blob Storage using a keyword from the model run description or a model run ID.
 #'
-#' @param blob_url A string specifying the URL of the blob in Azure Blob Storage where the model object is stored.
+#' @param con A connection object to the database.
 #' @param access_key A string specifying the Azure storage access key with read permissions. By default, it retrieves from the environment variable `AZ_CONTAINER_ACCESS_KEY`.
+#' @param keyword An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.
+#' @param model_run_id An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither `keyword` nor `model_run_id` is provided, the latest model run is used.
 #'
 #' @return The model object retrieved from the Azure Blob Storage.
 #' #' @examples
 #' \dontrun{
-#' # Example: Load a model object from Azure Blob Storage
-#' model_object <- load_model_object(blob_url = "https://mystorageaccount.blob.core.windows.net/mycontainer/model_name.rds")
+# Example: Load a model object from Azure Blob Storage using a keyword
+#' model_object <- get_model_object(con = db_connection, keyword = "model description")
+#'
+#' # Example: Load a model object from Azure Blob Storage using a model run ID
+#' model_object <- get_model_object(con = db_connection, model_run_id = 12)
 #'
 #' # Example: Use the loaded model object
 #' summary(model_object)
 #' }
 #' @export
-load_model_object <- function(blob_url, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
+get_model_object <- function(con, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY"), keyword=NULL, model_run_id=NULL){
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
+  model_run_url <- search_database(con, keyword, model_run_id, pull_url = TRUE)
 
-  storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", blob_url)
-  container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", blob_url)
-  blob_path <- sub("^.*model-fits/", "", blob_url)
+  storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
+  container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
+  blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
-  store <- setup_azure_blob_backend(storage_account, access_key)
-  container <- AzureStor::blob_container(store, container_name)
-  temp_file <- tempfile(fileext = ".rds")
-  AzureStor::download_blob(container, src = blob_path, dest = temp_file)
+  board <- model_pin_board(storage_account, container_name)
+  model_object <- pins::pin_read(model_board, blob_path)
 
-  model_object <- readRDS(temp_file)
   return(model_object)
 }
 
@@ -327,13 +327,14 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url){
+insert_model_run <- function(con, model, blob_url, description){
   model_final_results <- model$final_results
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
       select(model_name_id) |> unique()
     blob_storage_url <- blob_url
     srjpedata_version <- model_final_results$srjpedata_version |> unique()
+    model_run_description <- description
 
     if(length(model_name_id) != 1){
       stop("Error: There are multiple model name being uploaded. Please only upload one.")
@@ -349,7 +350,8 @@ insert_model_run <- function(con, model, blob_url){
         ) VALUES (
           UNNEST(ARRAY[{blob_storage_url*}]),
           UNNEST(ARRAY[{model_name_id*}]),
-          UNNEST(ARRAY[{srjpedata_version*}])
+          UNNEST(ARRAY[{srjpedata_version*}]),
+          UNNEST(ARRAY[{model_run_description*}])
         );",
       .con = con
     )
@@ -405,5 +407,78 @@ insert_model_parameters <- function(con, model, blob_url) {
   res <- DBI::dbExecute(con, query)
 
   return(res)
+}
+
+#' @keywords internal
+search_database <- function(con, keyword=NULL, model_run_id=NULL, pull_url=FALSE){
+  model_run_table <- tbl(con, "model_run")
+
+  if (is.null(keyword) && is.null(model_run_id)){
+    if(pull_url){
+      latest_model_run_url <- model_run_table |>
+        arrange(desc("updated_at")) |>
+        head(1) |>
+        pull(blob_storage_url)
+      return(latest_model_url)
+    }else{
+      latest_model_run_id <- model_run_table |>
+        arrange(desc("updated_at")) |>
+        head(1) |>
+        pull(id)
+      return(latest_model_run_id)
+    }
+
+  }else if(!is.null(keyword)){
+    model_run_id <- model_run_table |>
+      filter(stringr::str_detect(tolower(description), tolower(keyword))) |>
+      collect()
+    if (nrow(model_run_id)>1){
+
+      cli::cli_alert_info("Multiple model runs found with the keyword.")
+      cli::cli_ul()
+      cli::cli_li("{.emph id | description | blob_storage_url | srjpedata_version | updated_at }")
+      for (i in seq_len(nrow(model_run_id))){
+        cli::cli_li("{model_run_id$id[i]} | {model_run_id$description[i]} | {model_run_id$blob_storage_url[i]} | {model_run_id$srjpedata_version[i]} | {model_run_id$updated_at[i]}")
+      }
+      cli::cli_end()
+
+      stop("Search term resulted in more than 1 model run. Please see results and enter ID.")
+    }else if (nrow(model_run_id) == 0) {
+      stop("No model runs found with the given keyword. Please try another keyword.")
+    }
+    if(pull_url){
+      model_run_url <- model_run_id |>
+        pull(blob_storage_url)
+      return(model_run_url)
+    }else{
+      model_run_id <- model_run_id |> pull(id)
+      return(model_run_id)
+    }
+
+
+  }else{
+    if(pull_url){
+      model_run_url <- model_run_table |>
+        filter(id == model_run_id) |>
+        pull(blob_storage_url)
+
+      if (length(model_run_url) == 0){
+        stop("There is no model run with this ID. Please enter another model run ID.")
+      }
+
+      return(model_run_url)
+    }else{
+      model_run_id <- model_run_table |>
+        filter(id == model_run_id) |>
+        pull(id)
+
+      if (length(model_run_id) == 0){
+        stop("There is no model run with this ID. Please enter another model run ID.")
+      }
+
+      return(model_run_id)
+
+    }
+  }
 }
 
