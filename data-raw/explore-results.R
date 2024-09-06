@@ -6,12 +6,17 @@ library(scales)
 
 # bt-spas-x ---------------------------------------------------------------
 
+# TODO replace these with the SRJPEdata objects when merged in
+weekly_juvenile_abundance_catch_data <- read_csv("~/Downloads/catch_data_new.csv")
+weekly_juvenile_abundance_efficiency_data <- read_csv("~/Downloads/efficiency_data_new.csv")
+
 # TODO added check in get_summary_table() that filters out non convergence
 # single run
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                          bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
+                                          weekly_juvenile_abundance_catch_data,
+                                          weekly_juvenile_abundance_efficiency_data,
                                           site = "ubc",
-                                          run_year = 2004,
+                                          run_year = 2009,
                                           lifestage = "fry",
                                           effort_adjust = F,
                                           # when running on remote computer, we have the WinBUGS14 in this folder
@@ -22,6 +27,7 @@ bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           debug_mode = FALSE,
                                           # TODO remove once we make a decision
                                           no_cut = T)
+write_rds(bt_spas_x_results, "data-raw/juvenile_abundance/ubc_2009_2024-09-6.rds")
 results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
 
 # plot single run results
