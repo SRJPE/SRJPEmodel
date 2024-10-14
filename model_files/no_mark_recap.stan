@@ -1,21 +1,21 @@
 data {
-  int<lower=0> Ntribs;          // number of tributaries
-  int<lower=0> Nmr;             // number of MR experiments
-  int<lower=0> Nwomr;           // number of strata without MR data
-  int<lower=0> Nstrata;         // total number of strata
-  int<lower=0> Nstrata_wc;      // strata with unmarked catch observations
-  int<lower=0> Releases[Nmr];  // number of releases in MR experiments
-  int<lower=0> Recaptures[Nmr]; // number of recaptures in MR experiments
-  int u[Nstrata_wc]; // Unmarked catch observations
-  int Uind_woMR[Nwomr]; // Indices for strata without MR data
+  int Ntribs;          // number of tributaries
+  int Nmr;             // number of MR experiments
+  int Nwomr;           // number of strata without MR data
+  int Nstrata;         // total number of strata
+  int Nstrata_wc;      // strata with unmarked catch observations
+  int Releases[Nmr];  // number of releases in MR experiments
+  int Recaptures[Nmr]; // number of recaptures in MR experiments
+  array[Nstrata_wc] int u; // Unmarked catch observations
+  array[Nwomr] int Uind_woMR; // Indices for strata without MR data
   vector[Nmr] mr_flow;          // flow data for MR experiments
   vector[Nwomr] catch_flow;     // flow data for strata without MR data
-  int<lower=1, upper=Ntribs> ind_trib[Nmr]; // tributary index for each MR experiment
-  int<lower=1, upper=Ntribs> use_trib; // tributary being modeled
+  array[Nmr] int ind_trib; // tributary index for each MR experiment
+  int use_trib; // tributary being modeled
   int K;                 // Number of columns in the bspline basis matrix
   matrix[Nstrata, K] ZP;        // design matrix for splines
-  real lgN_max[Nstrata_wc];     // upper bound for logN in observations
-  int<lower=0> Uwc_ind[Nstrata_wc]; // indices for unmarked catch observations
+  array[Nstrata_wc] real lgN_max; // upper bound for logN in observations
+  array[Nstrata_wc] int Uwc_ind;// indices for unmarked catch observations
 }
 
 parameters {
@@ -26,8 +26,8 @@ parameters {
   real<lower=0.01> pro_tau_P;      // precision of process error
   real<lower=0.01> tau_N;          // precision for spline parameters
   real<lower=0.01> tau_Ne;         // precision for extra-spline variation
-  real b_flow[Ntribs];        // tributary-specific flow effects
-  real b0_pCap[Ntribs];       // tributary-specific pCap intercepts
+  array[Ntribs] real b_flow; // tributary-specific flow effects
+  array[Ntribs] real b0_pCap; // tributary-specific pCap intercepts
   vector[K] b_sp;               // spline coefficients
   vector[Nmr] pro_dev_P;        // process deviations for MR experiments
   vector[Nwomr] pro_dev;        // process deviations for unmarked data
@@ -41,10 +41,10 @@ transformed parameters {
   real sd_N; // Standard deviation for spline coefficients
   real sd_Ne; // Standard deviation for extra-spline variation
   vector[Nstrata] N;            // abundance estimates
-  real pCap_U[Nstrata];       // pCap estimates for strata without MR data
-  real Usp[Nstrata]; // Spline-based estimate of log U
-  real logit_pCap[Nmr]; // Logit of pCap for MR data
-  real logit_pCap_Sim[Nwomr]; // Logit of pCap for simulated data
+  array[Nstrata] real pCap_U;// pCap estimates for strata without MR data
+  array[Nstrata] real Usp; // Spline-based estimate of log U
+  array[Nmr] real logit_pCap; // Logit of pCap for MR data
+  array[Nwomr] real logit_pCap_Sim;// Logit of pCap for simulated data
 
   // Compute derived quantities
   trib_sd_P = 1/sqrt(trib_tau_P);
@@ -82,8 +82,9 @@ model {
   tau_Ne ~ gamma(1, 0.05);
 
   // Spline coefficient priors
+  real xi;
   for (i in 3:K) {
-    real xi = 2 * b_sp[i-1] - b_sp[i-2];
+    xi = 2 * b_sp[i-1] - b_sp[i-2];
     b_sp[i] ~ normal(xi, sd_N);//replace tau_N with sd_N
   }
 
@@ -110,13 +111,16 @@ model {
   }
 
   // Likelihood for unmarked catch observations
+  real bcl;
+  real kern;
   for (i in 1:Nstrata_wc) {
-      real bcl=lgamma(N[Uwc_ind[i]]+1)-lgamma(u[Uwc_ind[i]]+1)-lgamma(N[Uwc_ind[i]]-u[Uwc_ind[i]]);//log of binomial coefficent
-      real kern=u[Uwc_ind[i]]*log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i])*log(1-pCap_U[Uwc_ind[i]]); //log of binomial kernal
+      bcl=lgamma(N[Uwc_ind[i]]+1)-lgamma(u[Uwc_ind[i]]+1)-lgamma(N[Uwc_ind[i]]-u[Uwc_ind[i]]);//log of binomial coefficent
+      kern=u[Uwc_ind[i]]*log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i])*log(1-pCap_U[Uwc_ind[i]]); //log of binomial kernal
       target += bcl + kern;//log of binomial probability
   }
 }
 
 generated quantities{
-  real Ntot=sum(N[]);
+  real Ntot = sum(N[]);
+  real lg_Ntot = sum(lg_N[]);
 }

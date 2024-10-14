@@ -6,19 +6,19 @@ data {
   int Nstrata; // Total number of strata
   int Nstrata_wc; // Number of strata with unmarked catch observations
   int use_trib; // index of site being estimated
-  int ind_trib[Nmr]; // Index for tributaries in MR data
-  int ind_pCap[Nwmr];
-  real mr_flow[Nmr]; // Flow values for MR data
-  int Releases[Nmr]; // Number of releases in MR data
-  int Recaptures[Nmr]; // Number of recaptures in MR data
-  real catch_flow[Nstrata_wc]; // Flow values for unmarked catch strata without MR data
-  int u[Nstrata_wc]; // Unmarked catch observations
-  int Uwc_ind[Nstrata_wc]; // Indices for unmarked catch strata
-  int Uind_wMR[Nwmr]; // Indices for strata with MR data
-  int Uind_woMR[Nwomr]; // Indices for strata without MR data
+  array[Nmr] int ind_trib; // Index for tributaries in MR data
+  array[Nwmr] int ind_pCap;
+  array[Nmr] real mr_flow;// Flow values for MR data
+  array[Nmr] int Releases; // Number of releases in MR data
+  array[Nmr] int Recaptures; // Number of recaptures in MR data
+  array[Nstrata_wc] real catch_flow; // Flow values for unmarked catch strata without MR data
+  array[Nstrata_wc] int u; // Unmarked catch observations
+  array[Nstrata_wc] int Uwc_ind; // Indices for unmarked catch strata
+  array[Nwmr] int Uind_wMR;// Indices for strata with MR data
+  array[Nwomr] int Uind_woMR; // Indices for strata without MR data
   int K;                 // Number of columns in the bspline basis matrix
   matrix[Nstrata, K] ZP; // Design matrix for spline estimation
-  real lgN_max[Nstrata]; // Maximum values for log abundances
+  array[Nstrata] real lgN_max;// Maximum values for log abundances
 }
 
 parameters {
@@ -29,12 +29,12 @@ parameters {
   real<lower=0.01> pro_tau_P; // Process error precision
   real<lower=0.01> tau_N; // Precision for spline coefficients
   real<lower=0.01> tau_Ne; // Extra-spline variation precision
-  real b_flow[Ntribs]; // Flow effect on pCap
-  real b0_pCap[Ntribs]; // Tributary-specific mean pCap
+  array[Ntribs] real b_flow; // Flow effect on pCap
+  array[Ntribs] real b0_pCap; // Tributary-specific mean pCap
   vector[K] b_sp; // Spline coefficients
-  real pro_dev_P[Nmr]; // Process deviations for MR data
-  real pro_dev[Nwomr]; // Process deviations for unmarked catch strata without MR data
-  real lg_N[Nstrata]; // Log abundance estimates
+  array[Nmr] real pro_dev_P; // Process deviations for MR data
+  array[Nwomr] real pro_dev; // Process deviations for unmarked catch strata without MR data
+  array[Nstrata] real lg_N; // Log abundance estimates
 }
 
 transformed parameters {
@@ -43,11 +43,10 @@ transformed parameters {
   real flow_sd_P; // Standard deviation for flow effect on pCap
   real sd_N; // Standard deviation for spline coefficients
   real sd_Ne; // Standard deviation for extra-spline variation
-  real logit_pCap[Nmr]; // Logit of pCap for MR data
-  real logit_pCap_Sim[Nwomr]; // Logit of pCap for simulated data
-  real Usp[Nstrata]; // Spline-based estimate of log U
-  real pCap_U[Nstrata]; // Estimated pCaps for all strata
-  //real pCap[Nmr];   // TODO pull out pCaps as their own for reporting
+  array[Nmr] real logit_pCap; // Logit of pCap for MR data
+  array[Nwomr] real logit_pCap_Sim; // Logit of pCap for simulated data
+  array[Nstrata] real Usp; // Spline-based estimate of log U
+  array[Nstrata] real pCap_U; // Estimated pCaps for all strata
   vector[Nstrata] N; // Abundance estimates
 
   // Compute derived quantities
@@ -89,10 +88,9 @@ model {
   tau_Ne ~ gamma(1, 0.05);
 
   // Spline coefficient priors
-  //b_sp[1] ~ uniform(-10,10);//in bugs was dflat() = improper uniform prior
-  //b_sp[2] ~ uniform(-10,10);//stan defaults to improper uniform prior if not sampling statement for parameter is made
+  real xi;
   for (i in 3:K) {
-    real xi = 2 * b_sp[i-1] - b_sp[i-2];
+    xi = 2 * b_sp[i-1] - b_sp[i-2];
     b_sp[i] ~ normal(xi, sd_N);//replace tau_N with sd_N
   }
 
@@ -110,7 +108,6 @@ model {
   // Likelihood for MR data
   for (i in 1:Nmr) {
     pro_dev_P[i] ~ normal(0, pro_sd_P);
-    //Recaptures[i] ~ binomial(Releases[i], inv_logit(logit_pCap[i]));
     Recaptures[i] ~ binomial_logit(Releases[i], logit_pCap[i]);
   }
 
@@ -120,14 +117,16 @@ model {
   }
 
   // Likelihood for unmarked catch observations
+  real bcl;
+  real kern;
   for (i in 1:Nstrata_wc) {
-      //u[Uwc_ind[i]] ~ binomial(N[Uwc_ind[i]], pCap_U[Uwc_ind[i]]);
-      real bcl=lgamma(N[Uwc_ind[i]]+1)-lgamma(u[Uwc_ind[i]]+1)-lgamma(N[Uwc_ind[i]]-u[Uwc_ind[i]]);//log of binomial coefficent
-      real kern=u[Uwc_ind[i]]*log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i])*log(1-pCap_U[Uwc_ind[i]]); //log of binomial kernal
+      bcl=lgamma(N[Uwc_ind[i]]+1)-lgamma(u[Uwc_ind[i]]+1)-lgamma(N[Uwc_ind[i]]-u[Uwc_ind[i]]);//log of binomial coefficent
+      kern=u[Uwc_ind[i]]*log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i])*log(1-pCap_U[Uwc_ind[i]]); //log of binomial kernal
       target += bcl + kern;//log of binomial probability
   }
 }
 
 generated quantities{
-  real Ntot=sum(N[]);
+  real Ntot = sum(N[]);
+  real lg_Ntot = sum(lg_N[]);
 }

@@ -3,16 +3,16 @@ data {
   int Nmr;                    // number of MR experiments
   int Nstrata;                // total number of strata
   int Nstrata_wc;             // strata with unmarked catch observations
-  int ind_pCap[Nstrata];      // indices for pCap corresponding to strata
-  int Releases[Nmr];          // number of releases in MR experiments
-  int Recaptures[Nmr];        // number of recaptures in MR experiments
-  int u[Nstrata_wc];
-  real mr_flow [Nmr];                 // flow data for MR experiments
+  array[Nstrata] int ind_pCap; // indices for pCap corresponding to strata
+  array[Nmr] int Releases; // number of releases in MR experiments
+  array[Nmr] int Recaptures;// number of recaptures in MR experiments
+  array[Nstrata_wc] int u;
+  array[Nmr] real mr_flow;// flow data for MR experiments
   int K;                 // Number of columns in the bspline basis matrix
   matrix[Nstrata, K] ZP;               // design matrix for splines
-  real lgN_max[Nstrata];               // upper bound for logN in observations
-  int ind_trib[Nmr]; // tributary index for each MR experiment
-  int Uwc_ind[Nstrata_wc]; // indices for unmarked catch observations
+  array[Nstrata] real lgN_max; // upper bound for logN in observations
+  array[Nmr] int ind_trib;// tributary index for each MR experiment
+  array[Nstrata_wc] int Uwc_ind;// indices for unmarked catch observations
 }
 
 parameters {
@@ -23,8 +23,8 @@ parameters {
   real<lower=0.01> pro_tau_P; // Process error precision
   real<lower=0.01> tau_N; // Precision for spline coefficients
   real<lower=0.01> tau_Ne; // Extra-spline variation precision
-  real b0_pCap[Ntribs];              // tributary-specific pCap intercepts
-  real b_flow[Ntribs];               // tributary-specific flow effects
+  array[Ntribs] real b0_pCap;// tributary-specific pCap intercepts
+  array[Ntribs] real b_flow;// tributary-specific flow effects
   vector[K] b_sp;                      // spline coefficients
   vector[Nmr] pro_dev_P;               // process deviations for MR experiments
   vector[Nstrata] lg_N;                // log abundance estimates
@@ -36,10 +36,17 @@ transformed parameters {
   real pro_sd_P;
   real sd_N; // Standard deviation for spline coefficients
   real sd_Ne; // Standard deviation for extra-spline variation
-  real logit_pCap[Nmr]; // Logit of pCap for MR data
-  real Usp[Nstrata]; // Spline-based estimate of log U
-  real pCap_U[Nstrata]; // Estimated pCaps for all strata
+  array[Nmr] real logit_pCap;// Logit of pCap for MR data
+  array[Nstrata] real Usp;// Spline-based estimate of log U
+  array[Nstrata] real pCap_U;// Estimated pCaps for all strata
   vector[Nstrata] N; // Abundance estimates
+
+  // Compute derived quantities
+  trib_sd_P = 1/sqrt(trib_tau_P);
+  flow_sd_P = 1/sqrt(flow_tau_P);
+  pro_sd_P = 1 / sqrt(pro_tau_P);
+  sd_N = 1 / sqrt(tau_N);
+  sd_Ne = 1 / sqrt(tau_Ne);
 
   // Calculate logit of pCap for MR data
   for (i in 1:Nmr) {
@@ -64,14 +71,16 @@ model {
   // Priors
   trib_mu_P ~ normal(0, 1000);
   trib_tau_P ~ gamma(0.001, 0.001);
+  flow_mu_P ~ normal(0, 1000);
   flow_tau_P ~ gamma(0.001, 0.001);
   pro_tau_P ~ gamma(0.001, 0.001);
   tau_N ~ gamma(1, 0.05);
   tau_Ne ~ gamma(1, 0.05);
 
   // Spline coefficient priors
+  real xi;
   for (i in 3:K) {
-    real xi = 2 * b_sp[i-1] - b_sp[i-2];
+    xi = 2 * b_sp[i-1] - b_sp[i-2];
     b_sp[i] ~ normal(xi, sd_N);//replace tau_N with sd_N
   }
 
@@ -95,13 +104,16 @@ model {
   }
 
   // Likelihood for unmarked catch observations
+  real bcl;
+  real kern;
   for (i in 1:Nstrata_wc) {
-      real bcl = lgamma(N[Uwc_ind[i]]+1) - lgamma(u[Uwc_ind[i]]+1) - lgamma(N[Uwc_ind[i]] - u[Uwc_ind[i]]);//log of binomial coefficent
-      real kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
+      bcl = lgamma(N[Uwc_ind[i]]+1) - lgamma(u[Uwc_ind[i]]+1) - lgamma(N[Uwc_ind[i]] - u[Uwc_ind[i]]);//log of binomial coefficent
+      kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
       target += bcl + kern;//log of binomial probability
   }
 }
 
 generated quantities {
-  real Ntot = sum(N);
+  real Ntot = sum(N[]);
+  real lg_Ntot = sum(lg_N[]);
 }
