@@ -17,7 +17,7 @@ data {
   array[Nwmr] int Uind_wMR;// Indices for strata with MR data
   array[Nwomr] int Uind_woMR; // Indices for strata without MR data
   int K;                 // Number of columns in the bspline basis matrix
-  matrix[Nstrata, K] ZP; // Design matrix for spline estimation
+  array[Nstrata, K] real ZP; // design matrix for splines
   array[Nstrata] real lgN_max;// Maximum values for log abundances
 }
 

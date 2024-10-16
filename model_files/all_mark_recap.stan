@@ -9,7 +9,7 @@ data {
   array[Nstrata_wc] int u;
   array[Nmr] real mr_flow;// flow data for MR experiments
   int K;                 // Number of columns in the bspline basis matrix
-  matrix[Nstrata, K] ZP;               // design matrix for splines
+  array[Nstrata, K] real ZP; // design matrix for splines
   array[Nstrata] real lgN_max; // upper bound for logN in observations
   array[Nmr] int ind_trib;// tributary index for each MR experiment
   array[Nstrata_wc] int Uwc_ind;// indices for unmarked catch observations
