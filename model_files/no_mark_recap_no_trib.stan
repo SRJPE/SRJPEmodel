@@ -27,7 +27,7 @@ parameters {
   real<lower=0.01> tau_Ne; // Extra-spline variation precision
   array[Ntribs] real b_flow;// Flow effect on pCap
   array[Ntribs] real b0_pCap;// Tributary-specific mean pCap
-  vector[K] b_sp; // Spline coefficients
+  array[K] real b_sp; // Spline coefficients
   array[Nmr] real pro_dev_P; // Process deviations for MR data
   array[Nwomr] real pro_dev;// Process deviations for unmarked catch strata without MR data
   array[Nstrata] real lg_N; // Log abundance estimates
