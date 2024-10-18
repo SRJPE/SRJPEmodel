@@ -5,8 +5,6 @@
 \title{Run Passage to Spawner (P2S) STAN Model}
 \usage{
 run_passage_to_spawner_model(
-  observed_adult_input,
-  adult_model_covariates,
   stream_name,
   selected_covariate,
   extract_predicted_spawners = c(FALSE, TRUE)

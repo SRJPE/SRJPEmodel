@@ -31,3 +31,11 @@ test <- rstan::stan(model_name = "ubc_2009_stan_test",
 parlist <- c("trib_mu_P", "trib_sd_P", "flow_mu_P", "pro_sd_P", "flow_sd_P")
 
 print(rstan::summary(test, pars = "b0_pCap")$summary)
+
+test <- run_single_bt_spas_x_stan(SRJPEmodel::bt_spas_x_bayes_params,
+                                  weekly_juvenile_abundance_catch_data,
+                                  weekly_juvenile_abundance_efficiency_data,
+                                  "ubc",
+                                  run_year = 2009,
+                                  lifestage = "fry",
+                                  effort_adjust = F)

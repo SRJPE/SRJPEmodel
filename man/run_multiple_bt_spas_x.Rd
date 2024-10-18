@@ -6,15 +6,23 @@
 \usage{
 run_multiple_bt_spas_x(
   bt_spas_x_bayes_params,
-  bt_spas_x_input_data,
+  weekly_juvenile_abundance_catch_data,
+  weekly_juvenile_abundance_efficiency_data,
+  sites_to_run = NULL,
   effort_adjust,
   bugs_directory,
-  debug_mode
+  debug_mode,
+  no_cut = c(F, T)
 )
 }
 \arguments{
-\item{bt_spas_x_input_data}{data frame containing the same variables as
-\code{?SRJPEdata::weekly_juvenile_abundance_model_data}}
+\item{weekly_juvenile_abundance_catch_data}{data frame containing weekly RST catch data. See
+\code{?SRJPEdata::weekly_juvenile_abundance_catch_data}}
+
+\item{weekly_juvenile_abundance_efficiency_data}{data frame containing weekly RST catch data. See
+\code{?SRJPEdata::weekly_juvenile_abundance_efficiency_data}}
+
+\item{sites_to_run}{a subset of site/run year/lifestage combinations in tibble format to run}
 
 \item{effort_adjust}{whether or not you want to use catch adjusted by effort}
 
@@ -24,8 +32,6 @@ run_multiple_bt_spas_x(
 
 \item{bt_spas_x_bayes_params:}{a list containing \code{number_mcmc}, \code{number_burnin}, \code{number_thin},
 and \code{number_chains}. Can use \code{SRJPEmodel::bt_spas_x_bayes_params}.}
-
-\item{lifestage}{the lifestage for which you want tor run the model. One of \code{yearling}, \code{fry}, and \code{smolt}.}
 }
 \value{
 a list containing the results for every unique \code{site} and \verb{run year} combination

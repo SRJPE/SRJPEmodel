@@ -480,19 +480,19 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
 #' @export
 #' @md
 get_bt_spas_x_data_list <- function(model_name, full_data_list) {
-  if(model_name == "all_mark_recap.bug") {
+  if(str_detect(model_name, "all_mark_recap")) {
     data_needed <- c("Nmr", "Ntribs" ,"ind_trib", "Releases", "Recaptures", "Nstrata",
                      "u", "K", "ZP", "ind_pCap", "Nstrata_wc", "Uwc_ind", "mr_flow", "lgN_max")
-  } else if(model_name == "missing_mark_recap.bug") {
+  } else if(str_detect(model_name, "missing_mark_recap")) {
     data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
                      "u", "K", "ZP", "ind_pCap", "Nwmr", "Nwomr",
                      "Uind_wMR", "Uind_woMR", "use_trib", "Nstrata_wc", "Uwc_ind",
                      "mr_flow", "catch_flow", "lgN_max")
-  } else if(model_name == "no_mark_recap.bug") {
+  } else if(str_detect(model_name, "no_mark_recap")) {
     data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
                      "u", "K", "ZP", "Nwomr", "Uind_woMR", "use_trib",
                      "Nstrata_wc", "Uwc_ind", "mr_flow", "catch_flow", "lgN_max")
-  } else if(model_name == "no_mark_recap_no_trib.bug") {
+  } else if(str_detect(model_name, "no_mark_recap_no_trib")) {
     data_needed <- c("Nmr", "Ntribs", "ind_trib", "Releases", "Recaptures", "Nstrata",
                      "u", "K", "ZP", "Nwomr", "Uind_woMR", "Nstrata_wc",
                      "Uwc_ind", "mr_flow", "catch_flow", "lgN_max")
@@ -598,4 +598,321 @@ extract_bt_spas_x_results <- function(model_fit_object) {
               "summary_output" = summary_output,
               "dic_output" = dic_output,
               "knots_output" = knots_output))
+}
+
+
+# STAN version ------------------------------------------------------------
+
+#' Call BT-SPAS-X using STAN
+#' @details This is a draft version of the function that calls STAN instead of WinBUGS.
+#' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
+#' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
+#' @param weekly_juvenile_abundance_catch_data data frame containing weekly RST catch data. See
+#' `?SRJPEdata::weekly_juvenile_abundance_catch_data`
+#' @param weekly_juvenile_abundance_efficiency_data data frame containing weekly RST catch data. See
+#' `?SRJPEdata::weekly_juvenile_abundance_efficiency_data`
+#' @param site site for which you want to fit the model
+#' @param run_year run year for which you want to fit the model
+#' @param lifetage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
+#' @param effort_adjust whether or not you want to use catch adjusted by effort
+#' @export
+#' @md
+run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
+                                       weekly_juvenile_abundance_catch_data,
+                                       weekly_juvenile_abundance_efficiency_data,
+                                       site, run_year, lifestage,
+                                       effort_adjust = c(T, F)) {
+
+  # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
+  # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
+  catch_data <- weekly_juvenile_abundance_catch_data |>
+    mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
+    filter(!filter_out,
+           run_year == !!run_year,
+           site == !!site,
+           week %in% c(seq(45, 53), seq(1, 22)),
+           life_stage %in% c(lifestage, NA)) |>
+    mutate(count = round(count, 0),
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+
+  if(nrow(catch_data) == 0) {
+    cli::cli_alert_warning(paste0("There is no catch data for site ", site,
+                                  ", run year ", run_year, ", and lifestage ", lifestage, ". Please try with a different combination of site and year."))
+    return(-99)
+  }
+
+  # get numbers for looping in BUGs code - abundance model
+  number_weeks_catch <- nrow(catch_data) # for looping through the catch dataset
+  indices_with_catch <- which(!is.na(catch_data$count)) # indices of weeks with catch data
+  number_weeks_with_catch <- length(indices_with_catch) # how many weeks actually have catch
+
+  # analyze efficiency trials for all relevant sites (do not filter to site)
+  # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
+  if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+    remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
+  } else {
+    remove_sites <- weekly_juvenile_abundance_efficiency_data |>
+      filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
+      distinct(site) |>
+      pull(site)
+  }
+
+  # prepare "mark recapture" dataset - all mark-recap trials in the system
+  mark_recapture_data <- weekly_juvenile_abundance_efficiency_data |>
+    # grab standardized_flow
+    left_join(weekly_juvenile_abundance_catch_data |>
+                select(year, week, stream, site, run_year, standardized_flow),
+              by = c("year", "week", "run_year", "stream", "site")) |>
+    # or do we want to filter just no number released?
+    dplyr::filter(!site %in% remove_sites &
+                    !is.na(standardized_flow),
+                  !is.na(number_released) &
+                    !is.na(number_recaptured)) |>
+    # right now there's lifestage in the dataset, so we have to do distinct()
+    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+
+  # bring together efficiency and catch data so that we can get the indices of
+  # catch data (hence left join) that correspond to certain efficiency trial
+  # information.
+  all_data_for_indexing <- left_join(catch_data, mark_recapture_data)
+
+  # get indexing for "mark recap" dataset (pCap model)
+  Ntribs <- length(unique(mark_recapture_data$site)) # number of sites (for pCap calculations)
+  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
+    nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
+  years_with_efficiency_experiments <- unique(mark_recapture_data$run_year) # years where efficiency experiments were done
+  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # indices of those sites where efficiency trials were performed, can be length = 0
+  indices_with_mark_recapture <- which(!is.na(all_data_for_indexing$number_released) &
+                                         !is.na(all_data_for_indexing$standardized_flow)) # indices of efficiency experiments in catch data
+  weeks_with_mark_recapture <- all_data_for_indexing$week[indices_with_mark_recapture] # weeks (in catch data) where mark recapture were performed
+  indices_pCap <- which(mark_recapture_data$site == site &
+                          mark_recapture_data$run_year == run_year &
+                          mark_recapture_data$week %in% weeks_with_mark_recapture)   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
+  indices_without_mark_recapture <- which(is.na(all_data_for_indexing$number_released) |
+                                            is.na(all_data_for_indexing$standardized_flow))   # indices (in catch data) where no mark recap were performed
+  indices_site_mark_recapture <- mark_recapture_data |>
+    group_by(site) |>
+    mutate(ID = cur_group_id()) |>
+    pull(ID)   # indices (in mark-recap data) for each site
+  number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
+  number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
+
+  # TODO keep this? so BUGS doesn't bomb
+  if(number_weeks_without_mark_recapture == 1) {
+    indices_without_mark_recapture <- c(indices_without_mark_recapture, -99)
+  }
+  if(number_weeks_with_mark_recapture == 1) {
+    indices_with_mark_recapture <- c(indices_with_mark_recapture, -99)
+  }
+
+  # set up b-spline basis matrix
+  # this corresponds to line 148-153 in josh_original_model_code.R
+  if(number_weeks_catch < 4) {
+    cli::cli_alert_warning(paste0("There are fewer than 4 weeks with catch data for ",
+                                  site, " and run year ", run_year, ". Spline parameters cannot function with fewer than 4 data points."))
+    return(-99)
+  }
+
+  # spline parameter calculation
+  spline_data <- SRJPEmodel::build_spline_data(number_weeks_catch, k_int = 4) # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
+
+  if(effort_adjust) {
+    weekly_catch_data <- catch_data$catch_standardized_by_hours_fished
+  } else {
+    weekly_catch_data <- catch_data$count
+  }
+
+  # build data list with ALL elements
+  full_data_list <- list("Nmr" = number_efficiency_experiments,
+                         "Ntribs" = Ntribs,
+                         "ind_trib" = indices_site_mark_recapture,
+                         "Releases" = mark_recapture_data$number_released,
+                         "Recaptures" = mark_recapture_data$number_recaptured,
+                         "Nstrata" = number_weeks_catch,
+                         "u" = weekly_catch_data,
+                         "K" = spline_data$K,
+                         "ZP" = spline_data$b_spline_matrix,
+                         "ind_pCap" = indices_pCap,
+                         "Nwmr" = number_weeks_with_mark_recapture,
+                         "Nwomr" = number_weeks_without_mark_recapture,
+                         "Uind_wMR" = indices_with_mark_recapture,
+                         "Uind_woMR" = indices_without_mark_recapture,
+                         "use_trib" = indices_sites_pCap,
+                         "Nstrata_wc" = number_weeks_with_catch,
+                         "Uwc_ind" = indices_with_catch,
+                         "mr_flow" = mark_recapture_data$standardized_flow,
+                         "catch_flow" = catch_data$standardized_flow,
+                         "lgN_max" = catch_data$lgN_prior)
+
+  # use number of experiments at site to determine which model to call
+  number_experiments_at_site <- mark_recapture_data |>
+    distinct(site, run_year, week) |>
+    filter(site == !!site) |>
+    nrow()
+
+  if(number_experiments_at_site == 1) {
+    # TODO issue will be the inter-trial variance, and maybe we need a better
+    # TODO informative prior
+    cli::cli_abort("There is only one experiment at the selected site, and no model
+                   is available yet for that case")
+  }
+  # if efficiency trials occurred in the site
+  if(number_experiments_at_site > 1) {
+    if(number_weeks_without_mark_recapture == 0) {
+      # all weeks have efficiency trials
+      model_name <- "all_mark_recap.stan"
+    } else {
+      # some or all strata don't have efficiency trials
+      if(number_weeks_with_mark_recapture > 0) {
+        # some weeks have efficiency trials
+        model_name <- "missing_mark_recap.stan"
+      } else if(number_weeks_with_mark_recapture == 0) {
+        # no weeks have efficiency trials
+        model_name <- "no_mark_recap.stan"
+      }
+    }
+  } else if(number_experiments_at_site == 0) { # no efficiency trials were performed at that site
+    model_name <- "no_mark_recap_no_trib.stan"
+  }
+
+  data <- get_bt_spas_x_data_list(model_name, full_data_list)
+
+  # check data list for NaNs and Infs
+  cli::cli_process_start("Checking data inputs",
+                         msg_done = "Data checked",
+                         msg_failed = "Data check failed")
+  invisible(lapply(names(data), function(x) {
+    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    }
+  }))
+  cli::cli_process_done()
+
+  parameters <- c("trib_mu.P", "trib_sd.P", "flow_mu.P", "flow_sd.P", "pro_sd.P",
+                  "b0_pCap", "b_flow", "pCap_U", "N", "Ntot", "sd.N", "sd.Ne")
+
+  # initial parameter values
+  ini_b0_pCap <- rep(NA, Ntribs)
+  for(i in 1:Ntribs) {
+    irows = which(indices_site_mark_recapture == i)
+    ini_b0_pCap[i] = gtools::logit(sum(mark_recapture_data$number_recaptured[irows]) /
+                                     sum(mark_recapture_data$number_released[irows]))
+    if(is.nan(ini_b0_pCap[i]) | is.infinite(ini_b0_pCap[i])) {
+      # -Inf happens when number recaptured == 0, logit of 0 is -Inf
+      ini_b0_pCap[i] <- -5
+    }
+  }
+
+  ini_lgN <- catch_data |>
+    mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
+           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
+    pull(ini_lgN)
+
+  pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
+                                   sum(mark_recapture_data$number_released))
+
+  init_list <- list(trib_mu.P = pCap_mu_prior,
+                    b0_pCap = ini_b0_pCap,
+                    flow_mu.P = 0,
+                    b_flow = rep(0, Ntribs),
+                    trib_tau.P = 1,
+                    flow_tau.P = 1,
+                    pro_tau.P = 1,
+                    b_sp = rep(1, spline_data$K),
+                    lg_N = ini_lgN)
+
+
+  cli::cli_process_start("Checking init inputs",
+                         msg_done = "Inits checked",
+                         msg_failed = "Init check failed")
+  invisible(lapply(names(init_list), function(x) {
+    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    }
+  }))
+  cli::cli_process_done()
+
+  inits <- list(init_list, init_list, init_list)
+
+  # run the bugs model
+  results <- bt_spas_x_stan(data, inits, parameters, model_name, bt_spas_x_bayes_params)
+
+  return(results)
+}
+
+#' Execute BT-SPAS-X in STAN
+#' @details This function is called within `run_single_bt_spas_x_stan()` and calls the STAN code
+#' @param data a list containing the following elements:
+#' * **Nmr** number of unique mark-recapture experiments performed across tributaries, years and weeks
+#' * **Ntribs** number of tributaries to use for the pCap component of the model
+#' * **Nstrata** number of weeks with catch data
+#' * **Uwc_ind** number of weeks in catch data with associated pCap and flow data
+#' * **Nwomr** number of weeks in catch data without associated pCap and flow data
+#' * **Nstrata_wc** number of weeks in catch data with catch data (RST fished)
+#' * **indices_site_pCap** tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
+#' * **ind_trib** indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs
+#' * **ind_pCap** indices of weeks in mark-recapture table for U strata being estimated
+#' * **Uind_woMR** indices of weeks in catch data without associated pCap and flow data
+#' * **Uind_wMR** indices of weeks in catch data with associated pCap and flow data
+#' * **Uwc_ind** indices of weeks in catch data with catch data
+#' * **Releases** number of fish released for each mark-recapture experiment
+#' * **Recaptures** number of fish recaptured for each mark-recapture experiment
+#' * **u** weekly abundance
+#' * **mr_flow** standardized flow, averaged over recapture days (< 1 week)
+#' * **catch_flow** standardized flow, averaged by week
+#' * **K** number of columns in the bspline basis matrix
+#' * **ZP** The b_spline_matrix (bspline basis matrix. One row for each data point (1:Nstrata), and one column for each term in the cubic polynomial function (4) + number of knots)
+#' * **lgN_max** maxmimum possible value for log N across strata
+#' @param inits a list containing initial values for the following parameters:
+#' * **trib_mu.P** mean of hyper-distribution for site-effect
+#' * **b0_pCap** site effect on trap efficiency for each site
+#' * **flow_mu.P** mean of hyper-distribution for flow effect
+#' * **b_flow** flow effect on trap efficiency for each site
+#' * **trib_tau.P** used to estimate standard deviation of hyper-distribution for site effect
+#' * **flow_tau.P** used to estimate standard deviation of hyper-distribution for flow effect
+#' * **pro_tau.P** used to estimate standard deviation of zero-centered normal distribution for unexplained error
+#' * **b_sp** basis function of each spline node
+#' * **lg_N** predicted weekly abundance
+#' @param parameters a list of parameters to be estimated in the model:
+#' * **trib_mu.P** mean of hyper-distribution for site-effect
+#' * **trib_sd.P** standard deviation of hyper-distribution for site effect
+#' * **flow_mu.P** mean of hyper-distribution for flow effect
+#' * **flow_sd.P** standard deviation of hyper-distribution for flow effect
+#' * **pro_sd.P** standard deviation of zero-centered normal distribution for unexplained error
+#' * **b0_pCap** site effect on trap efficiency for each site
+#' * **b_flow** flow effect on trap efficiency for each site
+#' * **pCap_U** weekly trap efficiency (capture probability)
+#' * **N** weekly juvenile abundance
+#' * **Ntot** total juvenile abundance for the year
+#' * **sd.N** standard deviation controlling flexibility of spline weekly abundance curve
+#' * **sd.Ne** standard deviation controlling extent of non-spline variation in weekly abundance
+#' @param model_name model to be called based on number of efficiency trials available for the selected site. Either
+#' * **all_mark_recap.bug** all weeks with catch have corresponding efficiency trials
+#' * **missing_mark_recap.bug** some weeks with catch have corresponding efficiency trials
+#' * **no_mark_recap_no_trib.bug** the selected site has no efficiency data at all
+#' * **no_mark_recap.bug** no weeks with catch have corresponding efficiency trials
+#' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
+#' and `number_chains`.
+#' @returns a stanfit object
+#' @export
+#' @md
+bt_spas_x_stan <- function(data, inits, parameters, model_name,
+                           bt_spas_x_bayes_params) {
+
+  cli::cli_process_start("STAN model running")
+  stan_model <- read_file(paste0("model_files/", model_name))
+
+  # options(mc.cores=parallel::detectCores())
+  # rstan_options(auto_write=TRUE)
+
+  model_results <- rstan::stan(model_code = stan_model,
+                               data = data,
+                               init = inits,
+                               chains = bt_spas_x_bayes_params$number_chains,
+                               thin = bt_spas_x_bayes_params$number_thin,
+                               iter = bt_spas_x_bayes_params$number_mcmc,
+                               warmup = bt_spas_x_bayes_params$number_burnin,
+                               seed = 84735)
+
+    return(model_results)
 }

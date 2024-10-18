@@ -10,6 +10,7 @@ get_summary_table(
   run_year,
   lifestage,
   weeks_fit,
+  sites_fit,
   model_name
 )
 }

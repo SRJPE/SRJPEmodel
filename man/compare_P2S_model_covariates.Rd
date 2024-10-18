@@ -4,7 +4,7 @@
 \alias{compare_P2S_model_covariates}
 \title{Compare Environmental Covariates in Passage to Spawner (P2S) Model}
 \usage{
-compare_P2S_model_covariates(observed_adult_input, adult_model_covariates)
+compare_P2S_model_covariates()
 }
 \value{
 A table containing the following variables:
