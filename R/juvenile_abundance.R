@@ -825,7 +825,8 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
 
   ini_lgN <- catch_data |>
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
-           ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
+           ini_lgN = ifelse(ini_lgN %in% c(NA, Inf), log(2 / 1000), ini_lgN)) |>
+           #ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
     pull(ini_lgN)
 
   pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
