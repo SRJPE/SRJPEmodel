@@ -12,3 +12,9 @@ bt_spas_x_model_code <- list(all_mark_recap = all_mark_recap,
                              no_mark_recap = no_mark_recap,
                              no_mark_recap_no_trib = no_mark_recap_no_trib)
 usethis::use_data(bt_spas_x_model_code, overwrite = T)
+
+
+# passage to spawner ------------------------------------------------------
+
+p2s_model_code <- readr::read_file(here::here("model_files", "passage_to_spawner.txt"))
+usethis::use_data(p2s_model_code, overwrite = T)

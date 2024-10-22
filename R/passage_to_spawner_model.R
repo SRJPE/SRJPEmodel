@@ -13,6 +13,7 @@ library(SRJPEdata)
 #' @description This function calculates the total sum of squares, which is required
 #' as input to the `data` call for `run_passage_to_spawner_model()`.
 #' @keywords internal
+#' @export
 #' @md
 calculate_ss_tot <- function(data) {
   ss_tot <- 0
@@ -33,6 +34,7 @@ calculate_ss_tot <- function(data) {
 #' @description This function extracts the years the data were collected from the results of
 #' the Passage to Spawner model (see `?run_passage_to_spawner_model`).
 #' @keywords internal
+#' @export
 #' @md
 get_years_from_P2S_model_fits <- function(P2S_model_fits) {
   years <- P2S_model_fits |>
@@ -50,6 +52,7 @@ get_years_from_P2S_model_fits <- function(P2S_model_fits) {
 #' calls `summary()` on the `stanfit` object produced by running the model. For details,
 #' see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html).
 #' @keywords internal
+#' @export
 #' @md
 get_all_pars <- function(model_fit, stream_name) {
   par_results <- rstan::summary(model_fit)$summary
@@ -127,20 +130,31 @@ get_predicted_spawners_from_P2S <- function(results_tibble_with_years) {
 #' @export
 #' @family passage_to_spawner
 #' @md
-run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covariates,
-                                         stream_name, selected_covariate, extract_predicted_spawners = c(FALSE, TRUE)) {
+run_passage_to_spawner_model <- function(stream_name, selected_covariate, extract_predicted_spawners = c(FALSE, TRUE)) {
 
   stream_name <- tolower(stream_name)
 
   # combine observed counts and covariates and pivot wider
-  data <- full_join(observed_adult_input,
-                    adult_model_covariates,
-                    by = c("year", "stream")) |>
+  data <- SRJPEdata::observed_adult_input |>
+    select(-reach) |> # empty
+    group_by(year, stream, data_type, ) |>
+    summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
+    ungroup() |>
+    full_join(SRJPEdata::p2s_model_covariates_standard,
+              by = c("year", "stream")) |>
     filter(!is.na(data_type)) |>
     pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
                             median_passage_timing_std, passage_index),
                 names_from = data_type,
                 values_from = count)
+  # data <- full_join(observed_adult_input,
+  #                   adult_model_covariates,
+  #                   by = c("year", "stream")) |>
+  #   filter(!is.na(data_type)) |>
+  #   pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
+  #                           median_passage_timing_std, passage_index),
+  #               names_from = data_type,
+  #               values_from = count)
 
   # set percent female variable to 1 for carcass and holding surveys, 0.5 for redd
   percent_female <- case_when(stream_name %in% c("battle creek", "clear creek", "mill creek") ~ 0.5,
@@ -225,14 +239,21 @@ run_passage_to_spawner_model <- function(observed_adult_input, adult_model_covar
 #' @export
 #' @family passage_to_spawner
 #' @md
-compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covariates) {
+compare_P2S_model_covariates <- function() {
 
   cli::cli_alert("Fitting Passage to Spawner (P2S) model for all stream and covariate combinations")
 
+  # approved streams where data is good
+  approved_streams <- c("battle creek", "clear creek") # TODO add back in deer, mill, butte
+
   # combine observed counts and covariates and pivot wider
-  data <- full_join(observed_adult_input,
-                    adult_model_covariates,
-                    by = c("year", "stream")) |>
+  data <- SRJPEdata::observed_adult_input |>
+    select(-reach) |> # empty
+    group_by(year, stream, data_type, ) |>
+    summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
+    ungroup() |>
+    full_join(SRJPEdata::p2s_model_covariates_standard,
+              by = c("year", "stream")) |>
     filter(!is.na(data_type)) |>
     pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
                             median_passage_timing_std, passage_index),
@@ -249,7 +270,7 @@ compare_P2S_model_covariates <- function(observed_adult_input, adult_model_covar
                         covar_considered = "DELETE",
                         convergence_metric = NA)
 
-  for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
+  for(i in approved_streams) {
     stream_results <- compare_P2S_covariates_within_stream(data, i)
     all_streams <- bind_rows(all_streams, stream_results)
   }
@@ -320,7 +341,7 @@ compare_P2S_covariates_within_stream <- function(data, stream_name) {
                              "average_upstream_passage" = mean(stream_data$upstream_estimate,
                                                                na.rm = TRUE))
 
-    passage_to_spawner_STAN_code <- read_file("model_files/passage_to_spawner.txt")
+    passage_to_spawner_STAN_code <- SRJPEmodel::p2s_model_code
 
     stream_model_fit <- rstan::stan(model_name = paste("passage_to_spawner", stream_name, selected_covariate, sep = "_"),
                                     model_code = passage_to_spawner_STAN_code,

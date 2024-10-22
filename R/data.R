@@ -67,3 +67,8 @@
 #'   }
 'bt_spas_x_model_code'
 
+#' @title Passage to Spawner model code
+#' @name p2s_model_code
+#' @description A character string containing the STAN model code for the Passage to Spawner submodel.
+'bt_spas_x_model_code'
+
