@@ -780,19 +780,19 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
   if(number_experiments_at_site > 1) {
     if(number_weeks_without_mark_recapture == 0) {
       # all weeks have efficiency trials
-      model_name <- "all_mark_recap.stan"
+      model_name <- "all_mark_recap" # .stan
     } else {
       # some or all strata don't have efficiency trials
       if(number_weeks_with_mark_recapture > 0) {
         # some weeks have efficiency trials
-        model_name <- "missing_mark_recap.stan"
+        model_name <- "missing_mark_recap" # .stan
       } else if(number_weeks_with_mark_recapture == 0) {
         # no weeks have efficiency trials
-        model_name <- "no_mark_recap.stan"
+        model_name <- "no_mark_recap" # .stan
       }
     }
   } else if(number_experiments_at_site == 0) { # no efficiency trials were performed at that site
-    model_name <- "no_mark_recap_no_trib.stan"
+    model_name <- "no_mark_recap_no_trib" # .stan
   }
 
   data <- get_bt_spas_x_data_list(model_name, full_data_list)
@@ -920,7 +920,8 @@ bt_spas_x_stan <- function(data, inits, parameters, model_name,
                            bt_spas_x_bayes_params) {
 
   cli::cli_process_start("STAN model running")
-  stan_model <- read_file(paste0("model_files/", model_name))
+  # stan_model <- readr::read_file(paste0("model_files/", model_name))
+  stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", model_name)))
 
   # options(mc.cores=parallel::detectCores())
   # rstan_options(auto_write=TRUE)

@@ -55,3 +55,15 @@
 #'   }
 'bt_spas_x_bayes_params'
 
+#' @title BT-SPAS-X STAN model code
+#' @name bt_spas_x_model_code
+#' @description A named list containing the model code for STAN.
+#' @format A named list with 4 elements:
+#' \itemize{
+#'   \item \code{all_mark_recap}: TODO
+#'   \item \code{missing_mark_recap}:
+#'   \item \code{no_mark_recap}:
+#'   \item \code{no_mark_recap_no_trib}:
+#'   }
+'bt_spas_x_model_code'
+
