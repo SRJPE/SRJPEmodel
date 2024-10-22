@@ -39,3 +39,8 @@ test <- run_single_bt_spas_x_stan(SRJPEmodel::bt_spas_x_bayes_params,
                                   run_year = 2009,
                                   lifestage = "fry",
                                   effort_adjust = F)
+
+parlist <- c("trib_mu_P", "trib_sd_P", "flow_mu_P", "pro_sd_P", "flow_sd_P")
+
+print(rstan::summary(test, pars = parlist)$summary)
+print(rstan::summary(test, pars = "b0_pCap")$summary)

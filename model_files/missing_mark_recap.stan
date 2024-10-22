@@ -23,12 +23,12 @@ data {
 
 parameters {
   real trib_mu_P; // Hyper-parameter for tributary-specific mean pCap
-  real<lower=0.01> trib_tau_P; // Hyper-parameter precision for tributary-specific mean pCap
+  real<lower=0.001> trib_tau_P; // Hyper-parameter precision for tributary-specific mean pCap
   real flow_mu_P; //
-  real<lower=0.01> flow_tau_P; // Hyper-parameter precision for flow effect on pCap
-  real<lower=0.01> pro_tau_P; // Process error precision
-  real<lower=0.01> tau_N; // Precision for spline coefficients
-  real<lower=0.01> tau_Ne; // Extra-spline variation precision
+  real<lower=0.001> flow_tau_P; // Hyper-parameter precision for flow effect on pCap
+  real<lower=0.001> pro_tau_P; // Process error precision
+  real<lower=0.0> tau_N; // Precision for spline coefficients
+  real<lower=0.0> tau_Ne; // Extra-spline variation precision
   array[Ntribs] real b_flow; // Flow effect on pCap
   array[Ntribs] real b0_pCap; // Tributary-specific mean pCap
   array[K] real b_sp; // Spline coefficients
