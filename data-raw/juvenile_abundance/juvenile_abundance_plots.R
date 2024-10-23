@@ -1,81 +1,60 @@
 library(scales)
 library(tidyverse)
 
-results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
-# deer_YOY <- readRDS("data-raw/juvenile_abundance/deer_2023_YOY_results.rds")
-site <- "ubc"
-run_year <- 2004
-lcl <- 0.025
-ucl <- 0.975
+plot_juvenile_abundance <- function(site, run_year, life_stage, model_fit_summary_object) {
 
-# TODO scale results up to 1000s of fish
+  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
+    tibble() |>
+    filter(V1 != "Jwk") |>
+    mutate(V1 = as.numeric(V1)) |>
+    select(Jwk = V1, date = V2)
 
-# TODO use lubridate to create this
-julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/btspas_model_code/Jwk_Dates.txt", header = F) |>
-  tibble() |>
-  filter(V1 != "Jwk") |>
-  mutate(V1 = as.numeric(V1)) |>
-  select(Jwk = V1, date = V2)
-# Jdt=dx$Date
+  input_data <- SRJPEdata::weekly_juvenile_abundance_model_data |>
+    filter(site == site,
+           run_year == run_year,
+           life_stage == life_stage,
+           week %in% c(seq(45, 53), seq(1, 22))) |>
+    mutate(lincoln_peterson_abundance = count * (number_released / number_recaptured))
 
-# TODO if reading in _sum.out, use $summary in model object
+  summary_output <- model_fit_summary_object |>
+    select(-c(model_name, srjpedata_version, converged, error)) |>
+    pivot_wider(id_cols = site:parameter,
+                values_from = value,
+                names_from = statistic) |>
+    mutate(cv = round(100 * (sd / mean), digits = 0))
 
-# read in input data
-input_data <- SRJPEdata::weekly_juvenile_abundance_model_data |>
-  filter(site == "ubc",
-         run_year == 2004,
-         week %in% c(seq(45, 53), seq(1, 22))) |> # TODO update with arguments
-  mutate(lincoln_peterson_abundance = count * (number_released / number_recaptured)) # TODO sd calculation is what
-         # lincoln_peterson_abundance_sd = (number_released * number_recaptured * (number_released - number_recaptured) * count) /
-         #   (number_recaptured^2 * number_recaptured))
+  total_abundance <- summary_output |>
+    filter(parameter == "Ntot")
 
+  # plot abundance only
+  # set up cv, lcl, and ucl and make sure to scale to 1000s
 
-summary_output <- results$final_results |>
-  select(-c(model_name, srjpedata_version)) |>
-  pivot_wider(id_cols = site:parameter,
-              values_from = value,
-              names_from = statistic) |>
-  mutate(cv = round(100 * (sd / mean), digits = 0)) # TODO confirm we use cv for more than just Ntot plot
-# TODO what do we need from "input data" besides Nstrata (which we can get from result object?)
-# TODO output from larger model results object
-sims_list_output <- results$full_object$sims.list # TODO what do we use this for? in separate object
-n_sims <- results$full_object$n.sims
+  plot_data <- summary_output |>
+    filter(str_detect(parameter, "N\\[")) |>
+    left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
+    mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
+                              paste0(run_year, "-", date)),
+           fake_date = as.Date(fake_date, format = "%Y-%b-%d")) |>
+    left_join(input_data |>
+                select(week, site, run_year, lincoln_peterson_abundance),
+              by = c("site", "run_year", "week_fit" = "week"))
 
-total_abundance <- summary_output |>
-  filter(parameter == "Ntot")
-
-# plot abundance only
-
-# plot all model output
-# don't need to use the "sims list" because summary table in BUGS calculates quantiles
-
-# set up cv, lcl, and ucl and make sure to scale to 1000s
-
-plot_data <- summary_output |>
-  filter(str_detect(parameter, "N\\[")) |>
-  left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
-  mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
-                            paste0(run_year, "-", date)),
-         fake_date = as.Date(fake_date, format = "%Y-%b-%d")) |>
-  left_join(input_data |>
-              select(week, site, run_year, lincoln_peterson_abundance),
-            by = c("site", "run_year", "week_fit" = "week"))
-
-# abundance bar plot
-# TODO scale?
-plot_title <- paste0(str_to_title(site), " ", run_year, " predicted annual abundance = ",
-                     prettyNum(round(total_abundance$`50`, 0), big.mark = ","), " (",
-                     prettyNum(round(total_abundance$`2.5`, 0), big.mark = ","), "-",
-                     prettyNum(round(total_abundance$`97.5`, 0), big.mark = ","), ")")
-plot_data |>
-  ggplot(aes(x = fake_date, y = `50`)) +
-  geom_bar(stat = "identity", fill = "grey") +
-  geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-  geom_point(aes(x = fake_date, y = lincoln_peterson_abundance),
-             shape = 1, color = "blue") +
-  theme_minimal() +
-  labs(x = "Date", y = "Abundance",
-       title = plot_title)
+  # abundance bar plot
+  # TODO scale?
+  plot_title <- paste0(str_to_title(site), " ", run_year, " predicted annual abundance = ",
+                       prettyNum(round(total_abundance$`50`, 0), big.mark = ","), " (",
+                       prettyNum(round(total_abundance$`2.5`, 0), big.mark = ","), "-",
+                       prettyNum(round(total_abundance$`97.5`, 0), big.mark = ","), ")")
+  plot_data |>
+    ggplot(aes(x = fake_date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey") +
+    geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = fake_date, y = lincoln_peterson_abundance),
+               shape = 1, color = "blue") +
+    theme_minimal() +
+    labs(x = "Date", y = "Abundance",
+         title = plot_title)
+}
 
 
 
