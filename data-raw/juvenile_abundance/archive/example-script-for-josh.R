@@ -24,16 +24,6 @@ SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
 ?SRJPEdata::weekly_juvenile_abundance_catch_data
 
 # run bt-spas-x in WinBUGS
-run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                     weekly_catch,
-                     weekly_efficiency,
-                     site = site,
-                     run_year = run_year,
-                     lifestage = life_stage,
-                     effort_adjust = F,
-                     bugs_directory = here::here("data-raw", "WinBUGS14"),
-                     debug_mode = FALSE,
-                     no_cut = F)
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
                                           SRJPEdata::weekly_juvenile_abundance_catch_data,
                                           SRJPEdata::weekly_juvenile_abundance_efficiency_data,

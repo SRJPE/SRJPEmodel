@@ -49,6 +49,7 @@ reference:
   - get_hyper_distribution_parameter_estimates
   - get_weekly_juvenile_abundance
   - get_weekly_trap_efficiency
+  - get_years_from_P2S_model_fits
 
 navbar:
   structure:

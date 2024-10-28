@@ -7,14 +7,14 @@ Authors@R: c(person("Ashley", "Vizek", , "avizek@flowwest.com", role = c("aut", 
 Description: This data package pulls data from the SRJPEdata package and runs SRJPE forecast models. 
 License: GPL-3
 Imports: 
-    tidyverse,
+    dplyr,
     rstan,
     rstanarm,
     cli,
-    bayesplot,
-    tidybayes,
     here,
-    scales
+    scales,
+    splines2,
+    gtools
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
