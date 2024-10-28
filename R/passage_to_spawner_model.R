@@ -1,13 +1,5 @@
 # adult model - predicted redds
 
-# libraries ---------------------------------------------------------------
-library(tidyverse)
-library(rstan)
-library(rstanarm)
-library(bayesplot)
-library(tidybayes)
-library(SRJPEdata)
-
 # helper functions for P2S ------------------------------------------------
 #' @title Passage to Spawner Sum of Squares
 #' @description This function calculates the total sum of squares, which is required
