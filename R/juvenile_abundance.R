@@ -450,7 +450,11 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
     cli::cli_process_start("WinBUGS model running")
     # TODO wrap this in a tryCatch
     # run bugs model
-    model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = model_name_full,
+    # save model as a tempfile
+    temp_file_directory <- file.path(tempdir(), "model.bug")
+    R2WinBUGS::write.model(model_name_full, temp_file_directory)
+
+    model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = temp_file_directory,
                                      n.chains = bt_spas_x_bayes_params$number_chains,
                                      n.burnin = bt_spas_x_bayes_params$number_burnin,
                                      n.thin = bt_spas_x_bayes_params$number_thin,
