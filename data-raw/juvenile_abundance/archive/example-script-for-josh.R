@@ -1,7 +1,9 @@
 # script for Josh
+# October 28, 2024
 
+# install SRJPE packages - modeling and data
 remotes::install_github("SRJPE/SRJPEdata") # note redd data is in progress
-remotes::install_github("SRJPE/SRJPEmodel@wip")
+remotes::install_github("SRJPE/SRJPEmodel")
 
 library(SRJPEdata)
 library(SRJPEmodel)
@@ -11,26 +13,52 @@ library(tidyverse)
 data(package = "SRJPEdata")
 
 # RST data for BT_SPAS-X
-SRJPEdata::weekly_juvenile_abundance_model_data |>
+# catch data
+SRJPEdata::weekly_juvenile_abundance_catch_data |>
+  glimpse()
+# efficiency data
+SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
   glimpse()
 
 # documentation
-?SRJPEdata::weekly_juvenile_abundance_model_data
+?SRJPEdata::weekly_juvenile_abundance_catch_data
 
-# run bt-spas-x
+# run bt-spas-x in WinBUGS
+run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                     weekly_catch,
+                     weekly_efficiency,
+                     site = site,
+                     run_year = run_year,
+                     lifestage = life_stage,
+                     effort_adjust = F,
+                     bugs_directory = here::here("data-raw", "WinBUGS14"),
+                     debug_mode = FALSE,
+                     no_cut = F)
 bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                          bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
-                                          site = "eye riffle",
-                                          run_year = 1998,
+                                          SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                          SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                          site = "ubc",
+                                          run_year = 2009,
                                           lifestage = "fry",
                                           effort_adjust = T,
                                           # put your bugs_directory in here as a filepath
                                           bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                          debug_mode = FALSE)
+                                          debug_mode = FALSE,
+                                          # whether you want to run the function with the cut() call
+                                          no_cut = FALSE)
+
+# run bt-spas-x in stan
+bt_spas_x_results_stan <- run_single_bt_spas_x_stan(SRJPEmodel::bt_spas_x_bayes_params,
+                                                    SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                                    SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                                    site = "ubc",
+                                                    run_year = 2009,
+                                                    lifestage = "fry",
+                                                    effort_adjust = T)
 
 # run P2S
 P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                            SRJPEdata::adult_model_covariates_standard,
+                                            SRJPEdata::p2s_model_covariates_standard,
                                             stream_name = "battle creek",
                                             selected_covariate = "wy_type",
-                                            extract_predicted_spawners = TRUE)
+                                            extract_predicted_spawners = FALSE)
