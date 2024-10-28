@@ -57,7 +57,9 @@
 
 #' @title BT-SPAS-X STAN model code
 #' @name bt_spas_x_model_code
-#' @description A named list containing the model code for STAN.
+#' @description A nested named list containing model code for versions of the bt-spas-x models.
+#' Model code written in WinBUGS has two versions: "with" and "without" cut functions. The
+#' STAN
 #' @format A named list with 4 elements:
 #' \itemize{
 #'   \item \code{all_mark_recap}: TODO
@@ -70,5 +72,5 @@
 #' @title Passage to Spawner model code
 #' @name p2s_model_code
 #' @description A character string containing the STAN model code for the Passage to Spawner submodel.
-'bt_spas_x_model_code'
+'p2s_model_code'
 

@@ -246,19 +246,19 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   if(number_experiments_at_site > 1) {
     if(number_weeks_without_mark_recapture == 0) {
       # all weeks have efficiency trials
-      model_name <- "all_mark_recap.bug"
+      model_name <- "all_mark_recap"
     } else {
       # some or all strata don't have efficiency trials
       if(number_weeks_with_mark_recapture > 0) {
         # some weeks have efficiency trials
-        model_name <- "missing_mark_recap.bug"
+        model_name <- "missing_mark_recap"
       } else if(number_weeks_with_mark_recapture == 0) {
         # no weeks have efficiency trials
-        model_name <- "no_mark_recap.bug"
+        model_name <- "no_mark_recap"
       }
     }
   } else if(number_experiments_at_site == 0) { # no efficiency trials were performed at that site
-    model_name <- "no_mark_recap_no_trib.bug"
+    model_name <- "no_mark_recap_no_trib"
   }
 
   data <- get_bt_spas_x_data_list(model_name, full_data_list)
@@ -427,10 +427,9 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
   # TODO remove - this is for testing no_cut models
   if(no_cut) {
     # set model name directory
-    model_name_full <- here::here("model_files", model_name)
-    # model_name_full <- paste0("model_files/", model_name)
+    model_name_full <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$winbugs$no_cut$", model_name)))
   } else {
-    model_name_full <- here::here("model_files", "no_cut_bt_spas", paste0("no_cut_", model_name))
+    model_name_full <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$winbugs$cut$", model_name)))
   }
 
   # get operating system - bugs can't run on a mac without serious set-up
@@ -440,7 +439,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
     cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
                            All the information required to run the model will be returned, but the model will not be run.")
 
-    return(list(data = data, inits = inits, parameters = parameters, model_name = model_name_full,
+    return(list(data = data, inits = inits, parameters = parameters, model_name = model_name,
                 n.chains = bt_spas_x_bayes_params$number_chains,
                 n.burnin = bt_spas_x_bayes_params$number_burnin,
                 n.thin = bt_spas_x_bayes_params$number_thin,
@@ -921,8 +920,7 @@ bt_spas_x_stan <- function(data, inits, parameters, model_name,
                            bt_spas_x_bayes_params) {
 
   cli::cli_process_start("STAN model running")
-  # stan_model <- readr::read_file(paste0("model_files/", model_name))
-  stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", model_name)))
+  stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$stan$", model_name)))
 
   # options(mc.cores=parallel::detectCores())
   # rstan_options(auto_write=TRUE)

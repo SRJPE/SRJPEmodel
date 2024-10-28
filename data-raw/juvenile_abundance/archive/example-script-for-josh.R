@@ -2,6 +2,9 @@
 # October 28, 2024
 
 # install SRJPE packages - modeling and data
+install.packages("remotes") # this allows you to install packages from github
+library(remotes)
+
 remotes::install_github("SRJPE/SRJPEdata") # note redd data is in progress
 remotes::install_github("SRJPE/SRJPEmodel")
 
