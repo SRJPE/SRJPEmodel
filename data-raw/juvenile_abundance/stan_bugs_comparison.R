@@ -63,11 +63,13 @@ run_multiple_stan <- function(site, run_year, life_stage) {
 
 # run for BUGS ------------------------------------------------------------
 
-bugs_results <- purrr::pmap(list(trials_to_fit$site,
-                                 trials_to_fit$run_year,
-                                 trials_to_fit$life_stage),
+bugs_results <- purrr::pmap(list(trials_to_fit_battle$site,
+                                 trials_to_fit_battle$run_year,
+                                 trials_to_fit_battle$life_stage),
                             run_multiple_bugs,
                             .progress = TRUE)
+saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
+                                 "battle_results_BUGS_oct_2024.rds"))
 
 
 # run for STAN ------------------------------------------------------------
