@@ -604,12 +604,13 @@ get_summary_table_stan <- function(stanfit_object, site, run_year, lifestage,
            site_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"),
                                suppressWarnings(readr::parse_number(substr(par_names, 3, length(par_names)))),
                                NA),
+           par_names = str_remove_all(par_names, "\\[|\\]|[0-9]+"),
            site = site,
            run_year = run_year,
            life_stage = lifestage,
            model_called = model_name)
 
-  rownames(summary_table) = NULL
+  rownames(results_tibble) = NULL
 
   weeks_fit_lookup <- tibble(week_fit = weeks_fit) |>
     mutate(week_index = row_number())
@@ -617,24 +618,18 @@ get_summary_table_stan <- function(stanfit_object, site, run_year, lifestage,
   sites_fit_lookup <- tibble(site_fit_hierarchical = sites_fit) |>
     mutate(site_index = row_number())
 
-  summary_table_final <- summary_table |>
+  summary_table_final <- results_tibble |>
     left_join(weeks_fit_lookup, by = "week_index") |>
     left_join(sites_fit_lookup, by = "site_index") |>
     select(site, run_year, life_stage, week_fit, site_fit_hierarchical,
            parameter = par_names,
-           mean, sd, `2.5` = x2_5_percent,
-           `25` = x25_percent, `50` = x50_percent,
-           `75` = x75_percent, `97.5` = x97_5_percent,
-           rhat, n_eff, model_name = model_called) |>
+           mean, sd, `2.5%`:`97.5%`,
+           rhat = Rhat, n_eff, model_name = model_called) |>
     mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")),
            converged = ifelse(rhat <= 1.05, TRUE, FALSE)) |>
     pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
 
-  results_tibble_with_years <- results_tibble |>
-    mutate(year_index = suppressWarnings(readr::parse_number(par_names))) |>
-    left_join(years_modeled, by = c("year_index", "stream"))
-
-  return(results_tibble_with_years)
+  return(summary_table_final)
 }
 
 #' Extract results from BT-SPAS-X bugs object
@@ -926,7 +921,8 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
                                           weeks_fit = catch_data$week[data$Uwc_ind],
                                           sites_fit = unique(mark_recapture_data$site),
                                           model_name = model_name)
-  return(results)
+  return(list(model_object = results,
+              summary_table = clean_results))
 }
 
 #' Execute BT-SPAS-X in STAN
