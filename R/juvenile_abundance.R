@@ -588,6 +588,55 @@ get_summary_table <- function(model_fit_object, site, run_year,
   summary_table_final
 }
 
+#' @title Extract summary table from stanfit object.
+#' @description This function takes in a stanfit object for BT-SPAS-X and extracts parameter
+#' estimates in a clean tibble.
+#' @export
+#' @md
+get_summary_table_stan <- function(stanfit_object, site, run_year, lifestage,
+                                   weeks_fit, sites_fit, model_name) {
+  par_results <- rstan::summary(stanfit_object)$summary
+
+  results_tibble <- as.data.frame(par_results) |>
+    rownames_to_column("par_names") |>
+    mutate(week_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"), NA,
+                               suppressWarnings(readr::parse_number(par_names))),
+           site_index = ifelse(str_detect(par_names, "b0_pCap|b_flow"),
+                               suppressWarnings(readr::parse_number(substr(par_names, 3, length(par_names)))),
+                               NA),
+           site = site,
+           run_year = run_year,
+           life_stage = lifestage,
+           model_called = model_name)
+
+  rownames(summary_table) = NULL
+
+  weeks_fit_lookup <- tibble(week_fit = weeks_fit) |>
+    mutate(week_index = row_number())
+
+  sites_fit_lookup <- tibble(site_fit_hierarchical = sites_fit) |>
+    mutate(site_index = row_number())
+
+  summary_table_final <- summary_table |>
+    left_join(weeks_fit_lookup, by = "week_index") |>
+    left_join(sites_fit_lookup, by = "site_index") |>
+    select(site, run_year, life_stage, week_fit, site_fit_hierarchical,
+           parameter = par_names,
+           mean, sd, `2.5` = x2_5_percent,
+           `25` = x25_percent, `50` = x50_percent,
+           `75` = x75_percent, `97.5` = x97_5_percent,
+           rhat, n_eff, model_name = model_called) |>
+    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")),
+           converged = ifelse(rhat <= 1.05, TRUE, FALSE)) |>
+    pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
+
+  results_tibble_with_years <- results_tibble |>
+    mutate(year_index = suppressWarnings(readr::parse_number(par_names))) |>
+    left_join(years_modeled, by = c("year_index", "stream"))
+
+  return(results_tibble_with_years)
+}
+
 #' Extract results from BT-SPAS-X bugs object
 #' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
 #' to pass to the data list. These are helpful for model diagnostics for a given model run.
@@ -872,6 +921,11 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
   # run the bugs model
   results <- bt_spas_x_stan(data, inits, parameters, model_name, bt_spas_x_bayes_params)
 
+  # test out
+  clean_results <- get_summary_table_stan(results, site, run_year, lifestage,
+                                          weeks_fit = catch_data$week[data$Uwc_ind],
+                                          sites_fit = unique(mark_recapture_data$site),
+                                          model_name = model_name)
   return(results)
 }
 

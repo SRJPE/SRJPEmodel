@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{run_single_bt_spas_x}
 \alias{run_single_bt_spas_x}
-\title{Call BT-SPAS-X on a single site/run year combination}
+\title{Call BT-SPAS-X (WinBUGS) on a single site/run year combination}
 \usage{
 run_single_bt_spas_x(
   bt_spas_x_bayes_params,
@@ -34,6 +34,8 @@ run_single_bt_spas_x(
 
 \item{debug_mode}{whether you want to run \code{bugs} in debug mode.}
 
+\item{no_cut}{whether to run the model using the \code{cut()} function.}
+
 \item{bt_spas_x_bayes_params:}{a list containing \code{number_mcmc}, \code{number_burnin}, \code{number_thin},
 and \code{number_chains}. Can use \code{SRJPEmodel::bt_spas_x_bayes_params}.}
 
@@ -50,7 +52,7 @@ a list:
 }
 }
 \description{
-Call BT-SPAS-X on a single site/run year combination
+Call BT-SPAS-X (WinBUGS) on a single site/run year combination
 }
 \details{
 This function is called within \code{run_bt_spas_x()} or can be run by itself

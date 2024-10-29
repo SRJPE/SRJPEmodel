@@ -32,9 +32,12 @@ and \code{number_chains}. Can use \code{SRJPEmodel::bt_spas_x_bayes_params}.}
 
 \item{lifetage}{the lifestage for which you want tor run the model. One of \code{yearling}, \code{fry}, and \code{smolt}.}
 }
+\value{
+A stanfit object.
+}
 \description{
 Call BT-SPAS-X using STAN
 }
 \details{
-This is a draft version of the function that calls STAN instead of WinBUGS.
+This function calls a STAN version of BT-SPAS-X.
 }

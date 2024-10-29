@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{get_summary_table}
 \alias{get_summary_table}
-\title{Extract summary in table}
+\title{Extract summary table from WinBUGS object.}
 \usage{
 get_summary_table(
   model_fit_object,
@@ -15,6 +15,6 @@ get_summary_table(
 )
 }
 \description{
-TODO
+This function takes in a WinBUGS fit object and extracts parameter
+estimates in a clean tibble.
 }
-\keyword{internal}

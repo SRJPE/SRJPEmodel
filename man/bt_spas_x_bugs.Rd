@@ -81,6 +81,10 @@ bt_spas_x_bugs(
 \item{bugs_directory}{a filepath indicating where to find the \verb{WinBUGS14/} file. This needs
 to be in a character format ending with \verb{/WinBUGS14}.}
 
+\item{debug_mode}{whether you want to run \code{bugs} in debug mode.}
+
+\item{no_cut}{whether to run the model using the \code{cut()} function.}
+
 \item{bt_spas_x_bayes_params:}{a list containing \code{number_mcmc}, \code{number_burnin}, \code{number_thin},
 and \code{number_chains}.}
 }

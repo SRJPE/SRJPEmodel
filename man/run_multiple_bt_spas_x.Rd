@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{run_multiple_bt_spas_x}
 \alias{run_multiple_bt_spas_x}
-\title{Call BT-SPAS-X model on all site/run years}
+\title{Call BT-SPAS-X (WinBUGS) model on all site/run years}
 \usage{
 run_multiple_bt_spas_x(
   bt_spas_x_bayes_params,
@@ -38,9 +38,9 @@ a list containing the results for every unique \code{site} and \verb{run year} c
 in the input data.
 }
 \description{
-Call BT-SPAS-X model on all site/run years
+Call BT-SPAS-X (WinBUGS) model on all site/run years
 }
 \details{
-This calls \code{run_single_bt_spas_x()} on all site and run year combinations
+This calls \code{run_single_bt_spas_x()} on all sites/run year/lifestage combinations
 present in the input data.
 }
