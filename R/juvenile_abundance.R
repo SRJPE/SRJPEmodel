@@ -457,12 +457,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
     # save model as a tempfile - this is a WinBUGS function
     # first, create a temporary filepath
     temp_file_directory <- file.path(tempdir(), "model.bug")
-    # next, save the model code (currently in string form) as a function
-    model_code <- function(){
-      model_name_full
-    }
-    # write the function to the temporary file
-    R2WinBUGS::write.model(model_code, temp_file_directory)
+    writeLines(model_name_full, temp_file_directory)
 
     model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = temp_file_directory,
                                      n.chains = bt_spas_x_bayes_params$number_chains,
