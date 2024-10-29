@@ -418,7 +418,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' to pass to `bugs`. If running on a PC or another operating system capable of running WinBUGS,
 #' returns a nested list containing the following elements:
 #' * **model_results** the `BUGs` object from fitting the model
-#' * **model_called** the model called on the data
+#' * **model_called** the model called on the databugs_
 #' * **data_inputs** the data passed to the model
 #' * **init_inputs** the initial values passed to the model
 #' @export
@@ -452,6 +452,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
   } else {
 
     cli::cli_process_start("WinBUGS model running")
+    bugs_path <- bugs_directory
     # TODO wrap this in a tryCatch
     # run bugs model
     # save model as a tempfile - this is a WinBUGS function
@@ -465,7 +466,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
                                      n.thin = bt_spas_x_bayes_params$number_thin,
                                      n.iter = bt_spas_x_bayes_params$number_mcmc,
                                      debug = debug_mode, codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
-                                     bugs.directory = bugs_directory)
+                                     bugs.directory = bugs_path)
 
     return(model_results)
 
