@@ -1,5 +1,5 @@
-#' Call BT-SPAS-X model on all site/run years
-#' @details This calls `run_single_bt_spas_x()` on all site and run year combinations
+#' Call BT-SPAS-X (WinBUGS) model on all site/run years
+#' @details This calls `run_single_bt_spas_x()` on all sites/run year/lifestage combinations
 #' present in the input data.
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
 #' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
@@ -78,7 +78,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 }
 
 
-#' Call BT-SPAS-X on a single site/run year combination
+#' Call BT-SPAS-X (WinBUGS) on a single site/run year combination
 #' @details This function is called within `run_bt_spas_x()` or can be run by itself
 #' on a single site/run year combination.
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
@@ -93,6 +93,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
 #' @param bugs_directory where the `WinBUGS.exe` file can be found. Needs to end in `/WinBUGS`
 #' @param debug_mode whether you want to run `bugs` in debug mode.
+#' @param no_cut whether to run the model using the `cut()` function.
 #' @returns a list:
 #' * **results** model results - see `?bt_spas_x_bugs()` for details.
 #' * **site** the site used to fit the model
@@ -411,6 +412,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' and `number_chains`.
 #' @param bugs_directory a filepath indicating where to find the `WinBUGS14/` file. This needs
 #' to be in a character format ending with `/WinBUGS14`.
+#' @param debug_mode whether you want to run `bugs` in debug mode.
+#' @param no_cut whether to run the model using the `cut()` function.
 #' @returns if running on a Mac operating system, returns a list of all inputs formatted
 #' to pass to `bugs`. If running on a PC or another operating system capable of running WinBUGS,
 #' returns a nested list containing the following elements:
@@ -435,6 +438,7 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
   # get operating system - bugs can't run on a mac without serious set-up
   operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
   if(operating_system == "mac") {
+
     # TODO update this message to be a [Y/n] and/or link to wine emulator
     cli::cli_alert_warning("This model is currently coded in WinBUGS, which cannot easily be run on a Mac.
                            All the information required to run the model will be returned, but the model will not be run.")
@@ -450,9 +454,15 @@ bt_spas_x_bugs <- function(data, inits, parameters, model_name, bt_spas_x_bayes_
     cli::cli_process_start("WinBUGS model running")
     # TODO wrap this in a tryCatch
     # run bugs model
-    # save model as a tempfile
+    # save model as a tempfile - this is a WinBUGS function
+    # first, create a temporary filepath
     temp_file_directory <- file.path(tempdir(), "model.bug")
-    R2WinBUGS::write.model(model_name_full, temp_file_directory)
+    # next, save the model code (currently in string form) as a function
+    model_code <- function(){
+      model_name_full
+    }
+    # write the function to the temporary file
+    R2WinBUGS::write.model(model_code, temp_file_directory)
 
     model_results <- R2WinBUGS::bugs(data, inits, parameters, model.file = temp_file_directory,
                                      n.chains = bt_spas_x_bayes_params$number_chains,
@@ -530,9 +540,9 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 }
 
 
-#' @title Extract summary in table
-#' @description TODO
-#' @keywords internal
+#' @title Extract summary table from WinBUGS object.
+#' @description This function takes in a WinBUGS fit object and extracts parameter
+#' estimates in a clean tibble.
 #' @export
 #' @md
 get_summary_table <- function(model_fit_object, site, run_year,
@@ -607,7 +617,7 @@ extract_bt_spas_x_results <- function(model_fit_object) {
 # STAN version ------------------------------------------------------------
 
 #' Call BT-SPAS-X using STAN
-#' @details This is a draft version of the function that calls STAN instead of WinBUGS.
+#' @details This function calls a STAN version of BT-SPAS-X.
 #' @param bt_spas_x_bayes_params: a list containing `number_mcmc`, `number_burnin`, `number_thin`,
 #' and `number_chains`. Can use `SRJPEmodel::bt_spas_x_bayes_params`.
 #' @param weekly_juvenile_abundance_catch_data data frame containing weekly RST catch data. See
@@ -618,6 +628,7 @@ extract_bt_spas_x_results <- function(model_fit_object) {
 #' @param run_year run year for which you want to fit the model
 #' @param lifetage the lifestage for which you want tor run the model. One of `yearling`, `fry`, and `smolt`.
 #' @param effort_adjust whether or not you want to use catch adjusted by effort
+#' @returns A stanfit object.
 #' @export
 #' @md
 run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
