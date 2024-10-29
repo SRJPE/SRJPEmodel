@@ -25,6 +25,32 @@ observed_adult_input_wide <- observed_adult_input |>
               names_from = data_type, values_from = count) |>
   glimpse()
 
+# get details on sample sizes
+observed_adult_input_wide |>
+  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  mutate(spawner_count = ifelse(stream == "deer creek",
+                                holding_count, redd_count),
+         keep = ifelse(is.na(spawner_count) | is.na(upstream_estimate),
+                       FALSE, TRUE)) |>
+  filter(keep) |>
+  group_by(stream) |>
+  tally() |>
+  clipr::write_clip()
+
+# plot
+observed_adult_input_wide |>
+  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  mutate(stream = str_to_title(stream),
+         spawner_count = ifelse(stream == "Deer Creek",
+                                holding_count, redd_count)) |>
+  ggplot(aes(x = upstream_estimate, y = spawner_count)) +
+  geom_point() +
+  facet_wrap(~stream, scales = "free") +
+  theme_minimal() +
+  labs(x = "Upstream Estimate",
+       y = "Spawner Count",
+       title = "Observed Adult Data")
+
 
 # do covariate selection --------------------------------------------------
 compare_covariates <- compare_P2S_model_covariates()
@@ -104,6 +130,18 @@ clear_P2S_results <- run_passage_to_spawner_model("clear creek",
 # join model summaries
 P2S_model_fits <- bind_rows(battle_P2S_results$formatted_pars,
                             clear_P2S_results$formatted_pars)
+
+# generate Table 2
+diagnostic_pars <- c("log_mean_redds_per_spawner", "sigma_redds_per_spawner",
+                     "b1_survival", "R2_fixed")
+P2S_model_fits |>
+  filter(par_names %in% diagnostic_pars) |>
+  mutate(#across(mean:Rhat, round(digits = 2)),
+         stream = str_to_title(stream)) |>
+  select(Parameter = par_names, Stream = stream,
+         Mean = mean, `Standard Error (mean)` = se_mean,
+         `Standard Deviation` = sd, `2.5%`, `50%`, `97.5%`) |>
+  clipr::write_clip()
 
 
 # plots -------------------------------------------------------------------
@@ -276,5 +314,25 @@ forecasts |>
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 12),
         axis.text.x = element_text(angle = 45))
+
+
+# diagnostics -------------------------------------------------------------
+
+# battle creek
+mcmc_pairs(battle_P2S_results$full_object,
+           pars = c("b1_survival", "mean_redds_per_spawner"))
+
+mcmc_trace(battle_P2S_results$full_object,
+           pars = c("b1_survival", "mean_redds_per_spawner"))
+# mcmc_areas(battle_P2S_results$full_object,
+#            pars = c("b1_survival", "mean_redds_per_spawner"))
+# mcmc_rhat(rhat(battle_P2S_results$full_object))
+
+# clear creek
+mcmc_pairs(clear_P2S_results$full_object,
+           pars = c("b1_survival", "mean_redds_per_spawner"))
+
+mcmc_trace(clear_P2S_results$full_object,
+           pars = c("b1_survival", "mean_redds_per_spawner"))
 
 
