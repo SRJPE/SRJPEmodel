@@ -1,0 +1,94 @@
+---
+title: "Juvenile Abundance Model"
+author: "Josh Korman"
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Passage to Spawner Submodel} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(wesanderson)
+library(SRJPEdata)
+library(SRJPEmodel)
+```
+
+## Overview
+
+BT-SPAS-X is a Bayesian model that estimates the weekly abundance of outmigrating Chinook at RST sites in Central Valley tributaries and the mainstem Sacramento River. Weekly estimates can be summed to calculate annual outmigrant abundance. To account for many sites and years with limited trap efficiency data or where few recaptures are obtained, the model uses trap efficiency data from multiple years and sites to estimate trap efficiency for any given site-week. Estimates of Chinook outmigrant abundance in a given week can be converted to estimates of spring run outmigrant abundance in a post-processing step using predictions from a probability length-at-date model that was fit using genetic data.
+
+## Submodel Objective
+
+BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a within season outmigrant forecast model. BT-SPAS-X was specifically designed to address the often-sparse trap efficiency data available to estimate abundance at any given RST site. Trap efficiency is predicted based on a hierarchical model that estimates site-specific means, site-specific flow effects, and unexplained error. Weekly abundance is estimated using a spline model that is fit to the weekly catch data given weekly estimates of trap efficiency. The spline model allows estimation of abundance in weeks when the trap was not operated.
+
+The input data for the model includes weekly catch ('u' in Figure x below, trap efficiency data (releases 'R' and recaptures 'r' ), and weekly average flow (Q'). The model output includes weekly estimates of abundance and uncertainty, and weekly estimates of trap efficiency and uncertainty. Length frequency data for each week is required if calculating abundance by run type in a post-processing step using the PLAD model.
+
+## Conceptual model
+
+BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a within season outmigrant forecast model. See figure 1 below to see how it fits into the full JPE model system.
+
+*Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model highlighted in red.*
+
+![](images/BTSPASX%20jpe%20diagram.png)
+
+## Submodel Architecture
+
+There are two main components of the model: trap efficiency and abundance estimation (Figure 1). The trap efficiency component estimates parameters of a global trap efficiency model by fitting to data from more than 900 efficiency trials across all available tributary RST sites. This model is then used to estimate trap efficiency for each week in a run year (November 1-June 1) at the site the abundance model is run for. There are three levels for the trap efficiency model. The lowest level is where the predicted trap efficiency (P) for any site, year, and week with trap efficiency data is compared to the data. The next level is where site, year, and week-specific trap efficiencies are estimated. The highest level is represented by hyper-distributions which define the distributions where site specific parameters are estimated.
+
+Figure X.1. Directed acyclic diagram (DAG) showing the hierarchical structure of the trap efficiency component of BT-SPAS-X and how predictions of trap efficiency are by the abundance component of the model. Ovals denote stochastic nodes (variables that are estimated) while squares with bolded text denote data. Arrows indicate the direction of influence. For example, the hyper parameters μS and σS define a normal distribution from which site specific intercepts β_S are drawn. The red triangle indicates that trap efficiency estimates contribute to estimates of abundance, but that abundance model parameters do not influence trap efficiency parameters.
+
+# Model inputs
+
+The model takes in two datasets:
+
+-   **Weekly Juvenile Abundance Model Data** Weekly catch, efficiency, flow, and log normal priors needed to run the model. This is in the `SRJPEdata::weekly_juvenile_abundance_model_data` data object.
+-   **BTSPAS params** Bayesian estimation specifications. `SRJPEmodel::bt_spas_x_bayes_params`
+
+# Running BTSPAS-X submodel
+
+BTSPAS-X can be run in single run mode or multi run mode.
+
+In the single run mode, BTSPAS-X is run independently for each stream site and run year. Below is an example for the upper battle creek RST in 2004.
+
+```{r, eval = FALSE}
+bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
+                                         bt_spas_x_input_data = updated_input,
+                                         site = "ubc",
+                                         run_year = 2004,
+                                         effort_adjust = T,
+                                         bugs_directory = here::here("data-raw", "WinBUGS14"),
+                                         debug_mode = FALSE)
+
+```
+
+In the multi run mode, BTSPAS-X is run for all stream sites and run years at once. Below is an example of multi run mode.
+
+```{r, eval = FALSE}
+
+bt_spas_x_multiple_system_results <- run_multiple_bt_spas_x(bt_spas_x_bayes_params = SRJPEmodel::bt_spas_x_bayes_params,
+                                                            bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
+                                                            effort_adjust = T, 
+                                                            bugs_directory = here::here("data-raw", "WinBUGS14"), 
+                                                            debug_mode = FALSE)
+```
+
+# Model Output
+
+TODO - code for model output
+
+# Resources
+
+Link to juvenile report once published.

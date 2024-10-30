@@ -1,0 +1,73 @@
+title: SRJPEmodel
+url: https://SRJPE.github.io/SRJPEmodel/
+template:
+  params:
+    bootswatch: flatly
+
+home:
+  links:
+  - text: ITP Website
+    href: https://water.ca.gov/Programs/State-Water-Project/Endangered-Species-Protection
+
+reference:
+- title: Model and Submodels Functions
+  desc: Functions used as to run submodels/models
+- subtitle: BTSPAS-X
+  desc: Functions to run BTSPAS-X
+- contents:
+  - bt_spas_x_bugs
+  - run_single_bt_spas_x
+  - run_multiple_bt_spas_x
+- subtitle: P2S
+  desc: Functions to run P2S
+- contents:
+  - run_passage_to_spawner_model
+- subtitle: Survival
+  desc: Functions to run Survival Model
+- contents:
+  - run_survival_model
+
+- title: Model Results
+  desc: Data objsects produced by models
+- contents:
+  - P2S_model_fits
+  - P2S_comparison_results
+
+- title: Model Data
+  desc: Additional data beyons SRJPEdata needed to run model
+- contents:
+  - bt_spas_x_bayes_params
+
+- title: Helper Functions
+  desc: Functions used as to generate model data / format model outputs
+- contents:
+  - get_bt_spas_x_data_list
+  - get_predicted_spawners_from_P2S
+  - compare_P2S_model_covariates
+  - compare_P2S_covariates_within_stream
+  - extract_bt_spas_x_results
+  - get_hyper_distribution_parameter_estimates
+  - get_weekly_juvenile_abundance
+  - get_weekly_trap_efficiency
+  - get_years_from_P2S_model_fits
+
+navbar:
+  structure:
+    left:  [home, reference, articles]
+    right: [github]
+  type: default
+  left:
+  - text: 'Reference'
+    href: reference/index.html
+  - text: 'Articles'
+    menu:
+      - text: 'Passage to Spawner Model (P2S)'
+        href: articles/passage_to_spawner_submodel.html
+      - text: 'Juvenile Abundance Model (BTSPAS-X)'
+        href: articles/btspas_submodel_documentation.html
+
+
+repo:
+ url:
+  home: https://github.com/SRJPE/SRJPEmodel
+  issue: https://github.com/SRJPE/SRJPEmodel/issues/

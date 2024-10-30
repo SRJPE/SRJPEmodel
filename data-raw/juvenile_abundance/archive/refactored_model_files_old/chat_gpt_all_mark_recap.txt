@@ -1,0 +1,106 @@
+data {
+  int<lower=1> number_sites_pCap;
+  int<lower=1> number_efficiency_experiments;
+  int<lower=1> number_released[number_efficiency_experiments];
+  int<lower=0> number_recaptured[number_efficiency_experiments];
+  real standardized_efficiency_flow[number_efficiency_experiments];
+  int<lower=1> indices_site_mark_recapture[number_efficiency_experiments];
+
+  int<lower=1> K;
+  int<lower=1> number_weeks_catch;
+  int<lower=1> number_weeks_with_catch;
+  int<lower=0> indices_pCap[number_weeks_catch];
+  real<lower=0> pCap[number_sites_pCap];
+  real<lower=0> weekly_catch[number_weeks_with_catch];
+  real<lower=0> lg_N_max[number_weeks_catch];
+  matrix[number_weeks_catch, K] b_spline_matrix;
+}
+
+parameters {
+  real pCap_mu_prior;
+  real<lower=0> pCap_tau_prior;
+  real<lower=0> pCap_sd_prior;
+
+  real flow_mu_prior;
+  real<lower=0> flow_tau_prior;
+  real<lower=0> flow_sd_prior;
+
+  real process_error_tau_prior;
+  real<lower=0> process_error_sd_prior;
+
+  real b0_pCap[number_sites_pCap];
+  real b_flow[number_sites_pCap];
+
+  real process_error_devs_prior[number_efficiency_experiments];
+
+  real tau_N;
+  real sd_N;
+  real tau_Ne;
+  real sd_Ne;
+  real b_sp[K];
+}
+
+transformed parameters {
+  real logit_pCap[number_efficiency_experiments];
+  real logit_pCap_temp;
+  real xi[K-2];
+  real Usp[number_weeks_catch];
+  real lg_N[number_weeks_catch];
+  real N[number_weeks_catch];
+  real pCap_U[number_weeks_catch];
+
+  for(i in 1:number_efficiency_experiments) {
+    logit_pCap_temp = b0_pCap[indices_site_mark_recapture[i]] + b_flow[indices_site_mark_recapture[i]] * standardized_efficiency_flow[i] + process_error_devs_prior[i];
+    logit_pCap[i] = logit_pCap_temp;
+  }
+
+  for(i in 3:K) {
+    xi[i-2] = 2 * b_sp[i-1] - b_sp[i-2];
+  }
+
+  for(i in 1:number_weeks_catch) {
+    Usp[i] = dot_product(b_spline_matrix[i,], b_sp);
+    lg_N[i] = normal_rng(Usp[i], tau_Ne);
+    N[i] = exp(lg_N[i]) * 1000.0;
+    pCap_U[i] = pCap[indices_pCap[i]];
+  }
+}
+
+model {
+  pCap_mu_prior ~ normal(0, 1.0E-06);
+  pCap_tau_prior ~ gamma(0.001, 0.001);
+  pCap_sd_prior <- 1 / sqrt(pCap_tau_prior);
+
+  flow_mu_prior ~ normal(0, 1.0E-06);
+  flow_tau_prior ~ gamma(0.001, 0.001);
+  flow_sd_prior <- 1 / sqrt(flow_tau_prior);
+
+  for(j in 1:number_sites_pCap) {
+    b0_pCap[j] ~ normal(pCap_mu_prior, pCap_tau_prior);
+    b_flow[j] ~ normal(flow_mu_prior, flow_tau_prior);
+  }
+
+  process_error_tau_prior ~ gamma(0.001, 0.001);
+  process_error_sd_prior <- 1 / sqrt(process_error_tau_prior);
+
+  for(i in 1:number_efficiency_experiments){
+    process_error_devs_prior[i] ~ normal(0, process_error_tau_prior);
+    target += binomial_logit_lpmf(number_recaptured[i] | pCap[i], number_released[i]);
+  }
+
+  tau_N ~ gamma(1,0.05);
+  sd_N <- 1 / sqrt(tau_N);
+  tau_Ne ~ gamma(1, 0.05);
+  sd_Ne <- 1 / sqrt(tau_Ne);
+
+  b_sp[1] ~ normal(0, 1.0);
+  b_sp[2] ~ student_t(1, 0, 1);
+  for(i in 3:K) {
+    b_sp[i] ~ normal(xi[i-2], tau_N);
+  }
+
+  for(i in 1:number_weeks_catch) {
+    target += normal_lpdf(lg_N[i] | Usp[i], tau_Ne);
+    target += binomial_lpmf(weekly_catch[i] | pCap_U[i], N[i]);
+  }
+}

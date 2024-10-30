@@ -3,16 +3,8 @@
 
 # libraries ---------------------------------------------------------------
 library(tidyverse)
-library(lubridate)
 library(googleCloudStorageR)
-library(rstan)
-library(rstanarm)
-library(bayesplot)
-library(GGally) # pairs plot
 library(waterYearType)
-library(car) # vif
-library(glmulti)
-library(tidybayes)
 
 # pull adult data & process ----------------------------------------------------------------
 gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
@@ -60,13 +52,14 @@ redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_ann
                                 bucket = gcs_get_global_bucket())) |>
   filter(run %in% c("spring", "not recorded")) |>
   # redds in these reaches are likely fall, so set to 0 for battle & clear
-  mutate(max_yearly_redd_count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
+  mutate(annual_redd_count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
                                              stream %in% c("battle creek", "clear creek") ~ 0,
-                                           TRUE ~ max_yearly_redd_count)) |>
+                                           TRUE ~ annual_redd_count)) |>
   group_by(year, stream) |>
-  summarise(count = sum(max_yearly_redd_count, na.rm = T)) |>
+  summarise(count = sum(annual_redd_count, na.rm = T)) |>
   ungroup() |>
   select(year, stream, count) |>
+  filter(!is.na(year)) |>
   glimpse()
 
 # raw carcass
@@ -85,12 +78,36 @@ carcass_estimates <- read_csv(gcs_get_object(object_name = "standard-format-data
   rename(carcass_spawner_estimate = spawner_abundance_estimate) |>
   glimpse()
 
+# join all together for raw input -----------------------------------------
+adult_model_input_raw <- full_join(upstream_passage_estimates |>
+                                     select(year, stream,
+                                            upstream_estimate = upstream_count),
+                                   redd |>
+                                     rename(redd_count = count),
+                                   by = c("year", "stream")) |>
+  full_join(holding |>
+              rename(holding_count = count),
+            by = c("year", "stream")) |>
+  full_join(carcass_estimates |>
+              select(year, stream, carcass_estimate = carcass_spawner_estimate,
+                     carcass_90_lcl = lower, carcass_90_ucl = upper),
+            by = c("year", "stream")) |>
+  pivot_longer(c(upstream_estimate, redd_count, holding_count, carcass_estimate,
+                 carcass_90_lcl, carcass_90_ucl),
+               values_to = "count",
+               names_to = "data_type") |>
+  filter(!is.na(count)) |>
+  arrange(stream, year) |>
+  glimpse()
+
 
 
 # temperature -------------------------------------------------------------
 
 # threshold
 # https://www.noaa.gov/sites/default/files/legacy/document/2020/Oct/07354626766.pdf
+
+# TODO add new thresholds
 threshold <- 20
 
 # migratory temps - sac, months = 3:5
@@ -182,7 +199,8 @@ prespawn_survival <- left_join(upstream_passage_estimates |>
               rename(holding_count = count),
             by = c("year", "stream")) |>
   left_join(carcass_estimates |>
-              rename(carcass_estimate = carcass_spawner_estimate),
+              rename(carcass_estimate = carcass_spawner_estimate) |>
+              select(-c(upper, lower, confidence_interval)),
             by = c("year", "stream")) |>
   mutate(female_upstream = upstream_count * 0.5,
          prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
@@ -209,8 +227,6 @@ upstream_passage_timing <- read_csv(gcs_get_object(object_name = "standard-forma
   ungroup() |> # TODO look at up-down
   select(-c(count)) |> glimpse()
 
-
-
 # water year --------------------------------------------------------------
 
 water_year_data <- waterYearType::water_year_indices |>
@@ -219,6 +235,36 @@ water_year_data <- waterYearType::water_year_indices |>
                                TRUE ~ Yr_type)) |>
   filter(location == "Sacramento Valley") |>
   dplyr::select(WY, water_year_type) |>
+  glimpse()
+
+
+# total passage as index --------------------------------------------------
+upstream_passage_index <- upstream_passage_estimates |>
+  mutate(passage_index = passage_estimate) |>
+  select(year, stream, passage_index)
+
+
+# standardized covariates -------------------------------------------------
+adult_model_covariates_standard <- full_join(standard_flow,
+                                             gdd,
+                                             by = c("year", "stream")) |>
+  full_join(upstream_passage_timing,
+            by = c("year", "stream")) |>
+  full_join(water_year_data,
+            by = c("year" = "WY")) |>
+  full_join(upstream_passage_index,
+            by = c("year", "stream")) |>
+  filter(!is.na(stream),
+         stream != "sacramento river") |>
+  select(-c(mean_flow, mean_passage_timing, min_passage_timing,
+            gdd_trib, gdd_sac)) |>
+  mutate(wy_type = ifelse(water_year_type == "dry", 0, 1),
+         max_flow_std = as.vector(scale(max_flow)),
+         gdd_std = as.vector(scale(gdd_total)),
+         passage_index = as.vector(scale(passage_index)),
+         median_passage_timing_std = as.vector(scale(median_passage_timing))) |>
+  select(year, stream, wy_type, max_flow_std, gdd_std, passage_index, median_passage_timing_std) |>
+  arrange(stream, year) |>
   glimpse()
 
 # combine -----------------------------------------------------------------
@@ -242,261 +288,6 @@ survival_model_data_raw <- left_join(prespawn_survival |>
   glimpse()
 
 
-# plots to inspect different covars ---------------------------------------
-survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
-  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
-  theme_minimal() + ggtitle("Prespawn survival and temperature by stream") +
-  xlab("Proportion of days exceeding threshold temperature") +
-  ylab("Prespawn survival")
-
-survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
-  ggplot(aes(x = gdd_total, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
-  theme_minimal() + ggtitle("Prespawn survival and GDD by stream") +
-  xlab("Growing degree days over 20 (GDD)") +
-  ylab("Prespawn survival")
-
-survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "yuba river")) |>
-  ggplot(aes(x = mean_flow, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
-  theme_minimal() + ggtitle("Prespawn survival and mean flow by stream") +
-  xlab("Mean flow (cfs)") +
-  ylab("Prespawn survival")
-
-survival_model_data_raw |>
-  filter(stream != "mill creek") |>
-  ggplot(aes(x = max_flow, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
-  theme_minimal() + ggtitle("Prespawn survival and max flow by stream") +
-  xlab("Max flow (cfs)") +
-  ylab("Prespawn survival")
-
-survival_model_data_raw |>
-  filter(stream == "mill creek") |>
-  ggplot(aes(x = max_flow, y = prespawn_survival)) +
-  geom_point(aes(color = stream))
-
-survival_model_data_raw |>
-  #filter(stream != "mill creek") |>
-  ggplot(aes(x = min_passage_timing, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")   +
-  theme_minimal() + ggtitle("Prespawn survival and minimum passage time by stream") +
-  xlab("Minimum passage time (weeks)") +
-  ylab("Prespawn survival")
-
-survival_model_data_raw |>
-  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
-  facet_wrap(~water_year_type, scales = "free") +
-  theme_minimal() + ggtitle("Prespawn survival and temperature by stream and water year type") +
-  xlab("Proportion of days exceeding temperature threshold") +
-  ylab("Prespawn survival")
-
-
-# remove variables with no relationship -----------------------------------
-
-# decide on one passage timing variable - remove minimum passage timing; does not
-# represent bulk of the fish moving through the system.
-# remove median passage timing; plotting difference between mean and median does not show
-# difference greater than +- 2 and previous VIF analyses and AIC model comparisons showed
-# median of greater importance
-
-# decide on one gdd variable - total contains the most complete information about the
-# lifecycle
-
-# remove covariates that either show no relationship (mean flow) or could be
-# better represented by other metrics (all prop_days temperature variables)
-# also, remove raw counts
-variables_to_remove <- c("mean_flow", "prop_days_exceed_threshold_holding",
-                         "prop_days_exceed_threshold_migratory",
-                         "total_prop_days_exceed_threshold",
-                         "min_passage_timing", "mean_passage_timing",
-                         "gdd_sac", "gdd_trib",
-                         "upstream_count", "redd_count", "female_upstream",
-                         "holding_count", "carcass_count")
-
-survival_model_data <- survival_model_data_raw |>
-  select(-all_of(variables_to_remove)) |>
-  glimpse()
-
-# check for collinearity for each stream --------------------------------
-# function to print Pearsons correlations
-print_cors <- function(data, cor_threshold) {
-
-  if("water_year_type" %in% names(data)) {
-    new_dat <- data |>
-      select(-c(prespawn_survival, water_year_type)) |> # can't calculate cor for a categorical variable
-      drop_na() |>
-      cor() |>
-      as.matrix()
-  } else {
-    new_dat <- data |>
-      select(-prespawn_survival) |> # can't calculate cor for a categorical variable
-      drop_na() |>
-      cor() |>
-      as.matrix()
-  }
-
-  new_dat[lower.tri(new_dat)] <- NA # get rid of duplicates (lower tri of matrix)
-
-  new_dat |>
-    as.data.frame() |>
-    rownames_to_column(var = "variable") |>
-    pivot_longer(cols = -variable, names_to = "variable_2",
-                 values_to = "correlation") |>
-    filter(!is.na(correlation),
-           abs(correlation) >= cor_threshold,
-           variable != variable_2)
-}
-
-# steps for each stream:
-# 1. look at ggpairs
-# 2. look at Pearson's correlations above threshold 0.65
-# 3. use VIF to identify correlated variables (threshold is 5)
-# https://online.stat.psu.edu/stat462/node/180/ (VIF)
-# 4. use steps 1:3 to select ONE passage timing variable and ONE temperature variable -
-# you can't use the glmulti() function with all these variables - it won't converge
-# theory - GDD is the standard. stronger than total_prop_days
-# 5. use glmuli to look for the best model (by AIC) - including interactions
-
-battle_data_full <- survival_model_data |>
-  filter(stream == "battle creek")
-battle_data <- battle_data_full |>
-  select(-c(year, stream))
-ggpairs(battle_data |> drop_na())
-print_cors(battle_data, 0.65) # gdd total correlated with each other; mean passage timing correlated with each other
-vif(lm(prespawn_survival ~ ., data = battle_data))
-
-# remove variables with highest VIF values
-battle_variables_remove <- c()
-
-
-# now look for interactions using glmulti
-best_battle_model <- glmulti(y = "prespawn_survival",
-                             xr = battle_data |> select(-c("prespawn_survival",
-                                                           all_of(battle_variables_remove))) |>
-                               names(),
-                             intercept = TRUE,
-                             method = "h",
-                             maxsize = 1,
-                             level = 1,
-                             data = battle_data,
-                             fitfunction = "lm")
-summary(best_battle_model)$bestmodel
-
-# clear
-# clear had lots of points where prespawn_survival > 1 (filtered earlier). This gets rid
-# of any years with different water year types, so we exclude this as a consideration although
-# as data availability increases we may want to include water year type
-clear_data_full <- survival_model_data |>
-  filter(stream == "clear creek")
-clear_data <- clear_data_full |>
-  select(-c(stream,  year))
-ggpairs(clear_data |> drop_na()) # lots of NAs for median_passage
-print_cors(clear_data, 0.65)
-vif(lm(prespawn_survival ~ ., data = clear_data |> select(-c(median_passage_timing))))
-vif(lm(prespawn_survival ~ ., data = clear_data))
-
-
-# remove variables with highest VIF values
-clear_variables_remove <- c("median_passage_timing") # NAs for many years
-clear_variables_remove <- c()
-# now look for interactions using glmulti
-best_clear_model <- glmulti(y = "prespawn_survival",
-                            xr = clear_data |> select(-c("prespawn_survival",
-                                               all_of(clear_variables_remove))) |>
-                              names(),
-                            intercept = TRUE,
-                            method = "h",
-                            maxsize = 1,
-                            level = 1,
-                            data = clear_data,
-                            fitfunction = "lm")
-summary(best_clear_model)$bestmodel
-
-# mill
-# mill had lots of points where prespawn_survival > 1 (filtered earlier). This gets rid
-# of any years with different water year types, so we exclude this as a consideration although
-# as data availability increases we may want to include water year type.
-# currently only 3 data points for mill...this is not a lot of statistical power
-mill_data_full <- survival_model_data |>
-  filter(stream == "mill creek")
-mill_data <- mill_data_full |>
-  select(-c(year, stream))
-
-ggpairs(mill_data)
-print_cors(mill_data, 0.65)
-vif(lm(prespawn_survival ~ ., data = mill_data |> select(-c(median_passage_timing))))
-vif(lm(prespawn_survival ~ ., data = mill_data |> select(-c(gdd_total)))) # median passage timing increases VIF
-
-
-# remove variables with highest VIF values
-mill_variables_remove <- c("median_passage_timing")
-
-# now look for interactions using glmulti
-best_mill_model <- glmulti(y = "prespawn_survival",
-                           xr = mill_data |> select(-c("prespawn_survival",
-                                                       all_of(mill_variables_remove))) |>
-                             names(),
-                           intercept = TRUE,
-                           method = "h",
-                           maxsize = 1,
-                           level = 1,
-                           data = mill_data,
-                           fitfunction = "lm")
-summary(best_mill_model)$bestmodel
-
-# deer
-deer_data_full <- survival_model_data |>
-  filter(stream == "deer creek")
-deer_data <- deer_data_full |>
-  select(-c(year, stream))
-ggpairs(deer_data)
-print_cors(deer_data, 0.65) # gdd trib is correlated w/ max flow & median passage
-vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(median_passage_timing))))
-vif(lm(prespawn_survival ~ ., data = deer_data |> select(-c(max_flow))))
-
-# remove variables with highest VIF values
-deer_variables_remove <- c("median_passage_timing")
-
-# now look for interactions using glmulti
-best_deer_model <- glmulti(y = "prespawn_survival",
-                           xr = deer_data |> select(-c("prespawn_survival",
-                                                       all_of(deer_variables_remove))) |>
-                             names(),
-                           intercept = TRUE,
-                           method = "h",
-                           level = 1,
-                           maxsize = 1,
-                           data = deer_data,
-                           fitfunction = "lm")
-summary(best_deer_model)$bestmodel
-
-
-# plot best models and get estimates of coefficients
-# this is important because these are used to create the environmental index
-# used in the dauphin bayesian models
-summary(best_battle_model)$bestmodel
-best_battle_lm <- lm(prespawn_survival ~ 1 + water_year_type,
-                     data = battle_data)
-
-summary(best_clear_model)$bestmodel
-best_clear_lm <- lm(prespawn_survival ~ 1 + max_flow,
-                     data = clear_data)
-
-summary(best_mill_model)$bestmodel
-best_mill_lm <- lm(prespawn_survival ~ 1 + gdd_total,
-                     data = mill_data)
-
-summary(best_deer_model)$bestmodel
-best_deer_lm <- lm(prespawn_survival ~ 1 + water_year_type,
-                   data = deer_data)
-
-
 # yuba data ---------------------------------------------------------------
 yuba_data <- upstream_passage_estimates |>
   filter(stream == "yuba river") |>
@@ -507,7 +298,8 @@ yuba_data <- upstream_passage_estimates |>
 # butte data --------------------------------------------------------------
 butte_data <- carcass_estimates |>
   filter(stream == "butte creek") |>
-  select(year, spawner_estimate = carcass_spawner_estimate) |>
+  select(year, spawner_estimate = carcass_spawner_estimate,
+         lcl_90 = lower, ucl_90 = upper) |>
   glimpse()
 
 
@@ -515,37 +307,25 @@ butte_data <- carcass_estimates |>
 
 feather_data <- carcass_estimates |>
   filter(stream == "feather river") |>
-  select(year, spawner_estimate = carcass_spawner_estimate) |>
+  select(year, spawner_estimate = carcass_spawner_estimate,
+         lcl_90 = lower, ucl_90 = upper) |>
   glimpse()
-
 
 # write data objects to bucket -------------------------------------------------------
 f <- function(input, output) write_csv(input, file = output)
 
+gcs_upload(adult_model_input_raw,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/adult_data_input_raw.csv")
+gcs_upload(adult_model_covariates_standard,
+           object_function = f,
+           type = "csv",
+           name = "jpe-model-data/adult-model/adult_model_covariates_standard.csv")
 gcs_upload(survival_model_data_raw,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/survival_model_data_raw.csv")
-gcs_upload(survival_model_data,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/survival_model_data.csv")
-gcs_upload(battle_data_full,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/battle_data.csv")
-gcs_upload(clear_data_full,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/clear_data.csv")
-gcs_upload(deer_data_full,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/deer_data.csv")
-gcs_upload(mill_data_full,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/mill_data.csv")
 gcs_upload(yuba_data,
            object_function = f,
            type = "csv",
@@ -558,24 +338,4 @@ gcs_upload(butte_data,
            object_function = f,
            type = "csv",
            name = "jpe-model-data/adult-model/butte_data.csv")
-
-# save data objects -------------------------------------------------------
-
-adult_data_objects <- list("survival_model_data_raw" = survival_model_data_raw,
-                           "survival_model_data" = survival_model_data,
-                           "battle_data" = battle_data_full,
-                           "clear_data" = clear_data_full,
-                           "mill_data" = mill_data_full,
-                           "deer_data" = deer_data_full,
-                           "yuba_data" = yuba_data,
-                           "butte_data" = butte_data,
-                           "feather_data" = feather_data)
-
-save(adult_data_objects, file = here::here("data-raw", "adult_model", "adult_data_objects.Rdata"))
-
-best_adult_models <- list("best_battle_lm" = best_battle_lm,
-                          "best_clear_lm" = best_clear_lm,
-                          "best_mill_lm" = best_mill_lm,
-                          "best_deer_lm" = best_deer_lm)
-save(best_adult_models, file = here::here("data-raw", "adult_model", "best_adult_models.Rdata"))
 

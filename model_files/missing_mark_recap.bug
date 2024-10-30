@@ -1,0 +1,72 @@
+#This version assumes allows missing MR and unmarked catch data for some weekly strata
+
+model{
+
+### pCap Estimation using all mark-recap data ###############
+
+#tributary-specific mean pCap is a random effect, so define priors for hyper-paramaters (distribution of tributary mean pCap across tribs)
+trib_mu.P~dnorm(0,1.0E-06);trib_tau.P~dgamma(0.001,0.001);trib_sd.P<-1/pow(trib_tau.P,0.5)
+flow_mu.P~dnorm(0,1.0E-06);flow_tau.P~dgamma(0.001,0.001);flow_sd.P<-1/pow(flow_tau.P,0.5)
+
+for(j in 1:Ntribs){
+	b0_pCap[j]~dnorm(trib_mu.P,trib_tau.P)#trib-specific P is a random draw from hyper distribtion
+	b_flow[j]~dnorm(flow_mu.P,flow_tau.P)
+}
+
+pro_tau.P~dgamma(0.001,0.001)	#process error distribution (error not explained by trib, year, and week effects
+pro_sd.P<-1/pow(pro_tau.P,0.5)
+
+for(i in 1:Nmr){	#loop through all MR experiments to estimate pCaps and hyper-parameters
+	pro_dev.P[i]~dnorm(0,pro_tau.P)
+	logit_pCap[i]<-  b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]]*mr_flow[i] + pro_dev.P[i] #trib and week effects
+	logit(pCap[i])<-logit_pCap[i]
+	Recaptures[i]~dbin(pCap[i],Releases[i])
+}
+
+### Unmarked abundance estimation ##########
+
+#Priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
+tau.N~dgamma(1,0.05);sd.N<-1/pow(tau.N,0.5)
+tau.Ne~dgamma(1,0.05);sd.Ne<-1/pow(tau.Ne,0.5) #0.1,0.1Prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
+
+#Priors on spline coefficients
+#b_sp[1]~dflat()
+b_sp[1]~dnorm(0,1.0)
+b_sp[2]~dflat()	#in cases with u=NA at start of time series large values of b_sp[1:2] lead to unrealistically high values of U[1:2]
+for(i in 3:K){
+      xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b
+      b_sp[i] ~ dnorm(xi[i-2],tau.N) 	 #The higher the estimated precision of tau.N, the lower the flexibility in b[i]'s, and hence a smoother the curve.
+}
+
+#Assign estimated pCaps to U estimation strata
+for(i in 1:Nwmr){pCap_U[Uind_wMR[i]]<-cut(pCap[ind_pCap[i]])}
+# for(i in 1:Nwmr){pCap_U[Uind_wMR[i]]<-pCap[ind_pCap[i]]}
+
+#For U strata without MR data, simulate pCaps from hyper distributions.
+#This version assumes that the tributary being modelled was also in the MR estimation
+#If it isn't then you have to simulate b0_pCap from hyper parameters
+for(i in 1:Nwomr){
+	pro_dev[i]~dnorm(0,pro_tau.P)
+	logit_pCap_Sim[i]<- b0_pCap[use_trib] + b_flow[use_trib]*catch_flow[Uind_woMR[i]] + pro_dev[i]
+	logit(pCap_U[Uind_woMR[i]])<-cut(logit_pCap_Sim[i])
+	#logit(pCap_U[Uind_woMR[i]])<-logit_pCap_Sim[i]
+}
+
+#beta_dev~dnorm(0,1.0E-03)
+for(i in 1:Nstrata){
+	Usp[i]<-inprod(ZP[i,],b_sp[])		#spline-based estimate of log U
+	lg_N[i]~dnorm(Usp[i],tau.Ne)I(,lgN_max[i])	#spline + extra-spline variation estimate of log U
+	#log(N[i])<-lg_N[i]			#Convert lg_N to N
+	N[i]<-exp(lg_N[i])*1000.0
+}
+Ntot<-sum(N[])
+
+#Only loop through strata with unmarked catch observations
+for(i in 1:Nstrata_wc){
+	u[Uwc_ind[i]]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]])
+
+	#exp_u[Uwc_ind[i]]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]]
+	#u[Uwc_ind[i]]~dpois(exp_u[Uwc_ind[i]])
+}
+
+}

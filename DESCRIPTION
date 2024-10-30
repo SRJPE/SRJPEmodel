@@ -1,14 +1,28 @@
 Package: SRJPEmodel
-Title: What the Package Does (One Line, Title Case)
+Title: Stores Code and Documentation for the Spring Run Juvenile Production Estimate Model 
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: MIT + file LICENSE
+Authors@R: c(person("Ashley", "Vizek", , "avizek@flowwest.com", role = c("aut", "cre")),
+             person("Erin", "Cain", , "ecain@flowwest.com", role = c("aut")),
+             person("Liz", "Stebbins", , "lstebbins@flowwest.com", role = c("aut")))
+Description: This package contains functions to run submodels of the Spring Run Juvenile Production Estimate (SRJPE) forecast. 
+License: GPL-3
+Imports: 
+    rstanarm,
+    here,
+    scales,
+    dplyr,
+    cli,
+    rstan,
+    splines2,
+    gtools,
+    readr,
+    R2WinBUGS
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
+Depends: 
+    R (>= 2.10)
+LazyData: true

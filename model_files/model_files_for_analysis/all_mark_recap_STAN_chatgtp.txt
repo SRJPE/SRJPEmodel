@@ -1,0 +1,112 @@
+# ChatGPT refactor of all_mark_recap.bug to STAN
+
+data {
+  int Nmr;     // Number of MR experiments
+  int Ntribs;  // Number of tributaries
+  int Nstrata; // Number of strata
+  int Nstrata_wc; // Number of strata with unmarked catch observations
+
+  // Data for MR experiments
+  int ind_trib[Nmr];     // Index of tributary for each MR experiment
+  real mr_flow[Nmr];     // Flow for each MR experiment
+  int Releases[Nmr];     // Number of releases for each MR experiment
+  int Recaptures[Nmr];   // Number of recaptures for each MR experiment
+
+  // Data for unmarked abundance estimation
+  int K;                 // Number of spline coefficients
+  matrix[Nstrata, K] ZP; // Matrix of spline coefficients for each stratum
+  real lg_N[Nstrata];    // Log unmarked abundance for each stratum
+  real lgN_max[Nstrata]; // Maximum log unmarked abundance for each stratum
+  int Uwc_ind[Nstrata_wc]; // Indices of strata with unmarked catch observations
+
+  // Additional data
+  real pCap[Nmr];        // Proportion capture for each MR experiment
+}
+
+parameters {
+  // Parameters for pCap estimation
+  real trib_mu.P;
+  real<lower=0> trib_tau.P;
+  real<lower=0> trib_sd.P;
+  real flow_mu.P;
+  real<lower=0> flow_tau.P;
+  real<lower=0> flow_sd.P;
+  real b0_pCap[Ntribs];
+  real b_flow[Ntribs];
+  real<lower=0> pro_tau.P;
+  real<lower=0> pro_sd.P;
+  real pro_dev.P[Nmr];
+
+  // Parameters for unmarked abundance estimation
+  real<lower=0> tau_N;
+  real<lower=0> sd_N;
+  real<lower=0> tau_Ne;
+  real<lower=0> sd_Ne;
+  real b_sp[K];
+}
+
+transformed parameters {
+  // Intermediate transformed parameters
+  real logit_pCap[Nmr];
+  real pCap_U[Nstrata];
+  real N[Nstrata];
+  real Usp[Nstrata];
+
+  // Calculate logit of pCap
+  for (i in 1:Nmr) {
+    logit_pCap[i] = b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]] * mr_flow[i] + pro_dev_P[i];
+  }
+
+  // Cut pCap for each stratum
+  for (i in 1:Nstrata) {
+    pCap_U[i] = pCap[Uwc_ind[i]];
+  }
+
+  // Calculate unmarked abundance and spline-based estimate of log U
+  for (i in 1:Nstrata) {
+    Usp[i] = dot_product(ZP[i], b_sp);
+    N[i] = exp(lg_N[i]) * 1000.0;
+  }
+}
+
+model {
+  // Priors for pCap estimation
+  trib_mu.P ~ normal(0, 1.0E-06);
+  trib_tau.P ~ gamma(0.001, 0.001);
+  trib_sd.P = 1 / sqrt(trib_tau.P);
+  flow_mu.P ~ normal(0, 1.0E-06);
+  flow_tau.P ~ gamma(0.001, 0.001);
+  flow_sd.P = 1 / sqrt(flow_tau.P);
+  b0_pCap ~ normal(trib_mu.P, trib_tau.P);
+  b_flow ~ normal(flow_mu.P, flow_tau.P);
+  pro_tau.P ~ gamma(0.001, 0.001);
+  pro_sd.P = 1 / sqrt(pro_tau.P);
+  pro_dev.P ~ normal(0, pro_tau.P);
+
+  // Priors for unmarked abundance estimation
+  tau.N ~ gamma(1, 0.05);
+  sd.N = 1 / sqrt(tau.N);
+  tau.Ne ~ gamma(1, 0.05);
+  sd.Ne = 1 / sqrt(tau.Ne);
+  b_sp[1] ~ normal(0, 1.0);
+  b_sp[2] ~ normal(0, 1.0);
+  for (i in 3:K) {
+    real xi = 2 * b_sp[i-1] - b_sp[i-2];
+    b_sp[i] ~ normal(xi, tau.N);
+  }
+
+  // Likelihood for MR experiments
+  for (i in 1:Nmr) {
+    Recaptures[i] ~ binomial(Releases[i], inv_logit(logit_pCap[i]));
+  }
+
+  // Likelihood for unmarked catch observations
+  for (i in 1:Nstrata_wc) {
+    u[Uwc_ind[i]] ~ binomial(N[Uwc_ind[i]], pCap_U[i]);
+  }
+}
+
+generated quantities {
+  // Total unmarked abundance
+  real Ntot = sum(N);
+}
