@@ -51,6 +51,23 @@ observed_adult_input_wide |>
        y = "Spawner Count",
        title = "Observed Adult Data")
 
+# plot
+observed_adult_input_wide |>
+  filter(stream %in% streams_to_use) |>
+  mutate(stream = str_to_title(stream)) |>
+  rename(spawner_count = redd_count) |>
+  ggplot(aes(x = year, y = spawner_count, color = "Spawner count (redd)")) +
+  geom_line() +
+  geom_line(aes(x = year, y = upstream_estimate, color = "Upstream passage")) +
+  facet_wrap(~stream, scales = "free_y",
+             nrow = 2) +
+  xlab("Year") + ylab("Abundance") +
+  ggtitle("Spawner survey data and upstream passage by stream") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom") +
+  scale_color_manual("Adult data type", values = wes_palette("GrandBudapest1")[2:3])
+
 
 # do covariate selection --------------------------------------------------
 compare_covariates <- compare_P2S_model_covariates()

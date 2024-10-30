@@ -9,12 +9,16 @@ library(SRJPEdata)
 
 
 # join observed adult input and covariates --------------------------------
-full_data_for_input <- full_join(SRJPEdata::observed_adult_input,
-                                 SRJPEdata::adult_model_covariates_standard,
-                                 by = c("year", "stream")) |>
+full_data_for_input <- SRJPEdata::observed_adult_input |>
+  select(-reach) |> # empty
+  group_by(year, stream, data_type, ) |>
+  summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
+  ungroup() |>
+  full_join(SRJPEdata::p2s_model_covariates_standard,
+            by = c("year", "stream")) |>
   filter(!is.na(data_type)) |>
   pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
-                          median_passage_timing_std),
+                          median_passage_timing_std, passage_index),
               names_from = data_type,
               values_from = count) |>
   glimpse()
