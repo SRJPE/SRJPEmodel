@@ -19,6 +19,8 @@ nrow(trials_to_fit)
 trials_to_fit_battle <- trials_to_fit |>
   filter(site %in% c("ubc", "lbc"))
 
+nrow(trials_to_fit_battle)
+
 # function for running multiple -------------------------------------------
 
 run_multiple_bugs <- function(site, run_year, life_stage) {
@@ -73,9 +75,9 @@ saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
 
 options(mc.cores=parallel::detectCores())
 
-stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site[1:2],
-                                        trials_to_fit_battle$run_year[1:2],
-                                        trials_to_fit_battle$life_stage[1:2]),
+stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
+                                        trials_to_fit_battle$run_year,
+                                        trials_to_fit_battle$life_stage),
                             run_multiple_stan,
                             .progress = TRUE)
 saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
