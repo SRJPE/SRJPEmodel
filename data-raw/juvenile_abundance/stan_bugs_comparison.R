@@ -81,7 +81,7 @@ stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
                             run_multiple_stan,
                             .progress = TRUE)
 saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
-                                         "battle_results_STAN_oct_2024.rds"))
+                                         "battle_results_STAN_nov_2024.rds"))
 
 
 # results -----------------------------------------------------------------
