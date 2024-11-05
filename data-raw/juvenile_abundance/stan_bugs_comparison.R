@@ -9,7 +9,8 @@ library(SRJPEmodel)
 weekly_catch <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(life_stage %in% c("fry", "smolt"))
 
-weekly_efficiency <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
+weekly_efficiency <- SRJPEdata::weekly_juvenile_abundance_efficiency_data %>%
+  filter(number_released > 0)
 
 trials_to_fit <- weekly_catch |>
   distinct(site, run_year, life_stage)
@@ -20,6 +21,11 @@ trials_to_fit_battle <- trials_to_fit |>
   filter(site %in% c("ubc", "lbc"))
 
 nrow(trials_to_fit_battle)
+
+trials_to_fit_lbc <- trials_to_fit_battle %>%
+  filter(site == "lbc")
+
+nrow(trials_to_fit_lbc)
 
 # function for running multiple -------------------------------------------
 
@@ -68,7 +74,7 @@ bugs_results <- purrr::pmap(list(trials_to_fit_battle$site,
                             run_multiple_bugs,
                             .progress = TRUE)
 saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
-                                 "battle_results_BUGS_oct_2024.rds"))
+                                 "battle_results_BUGS_nov_2024.rds"))
 
 
 # run for STAN ------------------------------------------------------------
