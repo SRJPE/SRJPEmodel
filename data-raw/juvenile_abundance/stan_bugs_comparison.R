@@ -69,7 +69,13 @@ bugs_results <- purrr::pmap(list(trials_to_fit_battle$site,
                             .progress = TRUE)
 saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
                                  "battle_results_BUGS_oct_2024.rds"))
-
+bugs_results_butte <- purrr::pmap(list(trials_to_fit_battle$site,
+                                 trials_to_fit_battle$run_year,
+                                 trials_to_fit_battle$life_stage),
+                            run_multiple_bugs,
+                            .progress = TRUE)
+saveRDS(bugs_results_butte, here::here("data-raw", "juvenile_abundance",
+                                 "battle_results_BUGS_oct_2024.rds"))
 
 # run for STAN ------------------------------------------------------------
 
@@ -83,6 +89,13 @@ stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
 saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
                                          "battle_results_STAN_nov_2024.rds"))
 
+stan_results_butte <- purrr::pmap(list(trials_to_fit_battle$site,
+                                        trials_to_fit_battle$run_year,
+                                        trials_to_fit_battle$life_stage),
+                                   run_multiple_stan,
+                                   .progress = TRUE)
+saveRDS(stan_results_butte, here::here("data-raw", "juvenile_abundance",
+                                        "battle_results_STAN_nov_2024.rds"))
 
 # results -----------------------------------------------------------------
 
@@ -90,16 +103,15 @@ extract_stan_results <- function(element) {
 
   if(class(element) == "list") {
     results <- element$summary_table |>
-      filter(parameter %in% c("pCap_U", "N"))
-    if(nrow(results) == 0) {
-      results <- data.frame("error" = TRUE)
-    }
-    return(results)
+      filter(parameter %in% c("pCap_U", "N", "Ntot"))
+  } else {
+    results <- data.frame("error" = TRUE)
   }
+  return(results)
 }
 
 extract_bugs_results <- function(element) {
-  par_list <- c("N", "pCap_U")
+  par_list <- c("N", "pCap_U", "Ntot")
 
   if(class(element) == "list") {
     results <- element$final_results |>
@@ -107,10 +119,12 @@ extract_bugs_results <- function(element) {
   } else {
     results <- data.frame("error" = TRUE)
   }
+  return(results)
 }
 
-bugs <- readRDS("data-raw/juvenile_abundance/battle_creek_results_10-23-2024.rds")
-stan <- readRDS("data-raw/juvenile_abundance/battle_results_STAN_oct_2024.rds")
+# bugs <- readRDS("data-raw/juvenile_abundance/battle_creek_results_10-23-2024.rds")
+bugs <- readRDS("data-raw/juvenile_abundance/battle_results_BUGS_nov_2024.rds")
+stan <- readRDS("data-raw/juvenile_abundance/battle_results_STAN_nov_2024.rds")
 
 battle_stan_results_clean <- lapply(stan,
                                     extract_stan_results) |>
@@ -124,36 +138,57 @@ battle_bugs_results_clean <- lapply(bugs,
 # convergence -------------------------------------------------------------
 
 # bugs
-battle_bugs_results_clean |>
-  filter(is.na(error)) |>
-  distinct(site, run_year, life_stage) |>
-  tally()
-battle_bugs_results_clean |>
-  filter(error) |>
-  tally()
-
-# converged
-15/25
+lapply(bugs, is.list) |> unlist() |> sum() # 44/69
 
 # stan
+lapply(stan, is.list) |> unlist() |> sum() # 37/69
 
 
+# streams in both ---------------------------------------------------------
 
+bugs_fit <- battle_bugs_results_clean |>
+  filter(is.na(error)) |>
+  distinct(run_year, life_stage, site) |>
+  mutate(id = paste(run_year, life_stage, site, sep = "-"))
+
+stan_fit <- battle_stan_results_clean |>
+  filter(is.na(error)) |>
+  distinct(run_year, life_stage, site) |>
+  mutate(id = paste(run_year, life_stage, site, sep = "-"))
+
+# fit in bugs but not stan
+bugs_fit$id[!bugs_fit$id %in% stan_fit$id]
+# fit in stan but not bugs
+stan_fit$id[!stan_fit$id %in% bugs_fit$id]
+# fit in both
+both_fit <- bugs_fit$id[stan_fit$id %in% bugs_fit$id]
 
 # plot --------------------------------------------------------------------
 
-# TODO run stan to get clean results and then plot against each other
 # and add a 1:1 line
 # abundance
 battle_bugs_results_clean |>
   filter(is.na(error)) |>
-  mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
-  filter(parameter == "N") |>
-  pivot_wider(names_from = "statistic", values_from = "value") |>
-  ggplot(aes(x = week_fit, y = `50`)) +
-  geom_abline(intercept = 0, slope = 1, color = "red", linetype = 2) +
+  mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
+         model = "BUGS") |>
+  bind_rows(battle_stan_results_clean |>
+              filter(is.na(error)) |>
+            mutate(model = "STAN",
+                   statistic = str_remove_all(statistic, "\\%"))) |>
+  mutate(id = paste(run_year, life_stage, site, sep = "-")) |>
+  filter(parameter == "Ntot",
+         statistic == "50",
+         id %in% both_fit) |>
+  pivot_wider(names_from = "model",
+              values_from = "value") |>
+  mutate(diff = STAN-BUGS) |>
+  ggplot(aes(x = week_fit, y = diff)) +
+  geom_hline(aes(yintercept = 0), color = "red", linetype = "dashed") +
+  # ggplot(aes(x = BUGS, y = STAN)) +
+  #ggplot(aes(x = week_fit, y = value, color = model)) +
+  #geom_abline(intercept = 0, slope = 1, color = "red", linetype = 2) +
   geom_point() +
-  facet_wrap(~site + run_year + life_stage)
+  facet_wrap(~id, scales = "free_y")
 
 # efficiency
 battle_bugs_results_clean |>
@@ -168,5 +203,32 @@ battle_bugs_results_clean |>
 
 
 
+# try again with a subset -------------------------------------------------
 
+
+# run for BUGS ------------------------------------------------------------
+ubc_trials <- trials_to_fit_battle |>
+  filter(site == "lbc") |>
+  glimpse()
+
+bugs_results <- purrr::pmap(list(trials_to_fit_battle$site,
+                                 trials_to_fit_battle$run_year,
+                                 trials_to_fit_battle$life_stage),
+                            run_multiple_bugs,
+                            .progress = TRUE)
+saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
+                                 "battle_results_BUGS_oct_2024.rds"))
+
+
+# run for STAN ------------------------------------------------------------
+
+options(mc.cores=parallel::detectCores())
+
+stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
+                                        trials_to_fit_battle$run_year,
+                                        trials_to_fit_battle$life_stage),
+                                   run_multiple_stan,
+                                   .progress = TRUE)
+saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
+                                        "battle_results_STAN_nov_2024.rds"))
 
