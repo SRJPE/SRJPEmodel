@@ -21,6 +21,11 @@ trials_to_fit_battle <- trials_to_fit |>
 
 nrow(trials_to_fit_battle)
 
+trials_to_fit_butte <- trials_to_fit |>
+  filter(site == "okie dam")
+
+nrow(trials_to_fit_butte)
+
 # function for running multiple -------------------------------------------
 
 run_multiple_bugs <- function(site, run_year, life_stage) {
@@ -217,7 +222,7 @@ bugs_results <- purrr::pmap(list(trials_to_fit_battle$site,
                             run_multiple_bugs,
                             .progress = TRUE)
 saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
-                                 "battle_results_BUGS_oct_2024.rds"))
+                                 "battle_results_BUGS_nov_2024.rds"))
 
 
 # run for STAN ------------------------------------------------------------
