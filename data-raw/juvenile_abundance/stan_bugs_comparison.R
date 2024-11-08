@@ -2,12 +2,16 @@
 library(tidyverse)
 library(SRJPEdata)
 library(SRJPEmodel)
+library(scales)
 
 # data prep ---------------------------------------------------------------
 
 # do not run for yearling
 weekly_catch <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(life_stage %in% c("fry", "smolt"))
+
+SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+  filter(number_released == 0)
 
 weekly_efficiency <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
 
@@ -94,13 +98,13 @@ stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
 saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
                                          "battle_results_STAN_nov_2024.rds"))
 
-stan_results_butte <- purrr::pmap(list(trials_to_fit_battle$site,
-                                        trials_to_fit_battle$run_year,
-                                        trials_to_fit_battle$life_stage),
+stan_results_butte <- purrr::pmap(list(trials_to_fit_butte$site,
+                                        trials_to_fit_butte$run_year,
+                                        trials_to_fit_butte$life_stage),
                                    run_multiple_stan,
                                    .progress = TRUE)
 saveRDS(stan_results_butte, here::here("data-raw", "juvenile_abundance",
-                                        "battle_results_STAN_nov_2024.rds"))
+                                        "butte_results_STAN_nov_2024.rds"))
 
 # results -----------------------------------------------------------------
 
@@ -128,35 +132,35 @@ extract_bugs_results <- function(element) {
 }
 
 # bugs <- readRDS("data-raw/juvenile_abundance/battle_creek_results_10-23-2024.rds")
-bugs <- readRDS("data-raw/juvenile_abundance/battle_results_BUGS_nov_2024.rds")
-stan <- readRDS("data-raw/juvenile_abundance/battle_results_STAN_nov_2024.rds")
+bugs <- readRDS("data-raw/juvenile_abundance/butte_results_BUGS_nov_2024.rds")
+stan <- readRDS("data-raw/juvenile_abundance/butte_results_STAN_nov_2024.rds")
 
-battle_stan_results_clean <- lapply(stan,
-                                    extract_stan_results) |>
+stan_results_clean <- lapply(stan,
+                             extract_stan_results) |>
   bind_rows()
 
-battle_bugs_results_clean <- lapply(bugs,
-                                    extract_bugs_results) |>
+bugs_results_clean <- lapply(bugs,
+                             extract_bugs_results) |>
   bind_rows()
 
 
 # convergence -------------------------------------------------------------
 
 # bugs
-lapply(bugs, is.list) |> unlist() |> sum() # 44/69
+lapply(bugs, is.list) |> unlist() |> sum() # 44/69 battle, 21/38 butte
 
 # stan
-lapply(stan, is.list) |> unlist() |> sum() # 37/69
+lapply(stan, is.list) |> unlist() |> sum() # 37/69 battle, 22/38 butte
 
 
 # streams in both ---------------------------------------------------------
 
-bugs_fit <- battle_bugs_results_clean |>
+bugs_fit <- bugs_results_clean |>
   filter(is.na(error)) |>
   distinct(run_year, life_stage, site) |>
   mutate(id = paste(run_year, life_stage, site, sep = "-"))
 
-stan_fit <- battle_stan_results_clean |>
+stan_fit <- stan_results_clean |>
   filter(is.na(error)) |>
   distinct(run_year, life_stage, site) |>
   mutate(id = paste(run_year, life_stage, site, sep = "-"))
@@ -171,29 +175,52 @@ both_fit <- bugs_fit$id[stan_fit$id %in% bugs_fit$id]
 # plot --------------------------------------------------------------------
 
 # and add a 1:1 line
-# abundance
-battle_bugs_results_clean |>
+# weekly abundance
+bugs_results_clean |>
   filter(is.na(error)) |>
   mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
          model = "BUGS") |>
-  bind_rows(battle_stan_results_clean |>
+  bind_rows(stan_results_clean |>
               filter(is.na(error)) |>
             mutate(model = "STAN",
                    statistic = str_remove_all(statistic, "\\%"))) |>
   mutate(id = paste(run_year, life_stage, site, sep = "-")) |>
-  filter(parameter == "Ntot",
-         statistic == "50",
+  filter(parameter == "N",
+         statistic == "mean",
          id %in% both_fit) |>
-  pivot_wider(names_from = "model",
-              values_from = "value") |>
-  mutate(diff = STAN-BUGS) |>
-  ggplot(aes(x = week_fit, y = diff)) +
+  ggplot(aes(x = week_fit, y = value, color = model)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(~id, scales = "free_y")
   geom_hline(aes(yintercept = 0), color = "red", linetype = "dashed") +
-  # ggplot(aes(x = BUGS, y = STAN)) +
-  #ggplot(aes(x = week_fit, y = value, color = model)) +
-  #geom_abline(intercept = 0, slope = 1, color = "red", linetype = 2) +
   geom_point() +
   facet_wrap(~id, scales = "free_y")
+
+# Ntot
+bugs_results_clean |>
+  filter(is.na(error)) |>
+  mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
+  filter(parameter == "N",
+         statistic == "50") |>
+  group_by(site, run_year, life_stage) |>
+  summarise(Ntot = sum(value)) |>
+  ungroup() |>
+  mutate(model = "BUGS") |>
+  bind_rows(stan_results_clean |>
+              filter(is.na(error),
+                     parameter == "Ntot",
+                     statistic == "50%") |>
+              rename(Ntot = value) |>
+              mutate(model = "STAN")) |>
+  select(site, run_year, life_stage, Ntot, model) |>
+  mutate(id = paste(run_year, life_stage, site, sep = "-")) |>
+  filter(id %in% both_fit) |>
+  ggplot(aes(x = run_year, y = Ntot, color = model)) +
+  geom_point(aes(shape = model), alpha = 0.9) +
+  facet_wrap(~site, scales = "free_y") +
+  theme_bw() +
+  labs(x = "Run Year",
+       y = "Annual abundance") +
+  scale_y_continuous(labels = label_comma())
 
 # efficiency
 battle_bugs_results_clean |>
