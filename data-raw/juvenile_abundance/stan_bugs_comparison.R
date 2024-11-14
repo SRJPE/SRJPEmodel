@@ -441,4 +441,18 @@ stan_results <- purrr::pmap(list(trials_to_fit$site,
 saveRDS(stan_results, here::here("data-raw", "juvenile_abundance",
                                  "clear_results_STAN_nov_2024.rds"))
 
-# stan
+# plot diagnostics
+plot_all <- function(element, model_language) {
+  if(!is.list(element)) {
+    print("model did not fit")
+  } else {
+    generate_diagnostic_plot(element$final_results, model_language)
+  }
+}
+
+purrr::pmap(list(element = bugs_results,
+                model_language = "BUGS"),
+           plot_all)
+
+generate_diagnostic_plot(bugs_results[[3]]$final_results,
+                         "BUGS")

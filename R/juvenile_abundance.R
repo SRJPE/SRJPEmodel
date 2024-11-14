@@ -110,17 +110,40 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bugs_directory, debug_mode,
                                  no_cut = c(F, T)) {
 
-  # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
-  # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
-  catch_data <- weekly_juvenile_abundance_catch_data |>
-    mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
-    filter(!filter_out,
-           run_year == !!run_year,
-           site == !!site,
-           week %in% c(seq(45, 53), seq(1, 22)),
-           life_stage %in% c(lifestage, NA)) |>
-    mutate(count = round(count, 0),
-           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  # some streams do not have lifestage data (i.e. Mokelumne, American) so we summarize all lifestages together
+  if(is.na(lifestage)) {
+    cli::cli_bullets("No lifestage passed, so grouping all lifestages for analysis")
+    catch_data <- weekly_juvenile_abundance_catch_data |>
+      select(-life_stage) |>
+      filter(run_year == !!run_year,
+             site == !!site,
+             week %in% c(seq(45, 53), seq(1, 22))) |>
+      group_by(year, week, stream, site, run_year) |>
+      summarise(count = sum(count, na.rm = T),
+                mean_fork_length = mean(mean_fork_length, na.rm = T),
+                hours_fished = mean(hours_fished, na.rm = T),
+                flow_cfs = mean(flow_cfs, na.rm = T),
+                average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
+                standardized_flow = mean(standardized_flow, na.rm = T),
+                catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+                lgN_prior = mean(lgN_prior, na.rm = T)) |>
+      ungroup() |>
+      mutate(count = round(count, 0),
+             catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  } else {
+    # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
+    # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
+    catch_data <- weekly_juvenile_abundance_catch_data |>
+      mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
+      filter(!filter_out,
+             run_year == !!run_year,
+             site == !!site,
+             week %in% c(seq(45, 53), seq(1, 22)),
+             life_stage %in% c(lifestage, NA)) |>
+      mutate(count = round(count, 0),
+             catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  }
+
 
   if(nrow(catch_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
@@ -578,7 +601,8 @@ get_summary_table <- function(model_fit_object, site, run_year,
            `75` = x75_percent, `97.5` = x97_5_percent,
            rhat, n_eff, model_name = model_called) |>
     mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")),
-           converged = ifelse(rhat <= 1.05, TRUE, FALSE)) |>
+           converged = ifelse(rhat <= 1.05, TRUE, FALSE),
+           parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
     pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
 
   summary_table_final
