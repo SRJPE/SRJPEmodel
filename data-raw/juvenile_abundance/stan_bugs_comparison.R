@@ -42,7 +42,7 @@ run_multiple_bugs <- function(site, run_year, life_stage) {
                                             site = site,
                                             run_year = run_year,
                                             lifestage = life_stage,
-                                            effort_adjust = F,
+                                            effort_adjust = T,
                                             bugs_directory = here::here("data-raw", "WinBUGS14"),
                                             debug_mode = FALSE,
                                             no_cut = F)},
@@ -61,7 +61,7 @@ run_multiple_stan <- function(site, run_year, life_stage) {
                                                  site = site,
                                                  run_year = run_year,
                                                  lifestage = life_stage,
-                                                 effort_adjust = F)},
+                                                 effort_adjust = T)},
                       error = function(e) return("error")
 
   )
