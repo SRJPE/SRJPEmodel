@@ -234,7 +234,8 @@ generate_diagnostic_plot <- function(model_fit_summary_object,
     mutate(count = round(count, 0),
            catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
            # plot things
-           lincoln_peterson_abundance = count * (number_released / number_recaptured))
+           lincoln_peterson_abundance = count * (number_released / number_recaptured),
+           lincoln_peterson_efficiency = number_recaptured / number_released)
 
   # create week lookup for year to tell you if it was sampled or not
   sampled <- tibble("week" = c(45:53, 1:22),
@@ -306,13 +307,13 @@ generate_diagnostic_plot <- function(model_fit_summary_object,
 
   # abundance bar plot
   if(model_language == "STAN") {
-    abundance_plot_title <- paste0(str_to_title(site), " ", run_year, " predicted annual abundance = ",
+    abundance_plot_title <- paste0(str_to_title(site_arg), " ", run_year_arg, " predicted annual abundance = ",
                                    prettyNum(round(total_abundance$`50`, 0), big.mark = ","), " (",
                                    prettyNum(round(total_abundance$`2.5`, 0), big.mark = ","), "-",
                                    prettyNum(round(total_abundance$`97.5`, 0), big.mark = ","), ")")
   } else {
     # TODO get uncertainty around total estimate
-    abundance_plot_title <- paste0(str_to_title(site), " ", run_year, " predicted annual abundance = ",
+    abundance_plot_title <- paste0(str_to_title(site_arg), " ", run_year_arg, " predicted annual abundance = ",
                                    prettyNum(round(total_abundance$Ntot, 0), big.mark = ","))
   }
 
@@ -341,7 +342,7 @@ generate_diagnostic_plot <- function(model_fit_summary_object,
     left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
     full_join(input_data |>
                 select(week, site, run_year, number_recaptured, number_released,
-                       lincoln_peterson_abundance, sampled),
+                       lincoln_peterson_efficiency, sampled),
               by = c("site", "run_year", "week_fit" = "week")) |>
     # fill in date for weeks not sampled
     mutate(year = ifelse(week_fit >= 43, run_year - 1, run_year),
@@ -351,16 +352,18 @@ generate_diagnostic_plot <- function(model_fit_summary_object,
     select(-c(year, fake_date, final_date)) |>
     mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
                               paste0(run_year, "-", date)),
-           fake_date = as.Date(fake_date, format = "%Y-%b-%d"))
+           fake_date = as.Date(fake_date, format = "%Y-%b-%d"),
+           number_released_label = ifelse(is.na(number_released), "", number_released),
+           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured))
 
   efficiency_plot <- efficiency_plot_data |>
     ggplot(aes(x = fake_date, y = `50`)) +
     geom_bar(stat = "identity", fill = "grey") +
     geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-    geom_point(aes(x = fake_date, y = lincoln_peterson_abundance),
+    geom_point(aes(x = fake_date, y = lincoln_peterson_efficiency),
                shape = 1, color = "blue") +
     geom_text(aes(x = fake_date, y = Inf,
-                  label = paste(number_released, number_recaptured),
+                  label = paste(number_released_label, number_recaptured_label),
                   angle = 90),
               hjust = 1,
               size = 3) +
