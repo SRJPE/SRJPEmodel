@@ -395,3 +395,50 @@ stan_results_battle <- purrr::pmap(list(trials_to_fit_battle$site,
 saveRDS(stan_results_battle, here::here("data-raw", "juvenile_abundance",
                                         "battle_results_STAN_nov_2024.rds"))
 
+
+# 11-14-2024 --------------------------------------------------------------
+
+# run 10 sites on clear, all lifestages
+# do not run for yearling
+weekly_catch <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+  filter(life_stage %in% c("fry", "smolt"))
+
+SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+  filter(number_released == 0)
+
+weekly_efficiency <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
+
+# only fit for site/run year combos with data
+trials_to_fit <- weekly_catch |>
+  mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
+  filter(!filter_out,
+         site == "lcc",
+         week %in% c(seq(45, 53), seq(1, 22))) |>
+  mutate(count = round(count, 0),
+         catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0)) |>
+  group_by(site, run_year) |>
+  tally() |>
+  arrange(desc(n)) |>
+  head(10)
+
+# bugs
+# butte
+bugs_results <- purrr::pmap(list(trials_to_fit$site,
+                                 trials_to_fit$run_year,
+                                 NA),
+                                 run_multiple_bugs,
+                                 .progress = TRUE)
+saveRDS(bugs_results, here::here("data-raw", "juvenile_abundance",
+                                 "clear_results_BUGS_nov_2024.rds"))
+
+# stan
+options(mc.cores=parallel::detectCores())
+stan_results <- purrr::pmap(list(trials_to_fit$site,
+                                        trials_to_fit$run_year,
+                                        NA),
+                                   run_multiple_stan,
+                                   .progress = TRUE)
+saveRDS(stan_results, here::here("data-raw", "juvenile_abundance",
+                                 "clear_results_STAN_nov_2024.rds"))
+
+# stan
