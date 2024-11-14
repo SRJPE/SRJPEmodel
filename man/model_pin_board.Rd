@@ -29,3 +29,4 @@ board <- model_pin_board("my_storage_account", "my_container")
 \code{\link[AzureStor]{blob_container}}
 \code{\link[pins]{board_azure}}
 }
+\keyword{internal}

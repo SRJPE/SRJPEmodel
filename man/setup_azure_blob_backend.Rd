@@ -21,3 +21,4 @@ An \code{AzureStore} storage container object
 \description{
 Creates an \code{AzureStor} storage container object to be used by the \code{pins} package.
 }
+\keyword{internal}

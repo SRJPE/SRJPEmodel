@@ -11,24 +11,50 @@ store_model_fit(
   access_key,
   data,
   results_name,
+  description,
   ...
 )
 }
 \arguments{
-\item{con}{a connection object to the database}
+\item{con}{A connection object to the database.}
 
-\item{storage_account}{an azure storage account}
+\item{storage_account}{A string specifying the Azure storage account name.}
 
-\item{container_name}{container name in storage account (must exist)}
+\item{container_name}{A string specifying the container name in the Azure storage account.}
 
-\item{access_key}{azure storage access key with write permissions}
+\item{access_key}{A string specifying the Azure storage access key with write permissions.}
 
-\item{data}{the model result data object}
+\item{data}{The model result data object that needs to be stored.}
 
-\item{...}{additional named arguments to be passed as metadata to the blob storage}
+\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage.}
 
-\item{result_name}{a name to identify the model results on azure storage}
+\item{...}{Additional named arguments to be passed as metadata to the blob storage.}
+}
+\value{
+A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
 }
 \description{
-Store a model fit object in a pre-configured Azure Blob Container and Database
+This function stores a model fit object in an Azure Blob Container and the data into JPE database.
+It uploads the model data to Azure Blob Storage and updates the database with relevant information about the model run and parameters.
+}
+\examples{
+\dontrun{
+con <- DBI::dbConnect(RPostgres::Postgres(),
+                       dbname = cfg$db_name,
+                       host = cfg$db_host,
+                       port = cfg$db_port,
+                       user = cfg$db_user,
+                       password = cfg$db_password)
+
+blob_url <- store_model_fit(con,
+                            storage_account = "my_storage_account",
+                            container_name = "my_container",
+                            access_key = "my_access_key",
+                            data = model_results,
+                            results_name = "model_name")
+
+print(blob_url)
+
+dbDisconnect(con)
+}
 }

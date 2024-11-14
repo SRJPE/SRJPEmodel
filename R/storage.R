@@ -33,7 +33,7 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, ...){
+store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, description,...){
 
   model_board <- model_pin_board(storage_account, container_name)
 
@@ -64,7 +64,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
 #' @keywords internal
 setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
   if (access_key == "") {
-    stop("access key is required in order to write and read from the azure boad", call. = FALSE)
+    stop("access key is required in order to write and read from the azure board", call. = FALSE)
   }
   storage_endpoint <- glue::glue("https://{storage_account}.blob.core.windows.net")
   store <- AzureStor::storage_endpoint(storage_endpoint, key = access_key)
@@ -294,7 +294,7 @@ search_model_run <- function(con, keyword=NULL, model_run_id=NULL, view_all=FALS
 #' @param model_run_id An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither `keyword` nor `model_run_id` is provided, the latest model run is used.
 #' @return A tibble containing model parameters.
 #'
-#' #' @examples
+#' @examples
 #' \dontrun{
 #' con <- dbConnect(RPostgres::Postgres(),
 #'                  dbname = "your_db_name",
@@ -308,16 +308,15 @@ search_model_run <- function(con, keyword=NULL, model_run_id=NULL, view_all=FALS
 #' print(model_results)
 #'
 #' Example: get model parameters from Azure JPE Data Storage using a model run ID
-#' model_results <- get_model_results_parameters(con, keyword = "12")
+#' model_results <- get_model_results_parameters(con, model_run_id = 12)
 #'
 #' dbDisconnect(con)
 #' }
 #' @export
-
 get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 
   model_run_id <- search_model_run(con, keyword, model_run_id) |>
-    pull(id)
+    dplyr::pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
     filter(model_run_id == model_run_id) |>
@@ -383,7 +382,7 @@ get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sy
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
   model_run_url <- search_model_run(con, keyword, model_run_id) |>
-    pull(blob_storage_url)
+    dplyr::pull(blob_storage_url)
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
   container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
@@ -434,7 +433,8 @@ insert_model_run <- function(con, model, blob_url, description){
       "INSERT INTO model_run (
           blob_storage_url,
           model_name_id,
-          srjpedata_version
+          srjpedata_version,
+          description
         ) VALUES (
           UNNEST(ARRAY[{blob_storage_url*}]),
           UNNEST(ARRAY[{model_name_id*}]),
@@ -473,18 +473,16 @@ insert_model_parameters <- function(con, model, blob_url) {
           run_year,
           week_fit,
           lifestage_id,
-          srjpedata_version,
           model_fit_filename,
           parameter_id,
           statistic_id,
-          value,
+          value
         ) VALUES (
           UNNEST(ARRAY[{model_final_results$model_run_id*}]),
           UNNEST(ARRAY[{model_final_results$location_id*}]),
           UNNEST(ARRAY[{model_final_results$run_year*}]),
           UNNEST(ARRAY[{model_final_results$week_fit*}]),
           UNNEST(ARRAY[{model_final_results$lifestage_id*}]),
-          UNNEST(ARRAY[{model_final_results$srjpedata_version*}]),
           UNNEST(ARRAY[{model_final_results$model_fit_filename*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
