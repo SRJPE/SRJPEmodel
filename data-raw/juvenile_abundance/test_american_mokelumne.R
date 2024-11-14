@@ -13,14 +13,9 @@ priors <- weekly_juvenile_abundance_catch_data |>
 
 weekly_juvenile_abundance_catch_data <- weekly_juvenile_abundance_catch_data |>
   mutate(lgN_prior = ifelse(is.na(lgN_prior), mean(priors$avg)/2, lgN_prior))
-# TODO there's an issue with efficiency data - for golf, there are
-# several weks where number_recpatured == 2005 which is greater than number released...
 
-weekly_juvenile_abundance_efficiency_data <- read_csv("~/Downloads/weekly_juvenile_abundance_efficiency_data.csv") |>
-  mutate(issue = ifelse(number_recaptured > number_released, TRUE, FALSE)) |>
-  filter(!issue)
+weekly_juvenile_abundance_efficiency_data <- read_csv("~/Downloads/weekly_juvenile_abundance_efficiency_data.csv")
 
-# TODO add in SRJPEmodel that if lifestage is NA, group by and sum
 american <- run_single_bt_spas_x_stan(SRJPEmodel::bt_spas_x_bayes_params,
                                        weekly_juvenile_abundance_catch_data,
                                        weekly_juvenile_abundance_efficiency_data,
