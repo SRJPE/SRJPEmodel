@@ -35,7 +35,7 @@ transformed parameters {
   array[Nmr] real logit_pCap; // Logit of pCap for MR data
   array[Nwomr] real logit_pCap_Sim; // Logit of pCap for simulated data
   array[Nstrata] real pCap_U; // Estimated pCaps for all strata
-  array[Nstrata] real lt_pCap_U;
+  //array[Nstrata] real lt_pCap_U;
 
   // Compute derived quantities
   trib_sd_P = 1/sqrt(trib_tau_P);
@@ -49,13 +49,13 @@ transformed parameters {
   // estimate weekly pCap for weeks in the site and year
   for(i in 1:Nwmr){
     pCap_U[Uind_wMR[i]] = inv_logit(logit_pCap[ind_pCap[i]]); // Assign estimated pCaps to U estimation strata (weeks with catch)
-    lt_pCap_U[Uind_wMR[i]] = logit_pCap[ind_pCap[i]];
+    //lt_pCap_U[Uind_wMR[i]] = logit_pCap[ind_pCap[i]];
   }
 
   // Calculate logit of pCap for simulated unmarked catch strata without MR data
   for (i in 1:Nwomr) {
     logit_pCap_Sim[i] = b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]] + pro_dev[i];
-    lt_pCap_U[Uind_woMR[i]] = logit_pCap_Sim[i];
+    //lt_pCap_U[Uind_woMR[i]] = logit_pCap_Sim[i];
     pCap_U[Uind_woMR[i]] = inv_logit(logit_pCap_Sim[i]); // assigns simulated pCap for weeks with no MRdata
   }
 }
@@ -82,5 +82,20 @@ model {
   for (i in 1:Nmr) {
     pro_dev_P[i] ~ normal(0, pro_sd_P);
     Recaptures[i] ~ binomial_logit(Releases[i], logit_pCap[i]);
+  }
+}
+
+generated quantities {
+  array[Nstrata] real lt_pCap_U;
+  //array[Nwomr] real sim_pro_dev;
+
+  for(i in 1:Nwmr){
+    // Assign estimated pCaps for strata with efficiency data
+     lt_pCap_U[Uind_wMR[i]] = logit_pCap[ind_pCap[i]];
+  }
+  for (i in 1:Nwomr) {
+    //for weeks without efficiency trials
+    //sim_pro_dev[i] = normal_rng(0,pro_sd_P);
+    lt_pCap_U[Uind_woMR[i]] = b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]];// + sim_pro_dev[i];
   }
 }
