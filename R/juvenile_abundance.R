@@ -1014,9 +1014,9 @@ bt_spas_x_stan <- function(data, inits, parameters, model_name,
                                data = data,
                                init = inits,
                                chains = bt_spas_x_bayes_params$number_chains,
-                               thin = bt_spas_x_bayes_params$number_thin,
+                               # thin = bt_spas_x_bayes_params$number_thin,
                                iter = bt_spas_x_bayes_params$number_mcmc,
-                               warmup = bt_spas_x_bayes_params$number_burnin,
+                               # warmup = bt_spas_x_bayes_params$number_burnin,
                                seed = 84735)
 
     return(model_results)

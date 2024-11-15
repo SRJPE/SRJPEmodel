@@ -1,24 +1,10 @@
 data {
   int Ntribs; // Number of tributaries
   int Nmr;    // Number of mark-recapture experiments
-  int Nwmr;   // Number of unmarked catch strata with MR data
-  int Nwomr;  // Number of unmarked catch strata without MR data
-  int Nstrata; // Total number of strata
-  int Nstrata_wc; // Number of strata with unmarked catch observations
-  int use_trib; // index of site being estimated
   int ind_trib[Nmr]; // Index for tributaries in MR data
-  int ind_pCap[Nwmr];
   real mr_flow[Nmr]; // Flow values for MR data
   int Releases[Nmr]; // Number of releases in MR data
   int Recaptures[Nmr]; // Number of recaptures in MR data
-  real catch_flow[Nstrata_wc]; // Flow values for unmarked catch strata without MR data
-  int u[Nstrata_wc]; // Unmarked catch observations
-  int Uwc_ind[Nstrata_wc]; // Indices for unmarked catch strata
-  int Uind_wMR[Nwmr]; // Indices for strata with MR data
-  int Uind_woMR[Nwomr]; // Indices for strata without MR data
-  int K;                 // Number of columns in the bspline basis matrix
-  matrix[Nstrata, K] ZP; // Design matrix for spline estimation
-  real lgN_max[Nstrata]; // Maximum values for log abundances
 }
 
 parameters {
