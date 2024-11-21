@@ -70,17 +70,18 @@ abundance_efficiency <- rstan::summary(abundance,pars=c("lt_pCap_U"))$summary |>
 
 all_efficiency <- bind_rows(pcap_efficiency |>
                               mutate(model = "pcap",
-                                     index = row_number()) |>
+                                     index = row_number(),
+                                     mean = plogis(mean)) |>
                               pivot_longer(mean:sd,
                                            names_to = "parameter",
                                            values_to = "value"),
                             abundance_efficiency |>
                               mutate(model = "abundance",
-                                     index = row_number()) |>
+                                     index = row_number(),
+                                     mean = plogis(mean)) |>
                               pivot_longer(mean:sd,
                                            names_to = "parameter",
-                                           values_to = "value")) |>
-  mutate(value = plogis(value))
+                                           values_to = "value"))
 
 all_efficiency |>
   ggplot(aes(x = index, y = value, color = model)) +
@@ -91,10 +92,10 @@ all_efficiency |>
   theme_bw()
 
 SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  filter(site == "ubc", run_year == 2009) |>
+  filter(site == "lcc", run_year == 2018) |>
   group_by(week, site, run_year) |> # lifestages
   summarise(count = sum(count)) |>
   ggplot(aes(x = week, y = count)) +
   geom_point() +
   theme_bw() +
-  labs(title = "count data for ubc 2009")
+  labs(title = "count data for lcc 2018")
