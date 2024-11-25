@@ -62,11 +62,6 @@ model {
   logit_b0_pCap ~ normal(trib_mu_P, trib_sd_P);
   logit_b0_flow ~ normal(flow_mu_P, flow_sd_P);
 
-  // simulated process error deviations for weeks without MR observations
-  for(i in 1:Nwomr){
-    pro_dev[i] ~ normal(0, pro_sd_P);
-  }
-
   // Tributary-specific parameters drawn from across-trib hyper-parameters normal distribution
   for(i in 1:Ntribs){
     b0_pCap[i] ~ normal(trib_mu_P, trib_sd_P);
@@ -82,9 +77,11 @@ model {
 
 generated quantities {
   array[Nstrata] real lt_pCap_U;
+  array[Nwomr] real sim_pro_dev;
 
   for (i in 1:Nwomr) {
     //for weeks without efficiency trials
-    lt_pCap_U[Uind_woMR[i]] = logit_b0_pCap + logit_b0_flow * catch_flow[Uind_woMR[i]];// + sim_pro_dev[i];
+    sim_pro_dev[i] = normal_rng(0, pro_sd_P);
+    lt_pCap_U[Uind_woMR[i]] = logit_b0_pCap + logit_b0_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[i];
   }
 }
