@@ -4,12 +4,9 @@ data {
   int Nwomr;  // Number of unmarked catch strata without MR data
   int Nstrata; // Total number of strata
   int Nstrata_wc; // Number of strata with unmarked catch observations
-  array[Nmr] int ind_trib;// Index for tributaries in MR data
-  array[Nmr] real mr_flow;// Flow values for MR data
   array[Nmr] int Releases;// Number of releases in MR data
   array[Nmr] int Recaptures; // Number of recaptures in MR data
   array[Nstrata_wc] real catch_flow;// Flow values for unmarked catch strata without MR data
-  array[Nstrata_wc] int Uwc_ind;// Indices for unmarked catch strata
   array[Nwomr] int Uind_woMR;// Indices for strata without MR data
 }
 
