@@ -68,18 +68,14 @@ model {
     target += bcl + kern;//log of binomial probability
   }
 
-  // for (i in 1:Nstrata_wc) {
-  //   // simulate pCap_U from mean and sd (simulate in logit space and transform using inv_logit)
-  //   lt_pCap_U[i] ~ normal(lt_pCap_mu[i], lt_pCap_sd[i]); //make sure the indexing lines up!
-  //   pCap_U[i] = inv_logit(lt_pCap_U[i]);
-  //
-  //   bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[Uwc_ind[i]] + 1) - lgamma(N[Uwc_ind[i]] - u[Uwc_ind[i]]); //log of binomial coefficent
-  //   kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
-  //   target += bcl + kern; //log of binomial probability
-  // }
 }
 
 generated quantities{
   real Ntot = sum(N[]);
   real lg_Ntot = sum(lg_N[]);
+  array[Nstrata] real lg_CumN;// cumulative abundance by model week in log space
+
+  for(i in 1:Nstrata){
+    lg_CumN[i]=sum(lg_N[1:i]);
+  }
 }
