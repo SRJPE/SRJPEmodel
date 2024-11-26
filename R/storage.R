@@ -458,13 +458,14 @@ insert_model_parameters <- function(con, model, blob_url) {
 
 
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
-  model_final_results <- join_lookup(model_final_results, "model_location", "site", "site", "location_id")
+  model_final_results <- join_lookup(model_final_results, "trap_location", "site", "site", "location_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
+  model_final_results <- join_lookup(model_final_results, "trap_location", "site_fit_hierarchical", "site", "location_fit_id")
 
   model_final_results <-  model_final_results |>
-    select(model_run_id, location_id, run_year, week_fit, lifestage_id, model_fit_filename, parameter_id, statistic_id, value)
+    select(model_run_id, location_id, run_year, week_fit, lifestage_id, model_fit_filename, parameter_id, statistic_id, value, location_fit_id)
 
   query <- glue::glue_sql(
     "INSERT INTO model_parameters (
@@ -476,7 +477,8 @@ insert_model_parameters <- function(con, model, blob_url) {
           model_fit_filename,
           parameter_id,
           statistic_id,
-          value
+          value,
+          location_fit_id
         ) VALUES (
           UNNEST(ARRAY[{model_final_results$model_run_id*}]),
           UNNEST(ARRAY[{model_final_results$location_id*}]),
@@ -486,7 +488,8 @@ insert_model_parameters <- function(con, model, blob_url) {
           UNNEST(ARRAY[{model_final_results$model_fit_filename*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
-          UNNEST(ARRAY[{model_final_results$value*}])
+          UNNEST(ARRAY[{model_final_results$value*}]),
+          UNNEST(ARRAY[{model_final_results$location_fit_id*}])
         );",
     .con = con
   )
