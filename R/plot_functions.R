@@ -194,3 +194,188 @@ plot_weekly_capture_probability <- function(bt_spas_x_results_clean) {
   suppressWarnings(print(plot))
 
 }
+
+
+#' Plot model diagnostics
+#' @param model_fit_summary_object The model summary object produced by a model fit
+#' @returns A two-panel plot showing abundance estimates and weekly efficiency estimates compared
+#' to lincoln-peterson estimates and raw count and efficiency trial data.
+#' @export
+#' @md
+generate_diagnostic_plot <- function(model_fit_summary_object,
+                                     model_language) {
+
+  site_arg <- unique(model_fit_summary_object$site)
+  run_year_arg <- unique(model_fit_summary_object$run_year)
+
+  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
+    tibble() |>
+    filter(V1 != "Jwk") |>
+    mutate(V1 = as.numeric(V1)) |>
+    select(Jwk = V1, date = V2)
+
+  # input data all lifestages
+  input_data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    filter(run_year == run_year_arg,
+           site == site_arg) |> #,
+           #week %in% c(seq(45, 53), seq(1, 22))) |>
+    group_by(year, week, stream, site, run_year) |>
+    summarise(count = sum(count, na.rm = T),
+              mean_fork_length = mean(mean_fork_length, na.rm = T),
+              hours_fished = mean(hours_fished, na.rm = T),
+              flow_cfs = mean(flow_cfs, na.rm = T),
+              average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
+              standardized_flow = mean(standardized_flow, na.rm = T),
+              catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+    ungroup() |>
+    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+              by = c("year", "run_year", "week", "stream", "site")) |>
+    mutate(count = round(count, 0),
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
+           # plot things
+           lincoln_peterson_abundance = count * (number_released / number_recaptured),
+           lincoln_peterson_efficiency = number_recaptured / number_released)
+
+  # create week lookup for year to tell you if it was sampled or not
+  sampled <- tibble("week" = c(45:53, 1:22),
+                    "sampled" = TRUE,
+                    "run_year" = run_year_arg) |>
+    mutate(year = ifelse(week >= 43, run_year - 1, run_year),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week - 1),
+           date = format(final_date, "%b-%d")) |>
+    select(date, run_year, week, sampled)
+
+  input_data <- full_join(input_data, sampled,
+                          by = c("week", "run_year")) |>
+    mutate(sampled = ifelse(is.na(count), FALSE, sampled),
+           site = ifelse(is.na(site), site_arg, site),
+           run_year = ifelse(is.na(run_year), run_year_arg, run_year)) |>
+    filter(week %in% c(45:53, 1:22))
+
+  if(model_language == "STAN") {
+    summary_output <- model_fit_summary_object |>
+      select(-c(model_name, srjpedata_version, converged, life_stage)) |>
+      mutate(statistic = str_remove_all(statistic, "\\%")) |>
+      filter(!parameter %in% c("logit_pCap", "pro_dev_P")) |>
+      pivot_wider(id_cols = c(site, run_year, week_fit, site_fit_hierarchical, parameter),
+                  values_from = value,
+                  names_from = statistic) |>
+      mutate(cv = round(100 * (sd / mean), digits = 0))
+
+    total_abundance <- summary_output |>
+      filter(parameter == "Ntot")
+
+  } else if(model_language == "BUGS") {
+    summary_output <- model_fit_summary_object |>
+      select(-c(model_name, srjpedata_version, converged, life_stage)) |>
+      mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
+      filter(!parameter %in% c("logit_pCap", "pro_dev_P")) |>
+      pivot_wider(id_cols = c(site, run_year, week_fit, site_fit_hierarchical, parameter),
+                  values_from = value,
+                  names_from = statistic) |>
+      mutate(cv = round(100 * (sd / mean), digits = 0))
+
+    total_abundance <- model_fit_summary_object |>
+      mutate(parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
+      filter(parameter == "N",
+             statistic == "50") |>
+      group_by(site, run_year) |> # not lifestage
+      summarise(Ntot = sum(value)) |>
+      ungroup()
+  }
+
+  # plot abundance only
+  # set up cv, lcl, and ucl and make sure to scale to 1000s
+
+  abundance_plot_data <- summary_output |>
+    filter(parameter == "N") |>
+    left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
+    full_join(input_data |>
+              select(week, site, run_year, count, lincoln_peterson_abundance, sampled),
+              by = c("site", "run_year", "week_fit" = "week")) |>
+    # fill in date for weeks not sampled
+    mutate(year = ifelse(week_fit >= 43, run_year - 1, run_year),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week_fit - 1),
+           date = format(final_date, "%b-%d")) |>
+    select(-c(year, fake_date, final_date)) |>
+    mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
+                              paste0(run_year, "-", date)),
+           fake_date = as.Date(fake_date, format = "%Y-%b-%d"))
+
+  # abundance bar plot
+  if(model_language == "STAN") {
+    abundance_plot_title <- paste0(str_to_title(site_arg), " ", run_year_arg, " predicted annual abundance = ",
+                                   prettyNum(round(total_abundance$`50`, 0), big.mark = ","), " (",
+                                   prettyNum(round(total_abundance$`2.5`, 0), big.mark = ","), "-",
+                                   prettyNum(round(total_abundance$`97.5`, 0), big.mark = ","), ")")
+  } else {
+    # TODO get uncertainty around total estimate
+    abundance_plot_title <- paste0(str_to_title(site_arg), " ", run_year_arg, " predicted annual abundance = ",
+                                   prettyNum(round(total_abundance$Ntot, 0), big.mark = ","))
+  }
+
+  abundance_plot <- abundance_plot_data |>
+    ggplot(aes(x = fake_date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey") +
+    geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = fake_date, y = lincoln_peterson_abundance),
+               shape = 1, color = "blue") +
+    geom_point(aes(x = fake_date, y = Inf, color = sampled),
+               size = 3) +
+    geom_text(aes(x = fake_date, y = Inf,
+                  label = paste(count),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "red")) +
+    theme_minimal() +
+    labs(x = "Date", y = "Abundance",
+         title = abundance_plot_title) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          legend.position = "")
+
+  efficiency_plot_data <- summary_output |>
+    filter(parameter == "pCap_U") |>
+    left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
+    full_join(input_data |>
+                select(week, site, run_year, number_recaptured, number_released,
+                       lincoln_peterson_efficiency, sampled),
+              by = c("site", "run_year", "week_fit" = "week")) |>
+    # fill in date for weeks not sampled
+    mutate(year = ifelse(week_fit >= 43, run_year - 1, run_year),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week_fit - 1),
+           date = format(final_date, "%b-%d")) |>
+    select(-c(year, fake_date, final_date)) |>
+    mutate(fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
+                              paste0(run_year, "-", date)),
+           fake_date = as.Date(fake_date, format = "%Y-%b-%d"),
+           number_released_label = ifelse(is.na(number_released), "", number_released),
+           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured))
+
+  efficiency_plot <- efficiency_plot_data |>
+    ggplot(aes(x = fake_date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey") +
+    geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = fake_date, y = lincoln_peterson_efficiency),
+               shape = 1, color = "blue") +
+    geom_text(aes(x = fake_date, y = Inf,
+                  label = paste(number_released_label, number_recaptured_label),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    # geom_point(aes(x = fake_date, y = Inf, color = sampled),
+    #            size = 3) +
+    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "red")) +
+    theme_minimal() +
+    labs(x = "Date", y = "Weekly Efficiency") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          legend.position = "")
+
+  # arrange together
+  gridExtra::grid.arrange(abundance_plot, efficiency_plot)
+
+}

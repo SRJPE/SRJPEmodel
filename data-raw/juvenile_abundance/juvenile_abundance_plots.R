@@ -17,7 +17,8 @@ plot_juvenile_abundance <- function(site, run_year, life_stage, model_fit_summar
     mutate(lincoln_peterson_abundance = count * (number_released / number_recaptured))
 
   summary_output <- model_fit_summary_object |>
-    select(-c(model_name, srjpedata_version, converged, error)) |>
+    #select(-c(model_name, srjpedata_version, converged, error)) |>
+    select(-c(model_name, srjpedata_version, converged)) |>
     pivot_wider(id_cols = site:parameter,
                 values_from = value,
                 names_from = statistic) |>

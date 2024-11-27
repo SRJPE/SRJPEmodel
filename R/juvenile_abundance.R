@@ -110,17 +110,40 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                                  bugs_directory, debug_mode,
                                  no_cut = c(F, T)) {
 
-  # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
-  # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
-  catch_data <- weekly_juvenile_abundance_catch_data |>
-    mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
-    filter(!filter_out,
-           run_year == !!run_year,
-           site == !!site,
-           week %in% c(seq(45, 53), seq(1, 22)),
-           life_stage %in% c(lifestage, NA)) |>
-    mutate(count = round(count, 0),
-           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  # some streams do not have lifestage data (i.e. Mokelumne, American) so we summarize all lifestages together
+  if(is.na(lifestage)) {
+    cli::cli_bullets("No lifestage passed, so grouping all lifestages for analysis")
+    catch_data <- weekly_juvenile_abundance_catch_data |>
+      select(-life_stage) |>
+      filter(run_year == !!run_year,
+             site == !!site,
+             week %in% c(seq(45, 53), seq(1, 22))) |>
+      group_by(year, week, stream, site, run_year) |>
+      summarise(count = sum(count, na.rm = T),
+                mean_fork_length = mean(mean_fork_length, na.rm = T),
+                hours_fished = mean(hours_fished, na.rm = T),
+                flow_cfs = mean(flow_cfs, na.rm = T),
+                average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
+                standardized_flow = mean(standardized_flow, na.rm = T),
+                catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+                lgN_prior = mean(lgN_prior, na.rm = T)) |>
+      ungroup() |>
+      mutate(count = round(count, 0),
+             catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  } else {
+    # prepare "catch" dataset - filtered to weeks, site, run_year, and lifestage selected
+    # catch_flow is average for julian week, standardized_efficiency_flow is average over recapture days (< 1 week)
+    catch_data <- weekly_juvenile_abundance_catch_data |>
+      mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
+      filter(!filter_out,
+             run_year == !!run_year,
+             site == !!site,
+             week %in% c(seq(45, 53), seq(1, 22)),
+             life_stage %in% c(lifestage, NA)) |>
+      mutate(count = round(count, 0),
+             catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+  }
+
 
   if(nrow(catch_data) == 0) {
     cli::cli_alert_warning(paste0("There is no catch data for site ", site,
@@ -363,18 +386,17 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 #' * **Nmr** number of unique mark-recapture experiments performed across tributaries, years and weeks
 #' * **Ntribs** number of tributaries to use for the pCap component of the model
 #' * **Nstrata** number of weeks with catch data
-#' * **Uwc_ind** number of weeks in catch data with associated pCap and flow data
-#' * **Nwomr** number of weeks in catch data without associated pCap and flow data
-#' * **Nstrata_wc** number of weeks in catch data with catch data (RST fished)
-#' * **indices_site_pCap** tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
-#' * **ind_trib** indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs
-#' * **ind_pCap** indices of weeks in mark-recapture table for U strata being estimated
-#' * **Uind_woMR** indices of weeks in catch data without associated pCap and flow data
-#' * **Uind_wMR** indices of weeks in catch data with associated pCap and flow data
-#' * **Uwc_ind** indices of weeks in catch data with catch data
+#' * **Nwomr** number of weeks in catch table without associated pCap and mr flow data.
+#' * **Nstrata_wc** number of weeks in catch table with catch data (RST fished)
+#' * **indices_site_pCap** or "use_trib". Tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called. Length = 1, index for 1:Ntribs.
+#' * **ind_trib** indices for tributary associated with each mark-recapture experiment. Length 1:Nmr, pointing to an index for 1:Ntribs.
+#' * **ind_pCap** indices of weeks in mark-recapture table for U strata being estimated. Length 1:Nstrata, pointing to indices in 1:Nmr.
+#' * **Uind_woMR** indices of weeks in catch data without associated pCap and flow data. Length 1:Nstrata, pointing to indices in Nstrata.
+#' * **Uind_wMR** indices of weeks in catch data with associated pCap and flow data. Length 1:Nstrata, pointing to indices in Nstrata.
+#' * **Uwc_ind** indices of weeks in catch table with catch data. Length 1:Nstrata_wc, and points to indices in 1:Nstrata.
 #' * **Releases** number of fish released for each mark-recapture experiment
 #' * **Recaptures** number of fish recaptured for each mark-recapture experiment
-#' * **u** weekly abundance
+#' * **u** weekly abundance.
 #' * **mr_flow** standardized flow, averaged over recapture days (< 1 week)
 #' * **catch_flow** standardized flow, averaged by week
 #' * **K** number of columns in the bspline basis matrix
@@ -578,7 +600,8 @@ get_summary_table <- function(model_fit_object, site, run_year,
            `75` = x75_percent, `97.5` = x97_5_percent,
            rhat, n_eff, model_name = model_called) |>
     mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")),
-           converged = ifelse(rhat <= 1.05, TRUE, FALSE)) |>
+           converged = ifelse(rhat <= 1.05, TRUE, FALSE),
+           parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
     pivot_longer(mean:n_eff, names_to = "statistic", values_to = "value")
 
   summary_table_final
@@ -990,9 +1013,9 @@ bt_spas_x_stan <- function(data, inits, parameters, model_name,
                                data = data,
                                init = inits,
                                chains = bt_spas_x_bayes_params$number_chains,
-                               thin = bt_spas_x_bayes_params$number_thin,
+                               # thin = bt_spas_x_bayes_params$number_thin,
                                iter = bt_spas_x_bayes_params$number_mcmc,
-                               warmup = bt_spas_x_bayes_params$number_burnin,
+                               # warmup = bt_spas_x_bayes_params$number_burnin,
                                seed = 84735)
 
     return(model_results)

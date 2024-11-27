@@ -88,6 +88,7 @@ model {
   tau_Ne ~ gamma(1, 0.05);
 
   // Spline coefficient priors
+  // we do not need to specify priors for b_sp[1] and b_sp[2] as STAN by default assumes an improper uniform
   real xi;
   for (i in 3:K) {
     xi = 2 * b_sp[i-1] - b_sp[i-2];

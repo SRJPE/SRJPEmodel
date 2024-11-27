@@ -83,9 +83,7 @@ multi_run_df |>
 
 # passage to spawner ------------------------------------------------------
 
-P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                            SRJPEdata::adult_model_covariates_standard,
-                                            "battle creek", "wy_type", FALSE)
+P2S_results <- run_passage_to_spawner_model("battle creek", "wy_type", FALSE)
 P2S_spawners <- get_predicted_spawners_from_P2S(P2S_results$formatted_pars)
 
 P2S_spawners |>

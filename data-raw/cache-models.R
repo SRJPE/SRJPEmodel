@@ -2,7 +2,22 @@
 
 # bt-spas-x ----------------------------------------------------------
 
-# stan
+# stan (pCap and abundance separate)
+pCap_all_mark_recap <- readr::read_file(here::here("model_files", "pCap_all_mark_recap.stan"))
+pCap_missing_mark_recap <- readr::read_file(here::here("model_files", "pCap_missing_mark_recap.stan"))
+pCap_no_mark_recap <- readr::read_file(here::here("model_files", "pCap_no_mark_recap.stan"))
+pCap_no_mark_recap_no_trib <- readr::read_file(here::here("model_files", "pCap_no_mark_recap_no_trib.stan"))
+abundance <- readr::read_file(here::here("model_files", "abundance_model.stan"))
+
+bt_spas_x_model_code <- list(pCap_all_mark_recap = pCap_all_mark_recap,
+                             pCap_missing_mark_recap = pCap_missing_mark_recap,
+                             pCap_no_mark_recap = pCap_no_mark_recap,
+                             pCap_no_mark_recap_no_trib = pCap_no_mark_recap_no_trib,
+                             abundance = abundance)
+
+usethis::use_data(bt_spas_x_model_code, overwrite = T)
+
+# stan (pCap and abundance combined)
 all_mark_recap <- readr::read_file(here::here("model_files", "all_mark_recap.stan"))
 missing_mark_recap <- readr::read_file(here::here("model_files", "missing_mark_recap.stan"))
 no_mark_recap <- readr::read_file(here::here("model_files", "no_mark_recap.stan"))
@@ -42,10 +57,10 @@ cut <- list(all_mark_recap = all_mark_recap,
 winbugs <- list(cut = cut,
                 no_cut = no_cut)
 
-bt_spas_x_model_code <- list(stan = stan,
-                             winbugs = winbugs)
-
-usethis::use_data(bt_spas_x_model_code, overwrite = T)
+# bt_spas_x_model_code <- list(stan = stan,
+#                              winbugs = winbugs)
+#
+# usethis::use_data(bt_spas_x_model_code, overwrite = T)
 
 # passage to spawner ------------------------------------------------------
 
