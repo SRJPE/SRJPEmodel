@@ -22,18 +22,17 @@ bt_spas_x_bugs(
 \item \strong{Nmr} number of unique mark-recapture experiments performed across tributaries, years and weeks
 \item \strong{Ntribs} number of tributaries to use for the pCap component of the model
 \item \strong{Nstrata} number of weeks with catch data
-\item \strong{Uwc_ind} number of weeks in catch data with associated pCap and flow data
-\item \strong{Nwomr} number of weeks in catch data without associated pCap and flow data
-\item \strong{Nstrata_wc} number of weeks in catch data with catch data (RST fished)
-\item \strong{indices_site_pCap} tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called.
-\item \strong{ind_trib} indices (1:Ntribs) assigned to the mark-recapture experiment table for use in BUGs
-\item \strong{ind_pCap} indices of weeks in mark-recapture table for U strata being estimated
-\item \strong{Uind_woMR} indices of weeks in catch data without associated pCap and flow data
-\item \strong{Uind_wMR} indices of weeks in catch data with associated pCap and flow data
-\item \strong{Uwc_ind} indices of weeks in catch data with catch data
+\item \strong{Nwomr} number of weeks in catch table without associated pCap and mr flow data.
+\item \strong{Nstrata_wc} number of weeks in catch table with catch data (RST fished)
+\item \strong{indices_site_pCap} or "use_trib". Tributary index (of all possible tributaries) to use to predict efficiency for missing strata. Note length=0 if selected tributary is not part of trib set that has mark-recap data. In this case model that samples from trib hyper will be called. Length = 1, index for 1:Ntribs.
+\item \strong{ind_trib} indices for tributary associated with each mark-recapture experiment. Length 1:Nmr, pointing to an index for 1:Ntribs.
+\item \strong{ind_pCap} indices of weeks in mark-recapture table for U strata being estimated. Length 1:Nstrata, pointing to indices in 1:Nmr.
+\item \strong{Uind_woMR} indices of weeks in catch data without associated pCap and flow data. Length 1:Nstrata, pointing to indices in Nstrata.
+\item \strong{Uind_wMR} indices of weeks in catch data with associated pCap and flow data. Length 1:Nstrata, pointing to indices in Nstrata.
+\item \strong{Uwc_ind} indices of weeks in catch table with catch data. Length 1:Nstrata_wc, and points to indices in 1:Nstrata.
 \item \strong{Releases} number of fish released for each mark-recapture experiment
 \item \strong{Recaptures} number of fish recaptured for each mark-recapture experiment
-\item \strong{u} weekly abundance
+\item \strong{u} weekly abundance.
 \item \strong{mr_flow} standardized flow, averaged over recapture days (< 1 week)
 \item \strong{catch_flow} standardized flow, averaged by week
 \item \strong{K} number of columns in the bspline basis matrix

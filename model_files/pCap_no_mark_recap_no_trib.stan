@@ -4,8 +4,10 @@ data {
   int Nwomr;  // Number of unmarked catch strata without MR data
   int Nstrata; // Total number of strata
   int Nstrata_wc; // Number of strata with unmarked catch observations
+  array[Nmr] int ind_trib; // Index for tributaries in MR data
   array[Nmr] int Releases;// Number of releases in MR data
   array[Nmr] int Recaptures; // Number of recaptures in MR data
+  array[Nmr] real mr_flow;// Flow values for MR data
   array[Nstrata_wc] real catch_flow;// Flow values for unmarked catch strata without MR data
   array[Nwomr] int Uind_woMR;// Indices for strata without MR data
 }
@@ -27,26 +29,18 @@ transformed parameters {
   real trib_sd_P; // Standard deviation for trib-specific mean pCap
   real flow_sd_P; // Standard deviation for flow effect on pCap
   array[Nmr] real logit_pCap;// Logit of pCap for MR data
-  array[Nwomr] real logit_pCap_Sim;// Logit of pCap for simulated data
   real logit_b0_pCap; // Logit of b0pCap for simulated data
   real logit_b0_flow;
-  array[Nstrata] real pCap_U; // Estimated pCaps for all strata
 
   // Compute derived quantities
   trib_sd_P = 1/sqrt(trib_tau_P);
   flow_sd_P = 1/sqrt(flow_tau_P);
   pro_sd_P = 1 / sqrt(pro_tau_P);
 
-  // Calculate logit of pCap for MR data - can't do this
-
-  // Calculate logit of pCap for simulated unmarked catch strata without MR data
-  for (i in 1:Nwomr) {
-    logit_pCap_Sim[i] = logit_b0_pCap + logit_b0_flow * catch_flow[Uind_woMR[i]] + pro_dev[i];
-    pCap_U[Uind_woMR[i]] = inv_logit(logit_pCap_Sim[i]); // assigns simulated pCap for weeks with no MRdata
+  // Calculate logit of pCap for MR data
+  for (i in 1:Nmr) {
+    logit_pCap[i] = b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]] * mr_flow[i] + pro_dev_P[i];
   }
-
-  // estimate weekly pCap for weeks in the site and year - can't do this
-
 }
 
 model {
@@ -73,7 +67,7 @@ model {
 }
 
 generated quantities {
-  array[Nstrata] real lt_pCap_U;
+  array[Nstrata] real lt_pCap_U; // estimate for all weeks (Nstrata), abundance model will use Nstrata_wc
   array[Nwomr] real sim_pro_dev;
 
   for (i in 1:Nwomr) {

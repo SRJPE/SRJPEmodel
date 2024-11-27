@@ -33,7 +33,6 @@ transformed parameters {
   real trib_sd_P; // Standard deviation for trib-specific mean pCap
   real flow_sd_P; // Standard deviation for flow effect on pCap
   array[Nmr] real logit_pCap; // Logit of pCap for MR data
-  array[Nstrata] real pCap_U; // Estimated pCaps for all strata
 
   // Compute derived quantities
   trib_sd_P = 1/sqrt(trib_tau_P);
@@ -43,10 +42,6 @@ transformed parameters {
   // Calculate logit of pCap for MR data
   for (i in 1:Nmr) {
     logit_pCap[i] = b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]] * mr_flow[i] + pro_dev_P[i];
-  }
-  // estimate weekly pCap for weeks in the site and year
-  for(i in 1:Nwmr){
-    pCap_U[Uind_wMR[i]] = inv_logit(logit_pCap[ind_pCap[i]]); // Assign estimated pCaps to U estimation strata (weeks with catch)
   }
 }
 
@@ -71,16 +66,16 @@ model {
 }
 
 generated quantities {
-  array[Nstrata] real lt_pCap_U;
+  array[Nstrata] real lt_pCap_U; // abundance model is Nstrata_wc, but here we estimate for all weeks (Nstrata)
   array[Nwomr] real sim_pro_dev;
 
   for(i in 1:Nwmr){
     // Assign estimated pCaps for strata with efficiency data
-     lt_pCap_U[Uind_wMR[i]] = logit_pCap[ind_pCap[i]];
+    lt_pCap_U[Uind_wMR[i]] = logit_pCap[ind_pCap[i]];
   }
   for (i in 1:Nwomr) {
     //for weeks without efficiency trials
-    sim_pro_dev[i] = normal_rng(0,pro_sd_P);
+    sim_pro_dev[i] = normal_rng(0, pro_sd_P);
     lt_pCap_U[Uind_woMR[i]] = b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[i];
   }
 }

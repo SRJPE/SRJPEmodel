@@ -29,9 +29,7 @@ transformed parameters {
   real pro_sd_P;
   real trib_sd_P;
   real flow_sd_P;
-  array[Nstrata] real pCap_U;// pCap estimates for strata without MR data
   array[Nmr] real logit_pCap; // Logit of pCap for MR data
-  array[Nwomr] real logit_pCap_Sim;// Logit of pCap for simulated data
 
   // Compute derived quantities
   trib_sd_P = 1/sqrt(trib_tau_P);
@@ -41,13 +39,6 @@ transformed parameters {
   // Calculate logit of pCap for MR data
   for (i in 1:Nmr) {
     logit_pCap[i] = b0_pCap[ind_trib[i]] + b_flow[ind_trib[i]] * mr_flow[i] + pro_dev_P[i];
-  }
-
-  // no weeks with mark recap, so move on to simulation
-  // Calculate logit of pCap for simulated unmarked catch strata without MR data
-  for (i in 1:Nwomr) {
-    logit_pCap_Sim[i] = b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]] + pro_dev[i];
-    pCap_U[Uind_woMR[i]] = inv_logit(logit_pCap_Sim[i]); // assigns simulated pCap for weeks with no MRdata
   }
 }
 
@@ -72,7 +63,7 @@ model {
 }
 
 generated quantities{
-  array[Nstrata] real lt_pCap_U;
+  array[Nstrata] real lt_pCap_U; // estimate for all weeks (Nstrata), abundance model will use Nstrata_wc
   array[Nwomr] real sim_pro_dev;
 
   for (i in 1:Nwomr) {

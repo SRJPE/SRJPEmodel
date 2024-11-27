@@ -1,10 +1,10 @@
 data {
   int Nstrata; // Total number of strata
   int Nstrata_wc; // Number of strata with unmarked catch observations
-  array[Nstrata_wc] real lt_pCap_mu;
-  array[Nstrata_wc] real lt_pCap_sd;
+  array[Nstrata] real lt_pCap_mu; // estimating for all weeks
+  array[Nstrata] real lt_pCap_sd; // estimating for all weeks
   array[Nstrata_wc] int u; // Unmarked catch observations
-  array[Nstrata_wc] int Uwc_ind; // Indices for unmarked catch strata
+  array[Nstrata_wc] int Uwc_ind; // Indices for unmarked catch strata, 1:Nstrata
   int K;                 // Number of columns in the bspline basis matrix
   array[Nstrata, K] real ZP; // design matrix for splines
   array[Nstrata] real lgN_max;// Maximum values for log abundances
@@ -58,13 +58,27 @@ model {
   real kern;
   array[Nstrata_wc] real pCap_U;
 
+  // for future use: generate estimate for all of Nstrata here, and use Uwc_ind in our Nstrata_wc
+  // for(i in 1:Nstrata){
+  //   // simulate for all weeks,
+  //   // TODO change dimensions of lt_pCap_U and pCap_U to be Nstrata
+  //   lt_pCap_U[i] ~ normal(lt_pCap_mu[i], lt_pCap_sd[i]);
+  //   pCap_U[i] = inv_logit(lt_pCap_U[i]);
+  //
+  //   // TODO uncomment extra kern line below
+  //
+  // }
+
   for (i in 1:Nstrata_wc) {
     // simulate pCap_U from mean and sd (simulate in logit space and transform using inv_logit)
-    lt_pCap_U[i] ~ normal(lt_pCap_mu[Uwc_ind[i]], lt_pCap_sd[Uwc_ind[i]]); //make sure the indexing lines up!
+    // we will not see lt_pCap_U for weeks without catch
+    lt_pCap_U[i] ~ normal(lt_pCap_mu[Uwc_ind[i]], lt_pCap_sd[Uwc_ind[i]]); // simulate a pCap for every week with catch data
     pCap_U[i] = inv_logit(lt_pCap_U[i]);
 
     bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[Uwc_ind[i]] + 1) - lgamma(N[Uwc_ind[i]] - u[Uwc_ind[i]]);//log of binomial coefficent
     kern = u[Uwc_ind[i]] * log(pCap_U[i]) + (N[i]-u[i]) * log(1 - pCap_U[i]); //log of binomial kernal
+    // this is only if we want to estimate for all of Nstrata
+    // kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
     target += bcl + kern;//log of binomial probability
   }
 

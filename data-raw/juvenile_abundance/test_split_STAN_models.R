@@ -36,14 +36,6 @@ run_split_models <- function(site_arg, run_year_arg,
                       iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                       seed = 84735)
 
-  # catch any rhat values
-  pcap_estimates <- rstan::summary(pcap, pars = c("lt_pCap_U"))$summary |>
-    data.frame()
-
-  pcap_estimates |>
-    filter(Rhat > 1.05) |>
-    row.names()
-
   # pars - need mean and sd
   logit_pCaps <- rstan::summary(pcap, pars = c("lt_pCap_U"))$summary |>
     data.frame()
@@ -70,10 +62,8 @@ run_split_models <- function(site_arg, run_year_arg,
 
   abundance_estimates <- rstan::summary(abundance, pars = c("N"))$summary |>
     data.frame()
-
-  abundance_estimates |>
-    filter(Rhat > 1.05) |>
-    row.names()
+  pcap_estimates <- rstan::summary(abundance, pars = c("lt_pCap_U"))$summary |>
+    data.frame()
 
   return(list("pCap" = pcap,
               "abundance" = abundance,
@@ -284,9 +274,9 @@ lcc_2023$estimates
 diagnostic_plots_split("lcc", 2023, lcc_2023)
 
 # 2022
-# no efficiency data - not converged
+# no efficiency data
 plot_raw_data("lcc", 2022)
-lcc_2022 <- run_split_models("lcc", 2022, 12) # update scalar
+lcc_2022 <- run_split_models("lcc", 2022, 14) # update scalar
 lcc_2022$estimates
 diagnostic_plots_split("lcc", 2022, lcc_2022)
 
@@ -366,6 +356,14 @@ lcc_2011 <- run_split_models("lcc", 2011, 12) # update scalar
 lcc_2011$estimates |>
   bind_rows() |>
   filter(Rhat > 1.05)
+
+# 2010
+plot_raw_data("lcc", 2010)
+lcc_2010 <- run_split_models("lcc", 2010, 12) # update scalar
+lcc_2010$estimates |>
+  bind_rows() |>
+  filter(Rhat > 1.05)
+diagnostic_plots_split("lcc", 2010, lcc_2010)
 
 saveRDS(lcc_2011, file = here::here("data-raw", "juvenile_abundance",
                                     "split_lcc_results", "lcc_2011.rds"))
