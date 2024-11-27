@@ -136,7 +136,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                          "Uwc_ind" = indices_with_catch,
                          "mr_flow" = mark_recapture_data$standardized_flow,
                          "catch_flow" = catch_data$standardized_flow,
-                         "lgN_max" = catch_data$lgN_prior)
+                         "lgN_max" = catch_data$lgN_prior + 13)
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
@@ -199,6 +199,9 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
     }
   }
 
+  pCap_mu_prior <- qlogis(sum(mark_recapture_data$number_recaptured) /
+                            sum(mark_recapture_data$number_released))
+
   init_list <- list(trib_mu.P = pCap_mu_prior,
                     b0_pCap = ini_b0_pCap,
                     flow_mu.P = 0,
@@ -223,7 +226,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # inputs for pCap model
   inputs_for_pCap <- list(data = data, inits = inits, parameters = pCap_parameters,
                           model_name = model_name,
-                          weeks_fit = catch_data$week[data$Uwc_ind],
+                          weeks_fit = catch_data$week[indices_with_catch],
                           sites_fit = unique(mark_recapture_data$site))
 
   # inputs for abundance model
@@ -258,7 +261,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                                inits = abundance_inits,
                                parameters = abundance_parameters,
                                model_name = model_name,
-                               weeks_fit = catch_data$week[data$Uwc_ind],
+                               weeks_fit = catch_data$week[indices_with_catch],
                                sites_fit = unique(mark_recapture_data$site))
 
   return(list("pCap_inputs" = inputs_for_pCap,
@@ -321,29 +324,190 @@ get_abundance_data_list <- function(full_data_list) {
 #' @keywords internal
 #' @export
 #' @md
-fit_pCap_model <- function(inputs, ) {
+fit_pCap_model <- function(input) {
 
-  model_name <- paste0("pCap_", input$model_name, ".stan")
+  model_name <- paste0("pCap_", input$model_name)
   print(model_name)
 
   stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", model_name)))
 
   options(mc.cores=parallel::detectCores())
   cli::cli_alert("running pCap model")
-  pcap <- rstan::stan(model_code = read_file(here::here("model_files",
-                                                        model_name)),
+  pcap <- rstan::stan(model_code = stan_model,
                       data = input$data,
-                      init = inits$inits,
+                      init = input$inits,
                       chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                       iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                       seed = 84735)
 
-  # pars - need mean and sd
-  logit_pCaps <- rstan::summary(pcap, pars = c("lt_pCap_U"))$summary |>
-    data.frame()
-
-  return("stanfit" = pcap,
-         "logit_pCaps" = logit_pCaps)
+  return(pcap)
 }
 
+
+#' Fit abundance model
+#' @details This function prepares the data list for the abundance STAN model based on what the model name is.
+#' @param input A list containing the inputs for the abundance model.
+#' @param pCap_fit A STANfit object resulting from running `fit_pCap_model()`
+#' @returns a named list with the required elements for that model run.
+#' @keywords internal
+#' @export
+#' @md
+fit_abundance_model <- function(input, pCap_fit) {
+
+  # get lt_pCap_Us for data from pcap fit
+  logit_pCaps <- rstan::summary(pCap_fit, pars = c("lt_pCap_U"))$summary |>
+    data.frame()
+
+  input$data$lt_pCap_mu <- logit_pCaps$mean
+  input$data$lt_pCap_sd <- logit_pCaps$sd
+
+  # generate inits for lt_pCap_U using a normal distribution
+  inits_with_lt_pCap_U <- input$inits[[1]]
+  inits_with_lt_pCap_U$lt_pCap_U <- rnorm(input$data$Nstrata_wc,
+                                          mean(logit_pCaps$mean),
+                                          mean(logit_pCaps$sd))
+  new_inits <- list(inits = inits_with_lt_pCap_U,
+                    inits = inits_with_lt_pCap_U,
+                    inits = inits_with_lt_pCap_U)
+
+  stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$abundance"))
+
+  options(mc.cores=parallel::detectCores())
+
+  cli::cli_alert("running abundance model")
+  abundance <- rstan::stan(model_code = stan_model,
+                           data = input$data,
+                           init = new_inits,
+                           chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
+                           iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
+                           seed = 84735)
+
+  return(abundance)
+}
+
+#' BT SPAS X diagnostic plots
+#' @details This function produces a plot with data and results of fitting the pCap and abundance models.
+#' @param site_arg The site being fit
+#' @param run_year_arg The run year being fit
+#' @param abundance_model The STANfit model object produced by running `fit_abundance_model()`
+#' @returns A plot
+#' @export
+#' @md
+diagnostic_plots_split <- function(site_arg, run_year_arg,
+                                   abundance_model) {
+
+
+  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
+    tibble() |>
+    filter(V1 != "Jwk") |>
+    mutate(V1 = as.numeric(V1)) |>
+    select(Jwk = V1, date = V2)
+
+  data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    filter(run_year == run_year_arg,
+           site == site_arg) |> #,
+    #week %in% c(seq(45, 53), seq(1, 22))) |>
+    group_by(year, week, stream, site, run_year) |>
+    summarise(count = sum(count, na.rm = T),
+              mean_fork_length = mean(mean_fork_length, na.rm = T),
+              hours_fished = mean(hours_fished, na.rm = T),
+              flow_cfs = mean(flow_cfs, na.rm = T),
+              average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
+              standardized_flow = mean(standardized_flow, na.rm = T),
+              catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+    ungroup() |>
+    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+              by = c("year", "run_year", "week", "stream", "site")) |>
+    mutate(count = round(count, 0),
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
+           # plot things
+           lincoln_peterson_abundance = count * (number_released / number_recaptured),
+           lincoln_peterson_efficiency = number_recaptured / number_released) |>
+    left_join(julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
+    mutate(year = ifelse(week >= 43, run_year - 1, run_year),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week - 1),
+           date = format(final_date, "%b-%d"),
+           week_index = row_number())
+
+  pCap_estimates <- rstan::summary(abundance_model,pars=c("lt_pCap_U"))$summary |>
+    data.frame() |>
+    tibble::rownames_to_column("parameter") |>
+    mutate(week_index = readr::parse_number(parameter)) |>
+    select(week_index, mean, sd, `50` = X50., `2.5` = X2.5., `97.5` = X97.5.) |>
+    mutate(parameter = "lt_pCap_U")
+
+  N_estimates <- rstan::summary(abundance_model,pars=c("N"))$summary |>
+    data.frame() |>
+    tibble::rownames_to_column("parameter") |>
+    mutate(week_index = readr::parse_number(parameter)) |>
+    select(week_index, mean, sd, `50` = X50., `2.5` = X2.5., `97.5` = X97.5.) |>
+    mutate(parameter = "N")
+
+
+  data |>
+    ggplot(aes(x = final_date, y = catch_standardized_by_hours_fished)) +
+    geom_bar(stat = "identity", fill = "grey", width = 5) +
+    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+    #scale_x_date(date_breaks = "1 week", date_labels = "%V") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    labs(x = "Date",
+         y = "Raw catch",
+         title = paste0("Catch at ", site_arg, " for run year ",
+                        run_year_arg))
+
+  # abundance plot
+  abundance_plot <- data |>
+    left_join(N_estimates) |>
+    #mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis)) |>
+    ggplot(aes(x = final_date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey", width = 5) +
+    geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
+               shape = 1, color = "blue") +
+    # geom_point(aes(x = fake_date, y = Inf, color = sampled),
+    #            size = 3) +
+    geom_text(aes(x = final_date, y = Inf,
+                  label = paste(count),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "red")) +
+    theme_minimal() +
+    labs(x = "",
+         #x = "Date",
+         y = "Abundance",
+         title = paste(site_arg, run_year_arg)) +
+    theme(axis.text.x=element_blank())
+  # scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+  # theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+  # efficiency
+  efficiency_plot <- data |>
+    left_join(pCap_estimates) |>
+    mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis),
+           number_released_label = ifelse(is.na(number_released), "", number_released),
+           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
+    ggplot(aes(x = final_date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey", width = 4) +
+    geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = final_date, y = lincoln_peterson_efficiency),
+               shape = 1, color = "blue") +
+    geom_text(aes(x = final_date, y = Inf,
+                  label = paste(number_released_label, number_recaptured_label),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    # geom_point(aes(x = fake_date, y = Inf, color = sampled),
+    #            size = 3) +
+    theme_minimal() +
+    labs(x = "Date", y = "Weekly Efficiency") +
+    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+  # arrange together
+  gridExtra::grid.arrange(abundance_plot, efficiency_plot)
+}
 
