@@ -19,7 +19,7 @@ parameters {
 }
 
 transformed parameters {
-  vector[Nstrata] N; // Abundance estimates
+  array[Nstrata] real N; // Abundance estimates
   real sd_N; // Standard deviation for spline coefficients
   real sd_Ne; // Standard deviation for extra-spline variation
   array[Nstrata] real Usp; // Spline-based estimate of log U
