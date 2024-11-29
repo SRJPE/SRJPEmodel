@@ -20,7 +20,7 @@ parameters {
   real<lower=0.01> pro_tau_P; // Process error precision
   array[Ntribs] real b0_pCap;// tributary-specific pCap intercepts
   array[Ntribs] real b_flow;// tributary-specific flow effects
-  vector[Nmr] pro_dev_P;               // process deviations for MR experiments
+  array[Nmr] real pro_dev_P;               // process deviations for MR experiments
 }
 
 transformed parameters {

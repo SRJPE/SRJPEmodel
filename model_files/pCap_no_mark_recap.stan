@@ -6,8 +6,8 @@ data {
   int Nstrata_wc;      // strata with unmarked catch observations
   int Releases[Nmr];  // number of releases in MR experiments
   int Recaptures[Nmr]; // number of recaptures in MR experiments
-  vector[Nmr] mr_flow;          // flow data for MR experiments
-  vector[Nwomr] catch_flow;     // flow data for strata without MR data
+  array[Nmr] real mr_flow;// Flow values for MR data
+  array[Nwomr] real catch_flow;     // flow data for strata without MR data
   array[Nmr] int ind_trib; // tributary index for each MR experiment
   int use_trib; // tributary being modeled
   array[Nwomr] int Uind_woMR; // Indices for strata without MR data
@@ -21,8 +21,8 @@ parameters {
   real<lower=0.01> pro_tau_P;      // precision of process error
   array[Ntribs] real b_flow; // tributary-specific flow effects
   array[Ntribs] real b0_pCap; // tributary-specific pCap intercepts
-  vector[Nmr] pro_dev_P;        // process deviations for MR experiments
-  vector[Nwomr] pro_dev;        // process deviations for unmarked data
+  array[Nmr] real pro_dev_P;        // process deviations for MR experiments
+  array[Nwomr] real pro_dev;        // process deviations for unmarked data
 }
 
 transformed parameters {
