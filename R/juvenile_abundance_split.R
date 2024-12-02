@@ -227,7 +227,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   inputs_for_pCap <- list(data = data, inits = inits, parameters = pCap_parameters,
                           model_name = model_name,
                           weeks_fit = catch_data$week[indices_with_catch],
-                          sites_fit = unique(mark_recapture_data$site))
+                          sites_fit = sort(unique(mark_recapture_data$site)))
 
   # inputs for abundance model
   abundance_data <- get_abundance_data_list(full_data_list)
@@ -262,7 +262,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                                parameters = abundance_parameters,
                                model_name = model_name,
                                weeks_fit = catch_data$week[indices_with_catch],
-                               sites_fit = unique(mark_recapture_data$site))
+                               sites_fit = sort(unique(mark_recapture_data$site)))
 
   return(list("pCap_inputs" = inputs_for_pCap,
               "abundance_inputs" = inputs_for_abundance))
