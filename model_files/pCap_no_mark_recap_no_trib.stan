@@ -69,10 +69,16 @@ model {
 generated quantities {
   array[Nstrata] real lt_pCap_U; // estimate for all weeks (Nstrata), abundance model will use Nstrata_wc
   array[Nwomr] real sim_pro_dev;
+  array[Nmr] real log_lik; //for loo
 
   for (i in 1:Nwomr) {
     //for weeks without efficiency trials
     sim_pro_dev[i] = normal_rng(0, pro_sd_P);
     lt_pCap_U[Uind_woMR[i]] = logit_b0_pCap + logit_b0_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[i];
+  }
+
+  // for loo analysis
+  for (i in 1:Nmr) {
+    log_lik[i] = binomial_logit_lpmf(Recaptures[i] | Releases[i], logit_pCap[i]);
   }
 }

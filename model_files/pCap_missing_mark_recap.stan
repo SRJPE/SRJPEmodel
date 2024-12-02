@@ -68,6 +68,7 @@ model {
 generated quantities {
   array[Nstrata] real lt_pCap_U; // abundance model is Nstrata_wc, but here we estimate for all weeks (Nstrata)
   array[Nwomr] real sim_pro_dev;
+  array[Nmr] real log_lik; //for loo
 
   for(i in 1:Nwmr){
     // Assign estimated pCaps for strata with efficiency data
@@ -77,5 +78,10 @@ generated quantities {
     //for weeks without efficiency trials
     sim_pro_dev[i] = normal_rng(0, pro_sd_P);
     lt_pCap_U[Uind_woMR[i]] = b0_pCap[use_trib] + b_flow[use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[i];
+  }
+
+  // for loo analysis
+  for (i in 1:Nmr) {
+    log_lik[i] = binomial_logit_lpmf(Recaptures[i] | Releases[i], logit_pCap[i]);
   }
 }

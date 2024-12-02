@@ -63,10 +63,16 @@ model {
 
 generated quantities {
   array[Nstrata] real lt_pCap_U; // estimate for all weeks (Nstrata), abundance model uses Nstrata_wc
+  array[Nmr] real log_lik; //for loo
 
   // All strata have efficiency data - so assign estimated pCaps for all strata
   // for every week with catch, find the relevant mark-recap experiment to link (ind_pCap)
   for(i in 1:Nstrata){
      lt_pCap_U[i] = logit_pCap[ind_pCap[i]];
+  }
+
+  // for loo analysis
+  for (i in 1:Nmr) {
+    log_lik[i] = binomial_logit_lpmf(Recaptures[i] | Releases[i], logit_pCap[i]);
   }
 }
