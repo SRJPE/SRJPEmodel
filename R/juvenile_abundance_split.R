@@ -116,6 +116,13 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
     weekly_catch_data <- catch_data$count
   }
 
+  # added 12-2-2024
+  # using calculation to set both lgN_max data and lgN_max priors (inits)
+  ini_lgN <- catch_data |>
+    mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/0.0001),
+           ini_lgN = ifelse(is.na(ini_lgN), log((2 / 1000)/0.0001), ini_lgN)) |>
+    pull(ini_lgN)
+
   # build data list with ALL elements
   full_data_list <- list("Nmr" = number_efficiency_experiments,
                          "Ntribs" = Ntribs,
@@ -136,7 +143,8 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                          "Uwc_ind" = indices_with_catch,
                          "mr_flow" = mark_recapture_data$standardized_flow,
                          "catch_flow" = catch_data$standardized_flow,
-                         "lgN_max" = catch_data$lgN_prior + 13)
+                         "lgN_max" = ini_lgN)
+                         #"lgN_max" = catch_data$lgN_prior + 13)
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
@@ -236,11 +244,6 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                             "N", "Ntot", "lg_CumN")
 
   # inits
-  ini_lgN <- catch_data |>
-    mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/0.005),
-           ini_lgN = ifelse(is.na(ini_lgN), log((2 / 1000)/0.005), ini_lgN)) |>
-    pull(ini_lgN)
-
   init_list <- list(b_sp = rep(1, spline_data$K),
                     lg_N = ini_lgN)
 
