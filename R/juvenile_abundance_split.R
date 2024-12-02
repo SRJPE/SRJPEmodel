@@ -339,6 +339,9 @@ fit_pCap_model <- function(input) {
   pcap <- rstan::stan(model_code = stan_model,
                       data = input$data,
                       init = input$inits,
+                      # do not save logit_pCap or pro_dev_P (way too big)
+                      pars = c("lt_pCap_U", "sim_pro_dev", "b0_pCap", "b_flow", "trib_mu_P", "trib_tau_P",
+                               "flow_mu_P", "flow_tau_P", "pro_tau_P", "log_lik"),
                       chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                       iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                       seed = 84735)
