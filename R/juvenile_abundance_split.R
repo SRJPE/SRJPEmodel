@@ -21,6 +21,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # filter to site and run_year
   cli::cli_bullets("Grouping all lifestages for analysis")
   catch_data <- weekly_juvenile_abundance_catch_data |>
+    filter(!life_stage %in% c(NA, "yearling")) |>
     select(-life_stage) |>
     filter(run_year == !!run_year,
            site == !!site,
@@ -264,6 +265,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                                inits = abundance_inits,
                                parameters = abundance_parameters,
                                model_name = model_name,
+                               # include raw flow data here when ready
                                weeks_fit = catch_data$week[indices_with_catch],
                                sites_fit = sort(unique(mark_recapture_data$site)))
 
