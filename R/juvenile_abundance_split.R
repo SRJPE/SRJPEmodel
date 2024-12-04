@@ -132,7 +132,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # using calculation to set both lgN_max data and lgN_max priors (inits)
   ini_lgN <- catch_data |>
     mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/0.0001),
-           ini_lgN = ifelse(is.na(ini_lgN), log((2 / 1000)/0.0001), ini_lgN)) |>
+           ini_lgN = ifelse(is.na(ini_lgN) | is.nan(ini_lgN), log((2 / 1000)/0.0001), ini_lgN)) |>
     pull(ini_lgN)
 
   # build data list with ALL elements
