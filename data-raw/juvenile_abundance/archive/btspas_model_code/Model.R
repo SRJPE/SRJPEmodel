@@ -25,7 +25,7 @@ Nmcmc=10000;Nburnin=5000;Nthin=5;Nchains=3
 #Nmcmc=20000;Nburnin=10000;Nthin=10;Nchains=3
 
 ### Setup Data and initial values for pCap component of model ########
-d0=read.table(file="data-raw/juvenile_abundance/RST_Input.txt",header=T)
+d0=read.table(file="data-raw/juvenile_abundance/archive/btspas_model_code/RST_Input.txt",header=T)
 
 #Tribs to use for pCap component of model. This is where sacramento river_knights landing is excluded because its efficiency is not exchangeable with those from CV tribs
 alltribs=c("battle creek_ubc","clear creek_lcc","clear creek_ucc","feather river_eye riffle","feather river_herringer riffle","feather river_steep riffle","feather river_gateway riffle","feather river_sunset pumps")#,"sacramento river_knights landing"

@@ -22,22 +22,24 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   cli::cli_bullets("Grouping all lifestages for analysis")
   catch_data <- weekly_juvenile_abundance_catch_data |>
     filter(life_stage != "yearling") |>
-    select(-life_stage) |>
     filter(run_year == !!run_year,
            site == !!site,
            week %in% c(seq(45, 53), seq(1, 22))) |>
     group_by(year, week, stream, site, run_year) |>
-    summarise(count = sum(count, na.rm = T),
+    # keep NAs in count columns
+    summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
               mean_fork_length = mean(mean_fork_length, na.rm = T),
               hours_fished = mean(hours_fished, na.rm = T),
               flow_cfs = mean(flow_cfs, na.rm = T),
               average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
               standardized_flow = mean(standardized_flow, na.rm = T),
-              catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+              catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
               lgN_prior = mean(lgN_prior, na.rm = T)) |>
     ungroup() |>
     mutate(count = round(count, 0),
-           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0))
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
+           # change all NaNs to NAs
+           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)))
 
   # flag if no data are available
   if(nrow(catch_data) == 0) {
@@ -75,6 +77,8 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
     # right now there's lifestage in the dataset, so we have to do distinct()
     distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
+
+
   # bring together efficiency and catch data so that we can get the indices of
   # catch data (hence left join) that correspond to certain efficiency trial
   # information.
@@ -102,13 +106,13 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year) # years where efficiency experiments were done
   indices_sites_pCap <- which(sites_fit == site) # indices of those sites where efficiency trials were performed, can be length = 0
   indices_with_mark_recapture <- which(!is.na(all_data_for_indexing$number_released) &
-                                         !is.na(all_data_for_indexing$standardized_flow)) # indices of efficiency experiments in catch data
+                                         !is.na(all_data_for_indexing$standardized_efficiency_flow)) # indices of efficiency experiments in catch data
   weeks_with_mark_recapture <- all_data_for_indexing$week[indices_with_mark_recapture] # weeks (in catch data) where mark recapture were performed
   indices_pCap <- which(mark_recapture_data$site == site &
                           mark_recapture_data$run_year == run_year &
                           mark_recapture_data$week %in% weeks_with_mark_recapture)   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
   indices_without_mark_recapture <- which(is.na(all_data_for_indexing$number_released) |
-                                            is.na(all_data_for_indexing$standardized_flow))   # indices (in catch data) where no mark recap were performed
+                                            is.na(all_data_for_indexing$standardized_efficiency_flow))   # indices (in catch data) where no mark recap were performed
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
 
@@ -123,16 +127,31 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   spline_data <- SRJPEmodel::build_spline_data(number_weeks_catch, k_int = 4) # rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
 
   if(effort_adjust) {
-    weekly_catch_data <- catch_data$catch_standardized_by_hours_fished
+    weekly_catch_data <- catch_data$catch_standardized_by_hours_fished[indices_with_catch]
   } else {
-    weekly_catch_data <- catch_data$count
+    weekly_catch_data <- catch_data$count[indices_with_catch]
   }
 
   # added 12-2-2024
+  # set default lgN prior denominator to the 5th percentile of
+  # lincoln peterson abundance
+  default_lgN_denom <- mark_recapture_data |>
+    filter(run_year == !!run_year,
+           site == !!site,
+           week %in% c(seq(45, 53), seq(1, 22))) |>
+    mutate(lp = number_recaptured/number_released) |>
+    pull(lp) |>
+    quantile(0.05) |>
+    unname()
+
+  # set to 0.001 if it is 0 or null
+  default_lgN_denom = ifelse(is.null(default_lgN_denom) | is.na(default_lgN_denom) |
+                               is.nan(default_lgN_denom) | default_lgN_denom == 0, 0.001, default_lgN_denom)
+
   # using calculation to set both lgN_max data and lgN_max priors (inits)
   ini_lgN <- catch_data |>
-    mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/0.0001),
-           ini_lgN = ifelse(is.na(ini_lgN) | is.nan(ini_lgN), log((2 / 1000)/0.0001), ini_lgN)) |>
+    mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/default_lgN_denom),
+           ini_lgN = ifelse(is.na(ini_lgN) | is.nan(ini_lgN), log((2 / 1000)/default_lgN_denom), ini_lgN)) |>
     pull(ini_lgN)
 
   # build data list with ALL elements
@@ -343,10 +362,11 @@ get_abundance_data_list <- function(full_data_list) {
 #' @md
 fit_pCap_model <- function(input) {
 
-  model_name <- paste0("pCap_", input$model_name)
-  print(model_name)
-
-  stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", model_name)))
+  # model_name <- paste0("pCap_", input$model_name)
+  # print(model_name)
+  #
+  # stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", model_name)))
+  stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_all"))
 
   options(mc.cores=parallel::detectCores())
   cli::cli_alert("running pCap model")
@@ -354,13 +374,111 @@ fit_pCap_model <- function(input) {
                       data = input$data,
                       init = input$inits,
                       # do not save logit_pCap or pro_dev_P (way too big)
-                      pars = c("lt_pCap_U", "sim_pro_dev", "b0_pCap", "b_flow", "trib_mu_P", "trib_tau_P",
-                               "flow_mu_P", "flow_tau_P", "pro_tau_P"),
+                      pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+                               "flow_mu_P", "flow_sd_P"), # for new efficient model
+                      # pars = c("lt_pCap_U", "sim_pro_dev", "b0_pCap", "b_flow", "trib_mu_P", "trib_tau_P",
+                      #          "flow_mu_P", "flow_tau_P", "pro_tau_P"),
                       chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                       iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                       seed = 84735)
 
   return(pcap)
+}
+
+#' Generate lt_pCap_U values from the pCap model object
+#' @details This function prepares the data list for the abundance STAN model based on what the model name is.
+#' @param pCap_inputs A list containing the inputs for the pCap model including `model_name`, `Nstrata`,
+#' `catch_flow`, `use_trib`, `Ntribs`, `Nmr`, `Nwmr`, `Nwomr`, `Uind_wMR`, `Uind_woMR`,
+#' `ind_pCap`.
+#' @param pCap_model_object A STANfit object with the output of the pCap hierarchical model.
+#' @returns a named list with the required elements for that model run.
+#' @export
+#' @md
+generate_lt_pCap_Us <- function(pCap_inputs, pCap_model_object){
+
+  # set up objects
+  ModelName <- pCap_inputs$model_name
+  Nstrata <- pCap_inputs$data$Nstrata
+  catch_flow <- pCap_inputs$data$catch_flow
+  use_trib <- pCap_inputs$data$use_trib
+  Nwmr <- pCap_inputs$data$Nwmr
+  Nwomr <- pCap_inputs$data$Nwomr
+  Uind_wMR <- pCap_inputs$data$Uind_wMR
+  Uind_woMR <- pCap_inputs$data$Uind_woMR
+  ind_pCap <- pCap_inputs$data$ind_pCap
+
+  # extract from pCap model fit object
+
+  samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+                                           "flow_mu_P", "flow_sd_P"),
+                            permuted = TRUE)
+  Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
+  logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
+  b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
+  b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
+  pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+  trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
+  trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
+  flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
+  flow_sd_P <- samples$flow_sd_P # flow_sd_P[1:Ntrials] #hyper sd for b_flow
+
+  # calculations
+  lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
+  sim_pro_dev=vector(length=Ntrials)
+  lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
+  lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+
+  if(ModelName=="all_mark_recap" ){
+
+    for(i in 1:Nstrata){
+      lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
+    }
+
+  } else if (ModelName=="missing_mark_recap"){
+
+    for(i in 1:Nwmr){
+      #Assign estimated pCaps for strata with efficiency data
+      lt_pCap_U[,Uind_wMR[i]] = logit_pCap[,ind_pCap[i]];
+    }
+    for (i in 1:Nwomr) {
+      #for weeks without efficiency trials
+      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
+      lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+    }
+
+  } else if (ModelName=="no_mark_recap"){
+
+    for (i in 1:Nwomr) {
+      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+      lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+    }
+
+  } else if (ModelName=="no_mark_recap_no_trib"){
+
+    logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
+    for(itrial in 1:Ntrials){
+      logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
+      logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
+    }
+
+    for (i in 1:Nwomr) {
+      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+      lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];
+    }
+
+  }#end if on ModelName
+
+
+  #Calculate mean and sd for each lt_pCap_U and return these from function
+  for(i in 1:Nstrata){
+    lt_pCap_mu[i,]=mean(lt_pCap_U[,i])
+    lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
+    # lt_pCap_mu[,i]=mean(lt_pCap_U[i])
+    # lt_pCap_sd[,i]=sd(lt_pCap_U[i])
+  }
+
+  return(list("lt_pCap_mu" = lt_pCap_mu,
+              "lt_pCap_sd" = lt_pCap_sd))
 }
 
 
@@ -372,20 +490,20 @@ fit_pCap_model <- function(input) {
 #' @keywords internal
 #' @export
 #' @md
-fit_abundance_model <- function(input, pCap_fit) {
+fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
 
   # get lt_pCap_Us for data from pcap fit
-  logit_pCaps <- rstan::summary(pCap_fit, pars = c("lt_pCap_U"))$summary |>
-    data.frame()
+  # logit_pCaps <- rstan::summary(pCap_fit, pars = c("lt_pCap_U"))$summary |>
+  #   data.frame()
 
-  input$data$lt_pCap_mu <- logit_pCaps$mean
-  input$data$lt_pCap_sd <- logit_pCaps$sd
+  input$data$lt_pCap_mu <- lt_pCap_Us$lt_pCap_mu |> rowMeans()
+  input$data$lt_pCap_sd <- lt_pCap_Us$lt_pCap_sd |> rowMeans()
 
   # generate inits for lt_pCap_U using a normal distribution
   inits_with_lt_pCap_U <- input$inits[[1]]
   inits_with_lt_pCap_U$lt_pCap_U <- rnorm(input$data$Nstrata_wc,
-                                          mean(logit_pCaps$mean),
-                                          mean(logit_pCaps$sd))
+                                          mean(input$data$lt_pCap_mu),
+                                          mean(input$data$lt_pCap_sd))
   new_inits <- list(inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U)
@@ -397,6 +515,7 @@ fit_abundance_model <- function(input, pCap_fit) {
   cli::cli_alert("running abundance model")
   abundance <- rstan::stan(model_code = stan_model,
                            data = input$data,
+                           #init = input$inits,
                            init = new_inits,
                            chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                            iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
@@ -424,23 +543,27 @@ diagnostic_plots_split <- function(site_arg, run_year_arg,
     select(Jwk = V1, date = V2)
 
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    filter(life_stage != "yearling") |>
     filter(run_year == run_year_arg,
-           site == site_arg) |> #,
-    #week %in% c(seq(45, 53), seq(1, 22))) |>
+           site == site_arg,
+           week %in% c(seq(45, 53), seq(1, 22))) |>
     group_by(year, week, stream, site, run_year) |>
-    summarise(count = sum(count, na.rm = T),
+    # keep NAs in count columns
+    summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
               mean_fork_length = mean(mean_fork_length, na.rm = T),
               hours_fished = mean(hours_fished, na.rm = T),
               flow_cfs = mean(flow_cfs, na.rm = T),
               average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
               standardized_flow = mean(standardized_flow, na.rm = T),
-              catch_standardized_by_hours_fished = sum(catch_standardized_by_hours_fished, na.rm = T),
+              catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
               lgN_prior = mean(lgN_prior, na.rm = T)) |>
     ungroup() |>
     left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(count = round(count, 0),
            catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
+           # change all NaNs to NAs
+           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # plot things
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
            lincoln_peterson_efficiency = number_recaptured / number_released) |>

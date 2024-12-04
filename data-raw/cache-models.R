@@ -3,16 +3,18 @@
 # bt-spas-x ----------------------------------------------------------
 
 # stan (pCap and abundance separate)
-pCap_all_mark_recap <- readr::read_file(here::here("model_files", "pCap_all_mark_recap.stan"))
-pCap_missing_mark_recap <- readr::read_file(here::here("model_files", "pCap_missing_mark_recap.stan"))
-pCap_no_mark_recap <- readr::read_file(here::here("model_files", "pCap_no_mark_recap.stan"))
-pCap_no_mark_recap_no_trib <- readr::read_file(here::here("model_files", "pCap_no_mark_recap_no_trib.stan"))
+# pCap_all_mark_recap <- readr::read_file(here::here("model_files", "pCap_all_mark_recap.stan"))
+# pCap_missing_mark_recap <- readr::read_file(here::here("model_files", "pCap_missing_mark_recap.stan"))
+# pCap_no_mark_recap <- readr::read_file(here::here("model_files", "pCap_no_mark_recap.stan"))
+# pCap_no_mark_recap_no_trib <- readr::read_file(here::here("model_files", "pCap_no_mark_recap_no_trib.stan"))
+pCap_all <- readr::read_file(here::here("model_files", "pCap_all.stan"))
 abundance <- readr::read_file(here::here("model_files", "abundance_model.stan"))
 
-bt_spas_x_model_code <- list(pCap_all_mark_recap = pCap_all_mark_recap,
-                             pCap_missing_mark_recap = pCap_missing_mark_recap,
-                             pCap_no_mark_recap = pCap_no_mark_recap,
-                             pCap_no_mark_recap_no_trib = pCap_no_mark_recap_no_trib,
+bt_spas_x_model_code <- list(#pCap_all_mark_recap = pCap_all_mark_recap,
+                             #pCap_missing_mark_recap = pCap_missing_mark_recap,
+                             #pCap_no_mark_recap = pCap_no_mark_recap,
+                             #pCap_no_mark_recap_no_trib = pCap_no_mark_recap_no_trib,
+                             pCap_all = pCap_all,
                              abundance = abundance)
 
 usethis::use_data(bt_spas_x_model_code, overwrite = T)

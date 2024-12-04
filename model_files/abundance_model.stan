@@ -75,7 +75,7 @@ model {
     lt_pCap_U[i] ~ normal(lt_pCap_mu[Uwc_ind[i]], lt_pCap_sd[Uwc_ind[i]]); // simulate a pCap for every week with catch data
     pCap_U[i] = inv_logit(lt_pCap_U[i]);
 
-    bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[Uwc_ind[i]] + 1) - lgamma(N[Uwc_ind[i]] - u[Uwc_ind[i]]);//log of binomial coefficent
+    bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[i] + 1) - lgamma(N[Uwc_ind[i]] - u[i]);//log of binomial coefficent
     kern = u[Uwc_ind[i]] * log(pCap_U[i]) + (N[i]-u[i]) * log(1 - pCap_U[i]); //log of binomial kernal
     // this is only if we want to estimate for all of Nstrata
     // kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal

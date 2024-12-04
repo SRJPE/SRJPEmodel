@@ -4,7 +4,7 @@
 \alias{fit_abundance_model}
 \title{Fit abundance model}
 \usage{
-fit_abundance_model(input, pCap_fit)
+fit_abundance_model(input, pCap_fit, lt_pCap_Us)
 }
 \arguments{
 \item{input}{A list containing the inputs for the abundance model.}

@@ -11,7 +11,7 @@ data {
   array[Nmr] real mr_flow;// Flow values for MR data
   array[Nmr] int Releases; // Number of releases in MR data
   array[Nmr] int Recaptures; // Number of recaptures in MR data
-  array[Nstrata_wc] real catch_flow; // Flow values for unmarked catch strata without MR data
+  array[Nstrata] real catch_flow; // Flow values for unmarked catch strata without MR data
   array[Nwmr] int Uind_wMR;// Indices for strata with MR data
   array[Nwomr] int Uind_woMR; // Indices for strata without MR data
 }
