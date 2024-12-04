@@ -21,7 +21,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # filter to site and run_year
   cli::cli_bullets("Grouping all lifestages for analysis")
   catch_data <- weekly_juvenile_abundance_catch_data |>
-    filter(!life_stage %in% c(NA, "yearling")) |>
+    filter(life_stage != "yearling") |>
     select(-life_stage) |>
     filter(run_year == !!run_year,
            site == !!site,
@@ -80,12 +80,27 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # information.
   all_data_for_indexing <- left_join(catch_data, mark_recapture_data)
 
+  # get use_trib, sites_fit, and ind_trib indexing
+  # first assign 1:Ntribs to the unique sites in the dataset
+  site_lookup <- mark_recapture_data |>
+    distinct(site) |>
+    mutate(ID = row_number())
+
+  # pull the order of those sites
+  sites_fit <- site_lookup |>
+    pull(site)
+
+  # assign the IDs to the sites in the mark-recapture dataset
+  indices_site_mark_recapture <- mark_recapture_data |>
+    left_join(site_lookup, by = "site") |>
+    pull(ID)
+
   # get indexing for "mark recap" dataset (pCap model)
-  Ntribs <- length(unique(mark_recapture_data$site)) # number of sites (for pCap calculations)
+  Ntribs <- length(sites_fit) # number of sites (for pCap calculations)
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
   years_with_efficiency_experiments <- unique(mark_recapture_data$run_year) # years where efficiency experiments were done
-  indices_sites_pCap <- which(unique(mark_recapture_data$site) == site) # indices of those sites where efficiency trials were performed, can be length = 0
+  indices_sites_pCap <- which(sites_fit == site) # indices of those sites where efficiency trials were performed, can be length = 0
   indices_with_mark_recapture <- which(!is.na(all_data_for_indexing$number_released) &
                                          !is.na(all_data_for_indexing$standardized_flow)) # indices of efficiency experiments in catch data
   weeks_with_mark_recapture <- all_data_for_indexing$week[indices_with_mark_recapture] # weeks (in catch data) where mark recapture were performed
@@ -94,10 +109,6 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                           mark_recapture_data$week %in% weeks_with_mark_recapture)   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
   indices_without_mark_recapture <- which(is.na(all_data_for_indexing$number_released) |
                                             is.na(all_data_for_indexing$standardized_flow))   # indices (in catch data) where no mark recap were performed
-  indices_site_mark_recapture <- mark_recapture_data |>
-    group_by(site) |>
-    mutate(ID = cur_group_id()) |>
-    pull(ID)   # indices (in mark-recap data) for each site
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
 
@@ -271,7 +282,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
               "catch_flow_raw" = catch_data$flow_cfs,
               "mr_flow_raw" = mark_recapture_data$flow_cfs,
               "weeks_fit" = catch_data$week[indices_with_catch],
-              "sites_fit" = sort(unique(mark_recapture_data$site))))
+              "sites_fit" = sites_fit))
 
 
 }
