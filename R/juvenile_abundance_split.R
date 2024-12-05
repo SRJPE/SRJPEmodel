@@ -300,7 +300,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                                parameters = abundance_parameters,
                                model_name = model_name)
 
-  weeks_fit <- tibble("Jwk" = catch_data$week[indices_with_catch]) |>
+  weeks_fit <- tibble("Jwk" = catch_data$week) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = "Jwk")
 
   return(list("pCap_inputs" = inputs_for_pCap,
@@ -657,5 +657,86 @@ diagnostic_plots_split <- function(site_arg, run_year_arg,
 
   # arrange together
   gridExtra::grid.arrange(abundance_plot, efficiency_plot)
+}
+
+
+#' BT SPAS X raw data plots
+#' @details This function produces a plot with data used to fit BT SPAS X.
+#' @param site_arg The site being fit
+#' @param run_year_arg The run year being fit
+#' @returns A plot
+#' @export
+#' @md
+plot_juv_data <- function(site, run_year) {
+  data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    filter(life_stage != "yearling") |>
+    filter(run_year == !!run_year,
+           site == !!site,
+           week %in% c(seq(45, 53), seq(1, 22))) |>
+    group_by(year, week, stream, site, run_year) |>
+    # keep NAs in count columns
+    summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
+              mean_fork_length = mean(mean_fork_length, na.rm = T),
+              hours_fished = mean(hours_fished, na.rm = T),
+              catch_flow_cfs = mean(flow_cfs, na.rm = T),
+              average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
+              standardized_flow = mean(standardized_flow, na.rm = T),
+              catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
+              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+    ungroup() |>
+    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+              by = c("year", "run_year", "week", "stream", "site")) |>
+    mutate(count = round(count, 0),
+           catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
+           # change all NaNs to NAs
+           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
+           # plot things
+           lincoln_peterson_abundance = count * (number_released / number_recaptured),
+           lincoln_peterson_efficiency = number_recaptured / number_released) |>
+    left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
+    mutate(year = ifelse(week >= 43, run_year - 1, run_year),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week - 1),
+           date = format(final_date, "%b-%d"),
+           week_index = row_number())
+
+  abundance_plot <- data |>
+    ggplot(aes(x = final_date, y = count)) +
+    geom_bar(stat = "identity", fill = "grey", width = 5) +
+    # geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
+    #            shape = 1, color = "blue") +
+    geom_text(aes(x = final_date, y = Inf,
+                  label = paste(count),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    theme_minimal() +
+    labs(x = "",
+         #x = "Date",
+         y = "Abundance",
+         title = paste(site, run_year)) +
+    #theme(axis.text.x=element_blank()) +
+    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+  efficiency_plot <- data |>
+    mutate(number_released_label = ifelse(is.na(number_released), "", number_released),
+           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
+    ggplot(aes(x = final_date, y = lincoln_peterson_efficiency)) +
+    geom_point(shape = 1, color = "blue") +
+    # geom_bar(stat = "identity", fill = "grey", width = 4) +
+    geom_text(aes(x = final_date, y = Inf,
+                  label = paste(number_released_label, number_recaptured_label),
+                  angle = 90),
+              hjust = 1,
+              size = 3) +
+    theme_minimal() +
+    labs(x = "Date", y = "Weekly Efficiency") +
+    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+  # arrange together
+  gridExtra::grid.arrange(abundance_plot, efficiency_plot)
+
 }
 
