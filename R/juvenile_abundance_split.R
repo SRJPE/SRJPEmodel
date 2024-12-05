@@ -138,8 +138,7 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # lincoln peterson abundance
   if(is.null(default_lgN_prior_denominator)) {
     default_lgN_denom <- mark_recapture_data |>
-      filter(run_year == !!run_year,
-             site == !!site,
+      filter(site == !!site,
              week %in% c(seq(45, 53), seq(1, 22))) |>
       mutate(lp = number_recaptured/number_released) |>
       pull(lp) |>
@@ -542,11 +541,7 @@ diagnostic_plots_split <- function(site_arg, run_year_arg,
                                    abundance_model) {
 
 
-  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
-    tibble() |>
-    filter(V1 != "Jwk") |>
-    mutate(V1 = as.numeric(V1)) |>
-    select(Jwk = V1, date = V2)
+  julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
     filter(life_stage != "yearling") |>

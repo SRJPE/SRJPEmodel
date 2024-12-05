@@ -208,11 +208,7 @@ generate_diagnostic_plot <- function(model_fit_summary_object,
   site_arg <- unique(model_fit_summary_object$site)
   run_year_arg <- unique(model_fit_summary_object$run_year)
 
-  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
-    tibble() |>
-    filter(V1 != "Jwk") |>
-    mutate(V1 = as.numeric(V1)) |>
-    select(Jwk = V1, date = V2)
+  julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
   # input data all lifestages
   input_data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>

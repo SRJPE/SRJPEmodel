@@ -19,6 +19,15 @@ bt_spas_x_model_code <- list(#pCap_all_mark_recap = pCap_all_mark_recap,
 
 usethis::use_data(bt_spas_x_model_code, overwrite = T)
 
+# read in Jwk lookup # TODO integrate into SRJPEdata package
+julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
+  tibble() |>
+  filter(V1 != "Jwk") |>
+  mutate(V1 = as.numeric(V1)) |>
+  select(Jwk = V1, date = V2)
+
+usethis::use_data(julian_week_to_date_lookup, overwrite = T)
+
 # stan (pCap and abundance combined)
 all_mark_recap <- readr::read_file(here::here("model_files", "all_mark_recap.stan"))
 missing_mark_recap <- readr::read_file(here::here("model_files", "missing_mark_recap.stan"))

@@ -9,8 +9,6 @@ library(tidyverse)
 library(SRJPEmodel)
 library(SRJPEdata)
 
-
-
 # run pCap general model --------------------------------------------------
 
 # prepare data for pCap model
@@ -30,8 +28,9 @@ pCap <- fit_pCap_model(inputs_general$pCap_inputs)
 
 # update this with your local filepath
 local_filepath <- "~/Downloads/pCap_model.rds"
-#saveRDS(pCap, file = local_filepath)
 
+# save to your local filepath
+#saveRDS(pCap, file = local_filepath)
 
 # run site-specific model -------------------------------------------------
 
@@ -39,17 +38,11 @@ local_filepath <- "~/Downloads/pCap_model.rds"
 pCap <- readRDS(local_filepath)
 
 # start workflow that is specific to site/run
-# ubc 2005 has catch for all weeks - fits
-# lcc 2018 has catch for all weeks - fits
-# lcc 2020 has catch for some weeks (tail end missing) - fits
-# ubc 2018 has catch for some weeks (beginning missing) - DOES NOT FIT, INDEX ISSUES
-# ubc 2006 has catch for some weeks (missing week 3) - DOES NOT FIT, INDEX ISSUES, lots of 0s
 inputs_site <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
                                                   SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-                                                  site = "ubc", run_year = 2006,
+                                                  site = "ubc", run_year = 2018,
                                                   effort_adjust = T,
-                                                  # uncomment the below if you want to set a specific denominator for the prior
-                                                  # default_lgN_prior_denominator = 0.0001
+                                                  #default_lgN_prior_denominator = 0.0001 # uncomment the below if you want to set a specific denominator for the prior
                                                   )
 
 lt_pCap_Us <- generate_lt_pCap_Us(inputs_site$pCap_inputs, pCap)
@@ -74,10 +67,10 @@ rstan::summary(abundance, pars = c("N"))$summary |>
 # this is an automated plot function I created. If it's not working, you can
 # get data from SRJPEdata and estimates from the stanfit objects to create a plot
 # that is helpful for you!
-diagnostic_plots_split("ubc", 2018, abundance)
+diagnostic_plots_split("lcc", 2018, abundance)
 
 
-# table of sites to run for lcc and ubc -----------------------------------
+# table of sites to run for lcc and ubc  - LIZ CODE -----------------------------------
 trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(life_stage %in% c("fry", "smolt")) |>
   mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
@@ -92,7 +85,7 @@ trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   select(-n)
 
 
-# functionalize and run ---------------------------------------------------
+# functionalize and run for lcc - LIZ CODE ---------------------------------------------------
 
 run_site_year <- function(site_arg, year_arg) {
   cli::cli_bullets(paste0("Fitting for ", site_arg, " and run year ", year_arg))

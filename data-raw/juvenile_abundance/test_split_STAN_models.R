@@ -75,11 +75,7 @@ run_split_models <- function(site_arg, run_year_arg,
 }
 
 plot_raw_data <- function(site_arg, run_year_arg) {
-  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
-    tibble() |>
-    filter(V1 != "Jwk") |>
-    mutate(V1 = as.numeric(V1)) |>
-    select(Jwk = V1, date = V2)
+  julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
     filter(run_year == run_year_arg,
@@ -126,11 +122,7 @@ diagnostic_plots_split <- function(site_arg, run_year_arg,
                                    model_object) {
 
 
-  julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/archive/btspas_model_code/Jwk_Dates.txt", header = F) |>
-    tibble() |>
-    filter(V1 != "Jwk") |>
-    mutate(V1 = as.numeric(V1)) |>
-    select(Jwk = V1, date = V2)
+  julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
     filter(run_year == run_year_arg,
