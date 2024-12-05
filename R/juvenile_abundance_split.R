@@ -300,11 +300,15 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
                                parameters = abundance_parameters,
                                model_name = model_name)
 
+  weeks_fit <- tibble("Jwk" = catch_data$week[indices_with_catch]) |>
+    left_join(SRJPEmodel::julian_week_to_date_lookup, by = "Jwk")
+
   return(list("pCap_inputs" = inputs_for_pCap,
               "abundance_inputs" = inputs_for_abundance,
               "catch_flow_raw" = catch_data$flow_cfs,
               "mr_flow_raw" = mark_recapture_data$flow_cfs,
-              "weeks_fit" = catch_data$week[indices_with_catch],
+              "weeks_fit" = weeks_fit$Jwk,
+              "week_date" = weeks_fit$date,
               "sites_fit" = sites_fit))
 
 

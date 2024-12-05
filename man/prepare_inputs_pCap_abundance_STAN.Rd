@@ -9,7 +9,8 @@ prepare_inputs_pCap_abundance_STAN(
   weekly_juvenile_abundance_efficiency_data,
   site,
   run_year,
-  effort_adjust = c(T, F)
+  effort_adjust = c(T, F),
+  default_lgN_prior_denominator = NULL
 )
 }
 \arguments{
