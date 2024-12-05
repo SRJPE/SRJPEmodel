@@ -15,7 +15,8 @@ parameters {
   real<lower=0.0> tau_Ne; // Extra-spline variation precision
   array[K] real b_sp; // Spline coefficients
   array[Nstrata] real lg_N; // Log abundance estimates
-  array[Nstrata_wc] real lt_pCap_U;
+  //array[Nstrata_wc] real lt_pCap_U;
+  array[Nstrata] real lt_pCap_U;
 }
 
 transformed parameters {
@@ -56,29 +57,30 @@ model {
   // Likelihood for unmarked catch observations
   real bcl;
   real kern;
-  array[Nstrata_wc] real pCap_U;
+  //array[Nstrata_wc] real pCap_U;
+  array[Nstrata] real pCap_U;
 
   // for future use: generate estimate for all of Nstrata here, and use Uwc_ind in our Nstrata_wc
-  // for(i in 1:Nstrata){
-  //   // simulate for all weeks,
-  //   // TODO change dimensions of lt_pCap_U and pCap_U to be Nstrata
-  //   lt_pCap_U[i] ~ normal(lt_pCap_mu[i], lt_pCap_sd[i]);
-  //   pCap_U[i] = inv_logit(lt_pCap_U[i]);
-  //
-  //   // TODO uncomment extra kern line below
-  //
-  // }
+  for(i in 1:Nstrata){
+    // simulate for all weeks,
+    // TODO change dimensions of lt_pCap_U and pCap_U to be Nstrata
+    lt_pCap_U[i] ~ normal(lt_pCap_mu[i], lt_pCap_sd[i]);
+    pCap_U[i] = inv_logit(lt_pCap_U[i]);
+
+    // TODO uncomment extra kern line below
+
+  }
 
   for (i in 1:Nstrata_wc) {
     // simulate pCap_U from mean and sd (simulate in logit space and transform using inv_logit)
     // we will not see lt_pCap_U for weeks without catch
-    lt_pCap_U[i] ~ normal(lt_pCap_mu[Uwc_ind[i]], lt_pCap_sd[Uwc_ind[i]]); // simulate a pCap for every week with catch data
-    pCap_U[i] = inv_logit(lt_pCap_U[i]);
+    // lt_pCap_U[i] ~ normal(lt_pCap_mu[Uwc_ind[i]], lt_pCap_sd[Uwc_ind[i]]); // simulate a pCap for every week with catch data
+    // pCap_U[i] = inv_logit(lt_pCap_U[i]);
 
     bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[i] + 1) - lgamma(N[Uwc_ind[i]] - u[i]);//log of binomial coefficent
-    kern = u[Uwc_ind[i]] * log(pCap_U[i]) + (N[i]-u[i]) * log(1 - pCap_U[i]); //log of binomial kernal
+    //kern = u[Uwc_ind[i]] * log(pCap_U[i]) + (N[i]-u[i]) * log(1 - pCap_U[i]); //log of binomial kernal
     // this is only if we want to estimate for all of Nstrata
-    // kern = u[Uwc_ind[i]] * log(pCap_U[Uwc_ind[i]]) + (N[i]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
+    kern = u[i] * log(pCap_U[Uwc_ind[i]]) + (N[Uwc_ind[i]]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
     target += bcl + kern;//log of binomial probability
   }
 

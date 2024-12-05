@@ -39,9 +39,18 @@ local_filepath <- "~/Downloads/pCap_model.rds"
 pCap <- readRDS(local_filepath)
 
 # start workflow that is specific to site/run
+# ubc 2005 has catch for all weeks - fits
+# lcc 2018 has catch for all weeks - fits
+# lcc 2020 has catch for some weeks (tail end missing) - fits
+# ubc 2018 has catch for some weeks (beginning missing) - DOES NOT FIT, INDEX ISSUES
+# ubc 2006 has catch for some weeks (missing week 3) - DOES NOT FIT, INDEX ISSUES, lots of 0s
 inputs_site <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
                                                   SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-                                                  site = "ubc", run_year = 2005, effort_adjust = T)
+                                                  site = "ubc", run_year = 2006,
+                                                  effort_adjust = T,
+                                                  # uncomment the below if you want to set a specific denominator for the prior
+                                                  # default_lgN_prior_denominator = 0.0001
+                                                  )
 
 lt_pCap_Us <- generate_lt_pCap_Us(inputs_site$pCap_inputs, pCap)
 
@@ -65,7 +74,7 @@ rstan::summary(abundance, pars = c("N"))$summary |>
 # this is an automated plot function I created. If it's not working, you can
 # get data from SRJPEdata and estimates from the stanfit objects to create a plot
 # that is helpful for you!
-diagnostic_plots_split("ubc", 2005, abundance)
+diagnostic_plots_split("ubc", 2018, abundance)
 
 
 # table of sites to run for lcc and ubc -----------------------------------

@@ -15,7 +15,8 @@
 prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_data,
                                                weekly_juvenile_abundance_efficiency_data,
                                                site, run_year,
-                                               effort_adjust = c(T, F)) {
+                                               effort_adjust = c(T, F),
+                                               default_lgN_prior_denominator = NULL) {
 
   # group and summarize for all lifestages
   # filter to site and run_year
@@ -135,18 +136,22 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
   # added 12-2-2024
   # set default lgN prior denominator to the 5th percentile of
   # lincoln peterson abundance
-  default_lgN_denom <- mark_recapture_data |>
-    filter(run_year == !!run_year,
-           site == !!site,
-           week %in% c(seq(45, 53), seq(1, 22))) |>
-    mutate(lp = number_recaptured/number_released) |>
-    pull(lp) |>
-    quantile(0.05) |>
-    unname()
+  if(is.null(default_lgN_prior_denominator)) {
+    default_lgN_denom <- mark_recapture_data |>
+      filter(run_year == !!run_year,
+             site == !!site,
+             week %in% c(seq(45, 53), seq(1, 22))) |>
+      mutate(lp = number_recaptured/number_released) |>
+      pull(lp) |>
+      quantile(0.05) |>
+      unname()
 
-  # set to 0.001 if it is 0 or null
-  default_lgN_denom = ifelse(is.null(default_lgN_denom) | is.na(default_lgN_denom) |
-                               is.nan(default_lgN_denom) | default_lgN_denom == 0, 0.001, default_lgN_denom)
+    # set to 0.001 if it is 0 or null
+    default_lgN_denom = ifelse(is.null(default_lgN_denom) | is.na(default_lgN_denom) |
+                                 is.nan(default_lgN_denom) | default_lgN_denom == 0, 0.001, default_lgN_denom)
+  } else {
+    default_lgN_denom = default_lgN_prior_denominator
+  }
 
   # using calculation to set both lgN_max data and lgN_max priors (inits)
   ini_lgN <- catch_data |>
@@ -501,7 +506,8 @@ fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
 
   # generate inits for lt_pCap_U using a normal distribution
   inits_with_lt_pCap_U <- input$inits[[1]]
-  inits_with_lt_pCap_U$lt_pCap_U <- rnorm(input$data$Nstrata_wc,
+  inits_with_lt_pCap_U$lt_pCap_U <- rnorm(#input$data$Nstrata_wc,
+                                          input$data$Nstrata,
                                           mean(input$data$lt_pCap_mu),
                                           mean(input$data$lt_pCap_sd))
   new_inits <- list(inits = inits_with_lt_pCap_U,
