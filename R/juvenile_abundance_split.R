@@ -628,9 +628,9 @@ diagnostic_plots_split <- function(site_arg, run_year_arg,
          #x = "Date",
          y = "Abundance",
          title = paste(site_arg, run_year_arg)) +
-    theme(axis.text.x=element_blank())
-  # scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
-  # theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+    #theme(axis.text.x=element_blank()) +
+    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
 
   # efficiency
   efficiency_plot <- data |>

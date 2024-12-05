@@ -87,27 +87,22 @@ trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
 
 # functionalize and run for lcc - LIZ CODE ---------------------------------------------------
 
-run_site_year <- function(site_arg, year_arg) {
+run_site_year <- function(site_arg, year_arg, pCap, default_denom) {
   cli::cli_bullets(paste0("Fitting for ", site_arg, " and run year ", year_arg))
 
+  # start workflow that is specific to site/run
   inputs <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
-                                               SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-                                               site = site_arg, run_year = year_arg, effort_adjust = T)
+                                                    SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                                    site = site_arg, run_year = year_arg,
+                                                    effort_adjust = T,
+                                                    default_lgN_prior_denominator = default_denom # uncomment the below if you want to set a specific denominator for the prior
+  )
 
-  pCap <- fit_pCap_model(inputs$pCap_inputs)
-
-  # check outputs for convergence
-  check_pCap <- rstan::summary(pCap, pars = c("lt_pCap_U"))$summary |>
-    data.frame() |>
-    filter(Rhat > 1.05)
-
-  if(nrow(check_pCap) > 0) {
-    return(check_pCap)
-  }
+  lt_pCap_Us <- generate_lt_pCap_Us(inputs$pCap_inputs, pCap)
 
   # call abundance model - we need to pass in pCap to get the lt_pCap_U estimates
   # and pass those in as data
-  abundance <- fit_abundance_model(inputs$abundance_inputs, pCap)
+  abundance <- fit_abundance_model(inputs$abundance_inputs, pCap, lt_pCap_Us)
 
   check_abundance <- bind_rows(rstan::summary(abundance, pars = c("lt_pCap_U"))$summary |>
                                  data.frame() |>
