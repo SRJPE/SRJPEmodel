@@ -150,7 +150,7 @@ names(models_that_fit) <- model_id[fit_index]
 
 saveRDS(models_that_fit, file = "~/Downloads/lcc_successful_fits.rds")
 
-
+fits <- readRDS("~/Downloads/lcc_successful_fits.rds")
 
 # models that converged ---------------------------------------------------
 
@@ -180,48 +180,73 @@ diagnostic_plots_split("lcc", 2005, models_that_fit$lcc_2005)
 
 model_id[!fit_index]
 
+# lcc 2021
+inputs_2021 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                             SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                             site = "lcc", run_year = 2021,
+                                             effort_adjust = T,
+                                             #default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
+)
+
+lt_pCap_Us_2021 <- generate_lt_pCap_Us(inputs_2021$pCap_inputs, pCap)
+abundance_2021 <- fit_abundance_model(inputs_2021$abundance_inputs, pCap, lt_pCap_Us_2021)
+
 # lcc 2024
 plot_juv_data("lcc", 2024)
 
-inputs_lcc_2024 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
+inputs_2024 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
                                                   SRJPEdata::weekly_juvenile_abundance_efficiency_data,
                                                   site = "lcc", run_year = 2024,
                                                   effort_adjust = T,
-                                                  default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
+                                                  #default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
 )
 
-lt_pCap_Us <- generate_lt_pCap_Us(inputs_lcc_2024$pCap_inputs, pCap)
-abundance <- fit_abundance_model(inputs_lcc_2024$abundance_inputs, pCap, lt_pCap_Us)
-rstan::summary(abundance, pars = c("lt_pCap_U"))$summary |>
+lt_pCap_Us_2024 <- generate_lt_pCap_Us(inputs_2024$pCap_inputs, pCap)
+abundance_2024 <- fit_abundance_model(inputs_2024$abundance_inputs, pCap, lt_pCap_Us_2024)
+rstan::summary(abundance_2024, pars = c("lt_pCap_U"))$summary |>
   data.frame() |>
   filter(Rhat > 1.05)
 
-rstan::summary(abundance, pars = c("N"))$summary |>
+rstan::summary(abundance_2024, pars = c("N"))$summary |>
   data.frame() |>
   filter(Rhat > 1.05)
 
 # lcc 2023
-plot_juv_data("lcc", 2023)
+plot_juv_data("lcc", 2024)
 
-# lcc 2022
+# lcc 2022 - converges
 plot_juv_data("lcc", 2022)
-inputs_lcc_2022 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
-                                                      SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-                                                      site = "lcc", run_year = 2022,
-                                                      effort_adjust = T,
-                                                      default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
+inputs_2022 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                                  SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                                  site = "lcc", run_year = 2022,
+                                                  effort_adjust = T,
+                                                  #default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
 )
 
+lt_pCap_Us_2022 <- generate_lt_pCap_Us(inputs_2022$pCap_inputs, pCap)
+abundance_2022 <- fit_abundance_model(inputs_2022$abundance_inputs, pCap, lt_pCap_Us_2022)
+rstan::summary(abundance_2022, pars = "lt_pCap_U")$summary
+rstan::traceplot(abundance_2022, pars = "lt_pCap_U")
 
 # lcc 2020
 plot_juv_data("lcc", 2020)
 
-# lcc 2024
+# lcc 2019
 plot_juv_data("lcc", 2024)
 
-# lcc 2024
-plot_juv_data("lcc", 2024)
+# lcc 2014
+plot_juv_data("lcc", 2014)
+inputs_2014 <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                                  SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                                  site = "lcc", run_year = 2014,
+                                                  effort_adjust = T,
+                                                  #default_lgN_prior_denominator = 0.005 # uncomment the below if you want to set a specific denominator for the prior
+)
 
+lt_pCap_Us_2014 <- generate_lt_pCap_Us(inputs_2014$pCap_inputs, pCap)
+
+abundance_2014 <- fit_abundance_model(inputs_2014$abundance_inputs, pCap, lt_pCap_Us_2014)
+rstan::summary(abundance_2014, pars = "lt_pCap_U")$summary
 # lcc 2024
 plot_juv_data("lcc", 2024)
 

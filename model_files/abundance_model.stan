@@ -27,6 +27,7 @@ transformed parameters {
   // Compute derived quantities
   sd_N = 1 / sqrt(tau_N);
   sd_Ne = 1 / sqrt(tau_Ne);
+  //sd_Ne = 0.01;
 
   // Spline-based estimate of log U
   for (i in 1:Nstrata) {
@@ -42,6 +43,9 @@ model {
 
   // Spline coefficient priors
   // we do not need to specify priors for b_sp[1] and b_sp[2] as STAN by default assumes an improper uniform
+  // b_sp[1] ~ normal(0, 1);
+  // b_sp[2] ~ normal(0, 1);
+
   real xi;
   for (i in 3:K) {
     xi = 2 * b_sp[i-1] - b_sp[i-2];
@@ -66,6 +70,9 @@ model {
 
   }
 
+  // try poisson
+  // array[Nstrata_wc] real pred_u;
+
   for (i in 1:Nstrata_wc) {
     bcl = lgamma(N[Uwc_ind[i]] + 1) - lgamma(u[i] + 1) - lgamma(N[Uwc_ind[i]] - u[i]);//log of binomial coefficent
 
@@ -73,6 +80,9 @@ model {
     kern = u[i] * log(pCap_U[Uwc_ind[i]]) + (N[Uwc_ind[i]]-u[i]) * log(1 - pCap_U[Uwc_ind[i]]); //log of binomial kernal
 
     target += bcl + kern;//log of binomial probability
+
+    // pred_u[i] = N[Uwc_ind[i]] * pCap_U[Uwc_ind[i]];
+    // u[i] ~ poisson(pred_u[i]);
   }
 
 }

@@ -509,10 +509,10 @@ fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
 
   # generate inits for lt_pCap_U using a normal distribution
   inits_with_lt_pCap_U <- input$inits[[1]]
-  inits_with_lt_pCap_U$lt_pCap_U <- rnorm(#input$data$Nstrata_wc,
-                                          input$data$Nstrata,
-                                          mean(input$data$lt_pCap_mu),
-                                          mean(input$data$lt_pCap_sd))
+  inits_with_lt_pCap_U$lt_pCap_U <- input$data$lt_pCap_mu
+  # inits_with_lt_pCap_U$lt_pCap_U <- rnorm(input$data$Nstrata,
+  #                                         mean(input$data$lt_pCap_mu),
+  #                                         mean(input$data$lt_pCap_sd))
   new_inits <- list(inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U)
@@ -524,6 +524,7 @@ fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
   cli::cli_alert("running abundance model")
   abundance <- rstan::stan(model_code = stan_model,
                            data = input$data,
+                           # algorithm = "HMC",
                            #init = input$inits,
                            init = new_inits,
                            chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,

@@ -8,7 +8,7 @@ data {
   array[Nmr] int Recaptures;// number of recaptures in MR experiments
   array[Nmr] real mr_flow;// flow data for MR experiments
   array[Nmr] int ind_trib;// tributary index for each MR experiment
-  array[Nwmr] int ind_pCap;
+  //array[Nwmr] int ind_pCap;
   //array[Nstrata_wc] int Uwc_ind; //
 }
 
