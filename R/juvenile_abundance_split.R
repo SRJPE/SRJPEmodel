@@ -154,9 +154,13 @@ prepare_inputs_pCap_abundance_STAN <- function(weekly_juvenile_abundance_catch_d
 
   # using calculation to set both lgN_max data and lgN_max priors (inits)
   ini_lgN <- catch_data |>
-    mutate(ini_lgN = log((catch_standardized_by_hours_fished / 1000 + 2)/default_lgN_denom),
+    mutate(ini_lgN = log((catch_data$catch_standardized_by_hours_fished / 1000 + 2)/default_lgN_denom),
            ini_lgN = ifelse(is.na(ini_lgN) | is.nan(ini_lgN), log((2 / 1000)/default_lgN_denom), ini_lgN)) |>
     pull(ini_lgN)
+
+  # replace values for NA weeks with default, not low
+  weeks_with_no_catch <- which(is.na(catch_data$count))
+  ini_lgN[weeks_with_no_catch] <- log(0001 * (min(weekly_catch_data) + 1) / 0.025)
 
   # build data list with ALL elements
   full_data_list <- list("Nmr" = number_efficiency_experiments,
