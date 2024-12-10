@@ -26,58 +26,74 @@ survival_model_data_raw <- read.csv(here::here("data-raw", "adult_model", "adult
 
 
 # plots to inspect different covars ---------------------------------------
+streams_to_plot <- c("battle creek", "clear creek")
 survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
-  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
+  filter(stream %in% streams_to_plot) |>
+  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival,
+             fill = stream)) +
+  geom_point(aes(color = stream)) +
+  geom_smooth(aes(color = stream), method = "lm") +
   theme_minimal() + ggtitle("Prespawn survival and temperature by stream") +
   xlab("Proportion of days exceeding threshold temperature") +
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "butte creek")) |> # mill & butte only have 3 data points; is skewing plot
+  filter(stream %in% streams_to_plot) |>
   ggplot(aes(x = gdd_total, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
+  geom_point(aes(color = stream)) + geom_smooth(aes(color = stream), method = "lm") +
   theme_minimal() + ggtitle("Prespawn survival and GDD by stream") +
   xlab("Growing degree days over 20 (GDD)") +
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(!stream %in% c("mill creek", "yuba river")) |>
+  filter(stream %in% streams_to_plot) |>
   ggplot(aes(x = mean_flow, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
+  geom_point(aes(color = stream)) + geom_smooth(aes(color = stream), method = "lm")  +
   theme_minimal() + ggtitle("Prespawn survival and mean flow by stream") +
   xlab("Mean flow (cfs)") +
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(stream != "mill creek") |>
+  filter(stream %in% streams_to_plot) |>
   ggplot(aes(x = max_flow, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")  +
+  geom_point(aes(color = stream)) + geom_smooth(aes(color = stream), method = "lm")  +
   theme_minimal() + ggtitle("Prespawn survival and max flow by stream") +
+  facet_wrap(~stream, scales = "free") +
   xlab("Max flow (cfs)") +
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  filter(stream == "mill creek") |>
+  filter(stream %in% streams_to_plot) |>
   ggplot(aes(x = max_flow, y = prespawn_survival)) +
   geom_point(aes(color = stream)) +
   theme_minimal()
 
 survival_model_data_raw |>
-  #filter(stream != "mill creek") |>
+  filter(stream %in% streams_to_plot) |>
   ggplot(aes(x = min_passage_timing, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm")   +
+  geom_point(aes(color = stream)) + geom_smooth(aes(color = stream), method = "lm")   +
   theme_minimal() + ggtitle("Prespawn survival and minimum passage time by stream") +
   xlab("Minimum passage time (weeks)") +
   ylab("Prespawn survival")
 
 survival_model_data_raw |>
-  ggplot(aes(x = total_prop_days_exceed_threshold, y = prespawn_survival, fill = stream)) +
-  geom_point(aes(color = stream)) + geom_smooth(method = "lm") +
-  facet_wrap(~wy_type, scales = "free") +
-  theme_minimal() + ggtitle("Prespawn survival and temperature by stream and water year type") +
-  xlab("Proportion of days exceeding temperature threshold") +
+  filter(stream %in% streams_to_plot) |>
+  filter(!is.na(water_year_type)) |>
+  ggplot(aes(x = water_year_type, y = prespawn_survival, fill = stream)) +
+  geom_point(aes(color = stream))  +
+  facet_wrap(~stream, scales = "free") +
+  theme_minimal() + ggtitle("Prespawn survival and water year type by stream") +
+  xlab("Water year type") +
+  ylab("Prespawn survival")
+
+survival_model_data_raw |>
+  filter(stream %in% streams_to_plot) |>
+  ggplot(aes(x = upstream_count, y = prespawn_survival, fill = stream)) +
+  geom_point(aes(color = stream))  +
+  geom_point(aes(color = stream)) +
+  geom_smooth(aes(color = stream), method = "lm")   +
+  theme_minimal() + ggtitle("Prespawn survival and upstream passage counts by stream") +
+  xlab("Upstream passage count") +
   ylab("Prespawn survival")
 
 
@@ -103,6 +119,19 @@ survival_model_data <- survival_model_data_raw |>
          median_passage_timing_std = as.vector(scale(median_passage_timing))) |>
   select(year, stream, prespawn_survival,
          wy_type, max_flow_std, gdd_std, median_passage_timing_std) |>
+  glimpse()
+
+# temp
+scale_covar <- function(x) {
+  as.vector(scale(x))
+}
+
+survival_model_data <- survival_model_data_raw |>
+  select(-c(upstream_count, redd_count, holding_count, carcass_estimate,
+            female_upstream, prop_days_exceed_threshold_migratory,
+            prop_days_exceed_threshold_holding, gdd_trib, gdd_sac)) |>
+  mutate(water_year_type = ifelse(water_year_type == "dry", 0, 1),
+         across(where(is.numeric), scale_covar)) |>
   glimpse()
 
 # check for collinearity for each stream --------------------------------
@@ -196,6 +225,33 @@ best_clear_model <- glmulti(y = "prespawn_survival",
                             data = clear_data,
                             fitfunction = "lm")
 summary(best_clear_model)$bestmodel
+
+
+# try out lms for battle and clear -----------------------------------------
+compare_lms <- function(stream_data) {
+  lms <- c()
+  for(i in 1:length(names(stream_data))){
+    model <- lm(stream_data$prespawn_survival ~ stream_data[,i])
+    lms[i] <- summary(model)$adj.r.squared
+  }
+  names(lms) <- names(stream_data)
+  return(sort(lms[-1], decreasing = TRUE))
+}
+
+battle_r2 <- compare_lms(battle_data)
+clear_r2 <- compare_lms(clear_data)
+
+r2_results <- tibble("Stream" = "Battle Creek",
+                     "Covariate" = names(battle_r2),
+                     "Adj. R2" = battle_r2) |>
+  bind_rows(tibble("Stream" = "Clear Creek",
+                   "Covariate" = names(clear_r2),
+                   "Adj. R2" = clear_r2)) |>
+  pivot_wider(names_from = Stream,
+              values_from = `Adj. R2`)
+
+clipr::write_clip(r2_results)
+
 
 # mill
 mill_data_full <- survival_model_data |>
