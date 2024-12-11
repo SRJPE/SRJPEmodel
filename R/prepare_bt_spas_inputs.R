@@ -253,11 +253,16 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   # set lgN priors, using josh's code from 12-11-2024
+  # data input
   lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / 0.01), number_weeks_catch)
 
   for(j in 1:number_weeks_with_catch){
     if(is.na(weekly_catch_data[j]) == F) lgN_max[indices_with_catch[j]] = log(0.001 * (weekly_catch_data[j] + 1) / 0.01)
   }
+
+  # initial value for lgN input
+  ini_lgN = rep(log(0.001 * (min(weekly_catch_data) + 1) / 0.025), number_weeks_catch)
+  for(i in 1:number_weeks_with_catch) ini_lgN[indices_with_catch[i]] = log(0.001 * (weekly_catch_data[i] + 1) / 0.025)
 
   # build data list
   data <- list("Nstrata" = number_weeks_catch,
@@ -324,7 +329,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # inits
   init_list <- list(b_sp = rep(1, spline_data$K),
-                    lg_N = lgN_max)
+                    lg_N = ini_lgN)
 
 
   cli::cli_process_start("Checking init inputs for abundance model",
