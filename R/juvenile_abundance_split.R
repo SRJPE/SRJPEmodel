@@ -406,18 +406,18 @@ fit_pCap_model <- function(input) {
 #' @returns a named list with the required elements for that model run.
 #' @export
 #' @md
-generate_lt_pCap_Us <- function(pCap_inputs, pCap_model_object){
+generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
   # set up objects
-  ModelName <- pCap_inputs$model_name
-  Nstrata <- pCap_inputs$data$Nstrata
-  catch_flow <- pCap_inputs$data$catch_flow
-  use_trib <- pCap_inputs$data$use_trib
-  Nwmr <- pCap_inputs$data$Nwmr
-  Nwomr <- pCap_inputs$data$Nwomr
-  Uind_wMR <- pCap_inputs$data$Uind_wMR
-  Uind_woMR <- pCap_inputs$data$Uind_woMR
-  ind_pCap <- pCap_inputs$data$ind_pCap
+  ModelName <- abundance_inputs$model_name
+  Nstrata <- abundance_inputs$inputs$data$Nstrata
+  catch_flow <- abundance_inputs$lt_pCap_U_data$catch_flow
+  use_trib <- abundance_inputs$lt_pCap_U_data$use_trib
+  Nwmr <- abundance_inputs$lt_pCap_U_data$Nwmr
+  Nwomr <- abundance_inputs$lt_pCap_U_data$Nwomr
+  Uind_wMR <- abundance_inputs$lt_pCap_U_data$Uind_wMR
+  Uind_woMR <- abundance_inputs$lt_pCap_U_data$Uind_woMR
+  ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
 
   # extract from pCap model fit object
 
@@ -489,8 +489,8 @@ generate_lt_pCap_Us <- function(pCap_inputs, pCap_model_object){
     # lt_pCap_sd[,i]=sd(lt_pCap_U[i])
   }
 
-  return(list("lt_pCap_mu" = lt_pCap_mu,
-              "lt_pCap_sd" = lt_pCap_sd))
+  return(list("lt_pCap_mu" = lt_pCap_mu |> rowMeans(),
+              "lt_pCap_sd" = lt_pCap_sd |> rowMeans()))
 }
 
 
@@ -508,15 +508,12 @@ fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
   # logit_pCaps <- rstan::summary(pCap_fit, pars = c("lt_pCap_U"))$summary |>
   #   data.frame()
 
-  input$data$lt_pCap_mu <- lt_pCap_Us$lt_pCap_mu |> rowMeans()
-  input$data$lt_pCap_sd <- lt_pCap_Us$lt_pCap_sd |> rowMeans()
+  input$data$lt_pCap_mu <- lt_pCap_Us$lt_pCap_mu
+  input$data$lt_pCap_sd <- lt_pCap_Us$lt_pCap_sd
 
-  # generate inits for lt_pCap_U using a normal distribution
+  # generate inits for lt_pCap_U
   inits_with_lt_pCap_U <- input$inits[[1]]
   inits_with_lt_pCap_U$lt_pCap_U <- input$data$lt_pCap_mu
-  # inits_with_lt_pCap_U$lt_pCap_U <- rnorm(input$data$Nstrata,
-  #                                         mean(input$data$lt_pCap_mu),
-  #                                         mean(input$data$lt_pCap_sd))
   new_inits <- list(inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U,
                     inits = inits_with_lt_pCap_U)
@@ -529,7 +526,6 @@ fit_abundance_model <- function(input, pCap_fit, lt_pCap_Us) {
   abundance <- rstan::stan(model_code = stan_model,
                            data = input$data,
                            # algorithm = "HMC",
-                           #init = input$inits,
                            init = new_inits,
                            chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                            iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,

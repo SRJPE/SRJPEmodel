@@ -75,11 +75,11 @@ trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(life_stage %in% c("fry", "smolt")) |>
   mutate(filter_out = ifelse(is.na(life_stage) & count > 0, TRUE, FALSE)) |> # we do not want to keep NA lifestage associated with counts > 0
   filter(!filter_out,
-         site %in% c("lcc", "ubc"),
+         #site %in% c("lcc", "ubc"),
          week %in% c(seq(45, 53), seq(1, 22))) |>
   mutate(count = round(count, 0),
          catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0)) |>
-  group_by(site, run_year) |>
+  group_by(stream, site, run_year) |>
   tally() |>
   arrange(desc(site), desc(run_year)) |>
   select(-n)

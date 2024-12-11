@@ -4,14 +4,14 @@
 \alias{generate_lt_pCap_Us}
 \title{Generate lt_pCap_U values from the pCap model object}
 \usage{
-generate_lt_pCap_Us(pCap_inputs, pCap_model_object)
+generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
 }
 \arguments{
+\item{pCap_model_object}{A STANfit object with the output of the pCap hierarchical model.}
+
 \item{pCap_inputs}{A list containing the inputs for the pCap model including \code{model_name}, \code{Nstrata},
 \code{catch_flow}, \code{use_trib}, \code{Ntribs}, \code{Nmr}, \code{Nwmr}, \code{Nwomr}, \code{Uind_wMR}, \code{Uind_woMR},
 \code{ind_pCap}.}
-
-\item{pCap_model_object}{A STANfit object with the output of the pCap hierarchical model.}
 }
 \value{
 a named list with the required elements for that model run.
