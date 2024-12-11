@@ -15,7 +15,7 @@ library(SRJPEdata)
 # see ?prepare_inputs_pCap_abundance_STAN
 inputs_general <- prepare_inputs_pCap_abundance_STAN(SRJPEdata::weekly_juvenile_abundance_catch_data,
                                                      SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-                                                     site = "lcc", run_year = 2020, effort_adjust = T)
+                                                     site = "deer creek", run_year = 2002, effort_adjust = T)
 
 # look at what we have for pCap
 inputs_general$pCap_inputs

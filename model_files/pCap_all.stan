@@ -1,7 +1,7 @@
 data {
   int Ntribs;                 // number of tributaries
   int Nmr;                    // number of MR experiments
-  int Nwmr;   // Number of unmarked catch strata with MR data
+  //int Nwmr;   // Number of unmarked catch strata with MR data
   //int Nstrata; // Total number of strata
   //int Nstrata_wc;             // strata with unmarked catch observations
   array[Nmr] int Releases; // number of releases in MR experiments
