@@ -8,7 +8,16 @@
 #' * **sites_fit** a list of site names associated with `ind_trib`.
 #' @export
 #' @md
-prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE)) {
+prepare_pCap_inputs <- function(input_catch_data = NULL, input_efficiency_data = NULL,
+                                mainstem = c(FALSE, TRUE)) {
+
+  if(is.null(input_catch_data)) {
+    input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
+  }
+
+  if(is.null(input_efficiency_data)) {
+    input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
+  }
 
   cli::cli_bullets("Producing data for pCap model from efficiency dataset")
 
@@ -17,16 +26,16 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE)) {
   if(!mainstem) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    remove_sites <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+    remove_sites <- input_efficiency_data |>
       filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
       distinct(site) |>
       pull(site)
   }
 
   # prepare "mark recapture" dataset - all mark-recap trials in the system
-  mark_recapture_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+  mark_recapture_data <- input_efficiency_data |>
     # grab standardized_flow
-    left_join(SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    left_join(input_catch_data |>
                 select(year, week, stream, site, run_year, standardized_flow),
               by = c("year", "week", "run_year", "stream", "site")) |>
     # or do we want to filter just no number released?
@@ -140,11 +149,20 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE)) {
 #' * **weeks_date** Associated dates for the weeks fit for the abundance model.
 #' @export
 #' @md
-prepare_abundance_inputs <- function(site, run_year,
+prepare_abundance_inputs <- function(input_catch_data, input_efficiency_data,
+                                     site, run_year,
                                      effort_adjust = c(T, F)) {
 
+  if(is.null(input_catch_data)) {
+    input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
+  }
+
+  if(is.null(input_efficiency_data)) {
+    input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
+  }
+
   cli::cli_bullets("Filtering catch data to site, run year, and weeks")
-  catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+  catch_data <- input_catch_data |>
     filter(life_stage != "yearling") |>
     filter(run_year == !!run_year,
            site == !!site,
@@ -181,16 +199,16 @@ prepare_abundance_inputs <- function(site, run_year,
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    remove_sites <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+    remove_sites <- input_efficiency_data |>
       filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
       distinct(site) |>
       pull(site)
   }
 
   # prepare "mark recapture" dataset - all mark-recap trials in the system
-  mark_recapture_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+  mark_recapture_data <- input_efficiency_data |>
     # grab standardized_flow
-    left_join(SRJPEdata::weekly_juvenile_abundance_catch_data |>
+    left_join(input_catch_data |>
                 select(year, week, stream, site, run_year, standardized_flow),
               by = c("year", "week", "run_year", "stream", "site")) |>
     # or do we want to filter just no number released?
