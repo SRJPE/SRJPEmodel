@@ -164,6 +164,34 @@ print_cors <- function(data, cor_threshold) {
            variable != variable_2)
 }
 
+# function to print Pearsons correlations
+cors <- function(data, stream_arg) {
+  cors <- filter(data, stream == stream_arg) |>
+    rename(`Proportion Days Exceed Threshold` = total_prop_days_exceed_threshold,
+           `Mean Flow` = mean_flow, `Max Flow` = max_flow,
+           `Median passage timing` = median_passage_timing,
+           `Mean passage timing` = mean_passage_timing,
+           `Min passage timing` = min_passage_timing,
+           `Water Year Type` = water_year_type,
+           `Growing Degree Days` = gdd_total) |>
+    select(-c(stream, year, prespawn_survival)) |>
+    cor(use = "complete.obs") |>
+    data.frame() |>
+    tibble::rownames_to_column("Variable 1") |>
+    pivot_longer(-`Variable 1`, names_to = "Variable 2", values_to = "Pearson Correlation") |>
+    mutate(`Variable 2` = str_replace_all(`Variable 2`, "\\.", " ")) |>
+    filter(`Pearson Correlation` != 1) |>
+    distinct(`Pearson Correlation`, .keep_all = TRUE) |>
+    arrange(desc(`Pearson Correlation`))
+
+  return(cors)
+}
+
+
+
+cors(survival_model_data, "battle creek") |> clipr::write_clip()
+cors(survival_model_data, "clear creek") |> clipr::write_clip()
+
 # steps for each stream:
 # 1. look at ggpairs
 # 2. look at Pearson's correlations above threshold 0.65
