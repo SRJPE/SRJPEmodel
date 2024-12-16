@@ -260,7 +260,7 @@ compare_lms <- function(stream_data) {
   lms <- c()
   for(i in 1:length(names(stream_data))){
     model <- lm(stream_data$prespawn_survival ~ stream_data[,i])
-    lms[i] <- summary(model)$adj.r.squared
+    lms[i] <- summary(model)$r.squared
   }
   names(lms) <- names(stream_data)
   return(sort(lms[-1], decreasing = TRUE))

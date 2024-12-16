@@ -185,11 +185,11 @@ run_passage_to_spawner_model <- function(stream_name, selected_covariate, extrac
                            "ss_total" = calculate_ss_tot(stream_data),
                            "average_upstream_passage" = mean(stream_data$upstream_estimate, na.rm = TRUE))
 
-  passage_to_spawner_STAN_code <- read_file("model_files/passage_to_spawner.txt")
+  p2s_model <- eval(parse(text = "SRJPEmodel::p2s_model_code"))
 
   cli::cli_process_start("Fitting P2S STAN model")
   stream_model_fit <- rstan::stan(model_name = paste("passage_to_spawner", stream_name, selected_covariate, sep = "_"),
-                                  model_code = passage_to_spawner_STAN_code,
+                                  model_code = p2s_model,
                                   data = stream_data_list,
                                   chains = 3, iter = 20000*2, seed = 84735)
   cli::cli_process_done("P2S STAN model fitting complete")
