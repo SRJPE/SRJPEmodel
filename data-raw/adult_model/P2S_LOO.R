@@ -60,6 +60,10 @@ r_eff_battle <- relative_eff(exp(log_lik_battle), cores = 2)
 loo_battle <- loo(log_lik_battle, r_eff = r_eff_battle, cores = 2)
 print(loo_battle) # Pareto k diagnostics are bad, but not very bad
 
+pointwise <- tibble("year" = battle_data$year,
+                    "elpd" = loo_battle$pointwise[,1],
+                    "elpd_mcse" = loo_battle$pointwise[,2])
+
 # Clear
 clear_data <- data |>
   filter(stream == "clear creek",
@@ -93,6 +97,10 @@ r_eff_clear <- relative_eff(exp(log_lik_clear), cores = 2)
 loo_clear <- loo(log_lik_clear, r_eff = r_eff_clear, cores = 2)
 print(loo_clear) # Pareto k diagnostics are bad, but not very bad
 
+clear_pointwise <- tibble("year" = clear_data$year,
+                          "elpd" = loo_clear$pointwise[,1],
+                          "elpd_mcse" = loo_clear$pointwise[,2])
+
 
 # run for all environmental covars ----------------------------------------
 # this doesn't actually make statistical sense - we can only compare
@@ -113,7 +121,9 @@ run_loo <- function(stream_arg) {
                             median_passage_timing_std, passage_index),
                 names_from = data_type,
                 values_from = count) |>
-    drop_na(wy_type:redd_count)
+    drop_na(wy_type:redd_count) |>
+    mutate(null = 0) |>
+    relocate(null, .before = upstream_estimate)
 
   # calculate ss tot inits
   ss_tot <- 0
@@ -124,7 +134,7 @@ run_loo <- function(stream_arg) {
 
   results <- list()
 
-  for(i in names(data)[3:9]) {
+  for(i in names(data)[3:8]) {
     print(i)
     covar_clean <- data[i] |>
       as.vector() |> unlist() |> unname()
@@ -163,4 +173,23 @@ run_loo <- function(stream_arg) {
 
 # run for battle
 battle <- run_loo("battle creek")
+# run for clear
+clear <- run_loo("clear creek")
 
+# get LOOIC to compare
+bind_rows(battle) |>
+  filter(diagnostic == "looic") |>
+  arrange(Estimate) |>
+  clipr::write_clip()
+bind_rows(clear) |>
+  filter(diagnostic == "looic") |>
+  arrange(Estimate) |>
+  clipr::write_clip()
+
+# get p_loo to compare
+bind_rows(battle) |>
+  filter(diagnostic == "p_loo") |>
+  clipr::write_clip()
+bind_rows(clear) |>
+  filter(diagnostic == "p_loo") |>
+  clipr::write_clip()
