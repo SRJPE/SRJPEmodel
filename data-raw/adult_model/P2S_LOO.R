@@ -3,6 +3,7 @@ library(loo)
 library(SRJPEdata)
 library(SRJPEmodel)
 library(tidyverse)
+library(ggrepel)
 
 
 # prep data
@@ -26,6 +27,42 @@ data <- SRJPEdata::observed_adult_input |>
 data |>
   group_by(stream) |>
   tally()
+
+# get sample sizes of data availability for environmental covariates
+SRJPEdata::observed_adult_input |>
+  filter(stream %in% c("battle creek", "clear creek")) |>
+  select(-reach) |> # empty
+  group_by(year, stream, data_type, ) |>
+  summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
+  ungroup() |>
+  full_join(SRJPEdata::p2s_model_covariates_standard,
+            by = c("year", "stream")) |>
+  filter(!is.na(data_type)) |>
+  pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
+                          median_passage_timing_std, passage_index),
+              names_from = data_type,
+              values_from = count) |>
+  pivot_longer(wy_type:passage_index,
+               names_to = "covariate",
+               values_to = "covariate_value") |>
+  drop_na(redd_count, upstream_estimate) |>
+  filter(!is.na(covariate_value)) |>
+  group_by(stream, covariate) |>
+  tally()
+
+# plot for raw data
+data |>
+  filter(upstream_estimate > 0) |>
+  mutate(stream = str_to_title(stream)) |>
+  ggplot(aes(x = upstream_estimate, y = redd_count)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  geom_text_repel(aes(x = upstream_estimate, y = redd_count, label = year),
+                  size = 3) +
+  facet_wrap(~stream) +
+  theme_minimal() +
+  labs(x = "Upstream passage",
+       y = "Redd Count")
 
 # run battle
 battle_data <- data |>
@@ -61,8 +98,9 @@ loo_battle <- loo(log_lik_battle, r_eff = r_eff_battle, cores = 2)
 print(loo_battle) # Pareto k diagnostics are bad, but not very bad
 
 pointwise <- tibble("year" = battle_data$year,
-                    "elpd" = loo_battle$pointwise[,1],
-                    "elpd_mcse" = loo_battle$pointwise[,2])
+                    "elpd" = round(loo_battle$pointwise[,1], 2),
+                    "elpd_mcse" = round(loo_battle$pointwise[,2], 2),
+                    "looic" = round(loo_battle$pointwise[,4], 2))
 
 # Clear
 clear_data <- data |>
@@ -98,8 +136,9 @@ loo_clear <- loo(log_lik_clear, r_eff = r_eff_clear, cores = 2)
 print(loo_clear) # Pareto k diagnostics are bad, but not very bad
 
 clear_pointwise <- tibble("year" = clear_data$year,
-                          "elpd" = loo_clear$pointwise[,1],
-                          "elpd_mcse" = loo_clear$pointwise[,2])
+                          "elpd" = round(loo_clear$pointwise[,1], 2),
+                          "elpd_mcse" = round(loo_clear$pointwise[,2], 2),
+                          "looic" = round(loo_clear$pointwise[,4], 2))
 
 
 # run for all environmental covars ----------------------------------------
