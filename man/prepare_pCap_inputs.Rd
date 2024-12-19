@@ -4,7 +4,11 @@
 \alias{prepare_pCap_inputs}
 \title{Prepare inputs for pCap STAN model}
 \usage{
-prepare_pCap_inputs(mainstem = c(FALSE, TRUE))
+prepare_pCap_inputs(
+  input_catch_data = NULL,
+  input_efficiency_data = NULL,
+  mainstem = c(FALSE, TRUE)
+)
 }
 \arguments{
 \item{mainstem}{Whether or not you want to evaluate efficiency trials for a mainstem site

@@ -4,7 +4,13 @@
 \alias{prepare_abundance_inputs}
 \title{Prepare inputs for abundance model}
 \usage{
-prepare_abundance_inputs(site, run_year, effort_adjust = c(T, F))
+prepare_abundance_inputs(
+  input_catch_data,
+  input_efficiency_data,
+  site,
+  run_year,
+  effort_adjust = c(T, F)
+)
 }
 \arguments{
 \item{site}{site for which you want to fit the model}
