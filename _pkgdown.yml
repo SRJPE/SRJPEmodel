@@ -15,9 +15,15 @@ reference:
 - subtitle: BTSPAS-X
   desc: Functions to run BTSPAS-X
 - contents:
-  - bt_spas_x_bugs
-  - run_single_bt_spas_x
-  - run_multiple_bt_spas_x
+  - prepare_pCap_inputs
+  - prepare_abundance_inputs
+  - build_spline_data
+  - fit_pCap_model
+  - generate_lt_pCap_Us
+  - fit_abundance_model_BUGS
+  - fit_abundance_model_STAN
+  - plot_juv_data
+  - generate_diagnostic_plot_juv
 - subtitle: P2S
   desc: Functions to run P2S
 - contents:
@@ -41,14 +47,9 @@ reference:
 - title: Helper Functions
   desc: Functions used as to generate model data / format model outputs
 - contents:
-  - get_bt_spas_x_data_list
   - get_predicted_spawners_from_P2S
   - compare_P2S_model_covariates
   - compare_P2S_covariates_within_stream
-  - extract_bt_spas_x_results
-  - get_hyper_distribution_parameter_estimates
-  - get_weekly_juvenile_abundance
-  - get_weekly_trap_efficiency
   - get_years_from_P2S_model_fits
 
 navbar:

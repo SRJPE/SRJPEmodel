@@ -8,14 +8,15 @@
 #' * **sites_fit** a list of site names associated with `ind_trib`.
 #' @export
 #' @md
-prepare_pCap_inputs <- function(input_catch_data = NULL, input_efficiency_data = NULL,
-                                mainstem = c(FALSE, TRUE)) {
+prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
+                                input_catch_data = NULL,
+                                input_efficiency_data = NULL) {
 
-  if(is.null(input_catch_data)) {
+  if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
 
-  if(is.null(input_efficiency_data)) {
+  if(missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
@@ -149,15 +150,16 @@ prepare_pCap_inputs <- function(input_catch_data = NULL, input_efficiency_data =
 #' * **weeks_date** Associated dates for the weeks fit for the abundance model.
 #' @export
 #' @md
-prepare_abundance_inputs <- function(input_catch_data, input_efficiency_data,
-                                     site, run_year,
-                                     effort_adjust = c(T, F)) {
+prepare_abundance_inputs <- function(site, run_year,
+                                     effort_adjust = c(T, F),
+                                     input_catch_data,
+                                     input_efficiency_data) {
 
-  if(is.null(input_catch_data)) {
+  if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
 
-  if(is.null(input_efficiency_data)) {
+  if(missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
@@ -377,4 +379,28 @@ prepare_abundance_inputs <- function(input_catch_data, input_efficiency_data,
               "weeks_fit" = weeks_fit$Jwk,
               "week_date" = weeks_fit$date,
               "sites_fit" = sites_fit))
+}
+
+#' Prepare spline parameters object for BT-SPAS-X WinBUGs call
+#' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
+#' to pass to the data list
+#' @param number_weeks_catch number of weeks with catch data.
+#' @param k_int number of knots to use in building spline for abundance data.
+#' Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
+#' @returns a named list containing *K* and *b_spline_matrix* for passing to WinBUGS
+#' @keywords internal
+#' @export
+#' @md
+build_spline_data <- function(number_weeks_catch, k_int) {
+
+  number_knots <- round(number_weeks_catch / k_int, 0)
+  first_knot_position <- 2
+  final_knot_position <- number_weeks_catch - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
+  knot_positions <- seq(first_knot_position, final_knot_position, length.out = number_knots) # define position of b-spline knots using even interval if no missing data
+  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
+  K <- ncol(b_spline_matrix)
+
+  return(list("K" = K,
+              "b_spline_matrix" = b_spline_matrix,
+              "knot_positions" = knot_positions))
 }
