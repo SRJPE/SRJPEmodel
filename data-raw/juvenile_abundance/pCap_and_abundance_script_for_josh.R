@@ -43,6 +43,5 @@ abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
 
 # helpful plotting functions
 plot_juv_data("ubc", 2018) # raw data
-generate_diagnostic_plot_juv("ubc", 2018, abundance) # model fit
 
 
