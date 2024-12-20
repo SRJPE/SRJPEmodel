@@ -8,8 +8,8 @@ prepare_abundance_inputs(
   site,
   run_year,
   effort_adjust = c(T, F),
-  input_catch_data,
-  input_efficiency_data
+  input_catch_data = NULL,
+  input_efficiency_data = NULL
 )
 }
 \arguments{

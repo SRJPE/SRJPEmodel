@@ -164,8 +164,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 #' @md
 prepare_abundance_inputs <- function(site, run_year,
                                      effort_adjust = c(T, F),
-                                     input_catch_data,
-                                     input_efficiency_data) {
+                                     input_catch_data = NULL,
+                                     input_efficiency_data = NULL) {
 
   if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data

@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{fit_abundance_model_BUGS}
 \alias{fit_abundance_model_BUGS}
-\title{Run BUGS abundance model.}
+\title{Fit abundance model in BUGS.}
 \usage{
 fit_abundance_model_BUGS(
   abundance_inputs,
@@ -25,7 +25,7 @@ length \code{Nstrata} for \code{lt_pCap_mu} and \code{lt_pCap_sd}.}
 a BUGS object.
 }
 \description{
-Run BUGS abundance model.
+Fit abundance model in BUGS.
 }
 \details{
 This function runs the BUGS abundance model.
