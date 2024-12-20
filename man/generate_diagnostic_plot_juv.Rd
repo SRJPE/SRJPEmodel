@@ -11,14 +11,15 @@ generate_diagnostic_plot_juv(site_arg, run_year_arg, abundance_model)
 
 \item{run_year_arg}{The run year being fit}
 
-\item{abundance_model}{The STANfit model object produced by running \code{fit_abundance_model()}}
+\item{abundance_model}{The STANfit model object produced by running \code{fit_abundance_model_BUGS()}}
 }
 \value{
-A plot
+A plot.
 }
 \description{
 BT SPAS X diagnostic plots
 }
 \details{
-This function produces a plot with data and results of fitting the pCap and abundance models.
+This function produces a plot with data and results of fitting the pCap and abundance models for
+a given site and run year.
 }

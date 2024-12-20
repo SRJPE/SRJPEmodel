@@ -10,7 +10,7 @@ fit_pCap_model(input)
 \item{input}{A list containing the inputs for the pCap model.}
 }
 \value{
-a named list with the required elements for that model run.
+a STANfit object with the pCap model fit.
 }
 \description{
 Fit pCap model
@@ -18,4 +18,3 @@ Fit pCap model
 \details{
 This function prepares the data list for the abundance STAN model based on what the model name is.
 }
-\keyword{internal}

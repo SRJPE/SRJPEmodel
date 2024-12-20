@@ -7,14 +7,16 @@
 generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
 }
 \arguments{
-\item{pCap_model_object}{A STANfit object with the output of the pCap hierarchical model.}
+\item{abundance_inputs}{A list containing the inputs for the site-specific abundance model including
+\code{model_name}, \code{Nstrata}, \code{catch_flow}, \code{use_trib}, \code{Ntribs}, \code{Nmr}, \code{Nwmr}, \code{Nwomr}, \code{Uind_wMR}, \code{Uind_woMR},
+\code{ind_pCap}. This is created by calling \code{prepare_abundance_inputs()}.}
 
-\item{pCap_inputs}{A list containing the inputs for the pCap model including \code{model_name}, \code{Nstrata},
-\code{catch_flow}, \code{use_trib}, \code{Ntribs}, \code{Nmr}, \code{Nwmr}, \code{Nwomr}, \code{Uind_wMR}, \code{Uind_woMR},
-\code{ind_pCap}.}
+\item{pCap_model_object}{A STANfit object with the output of the pCap hierarchical model. This is created
+by calling \code{fit_pCap_model()}.}
 }
 \value{
-a named list with the required elements for that model run.
+a named list with the simulated \code{lt_pCap_mu} and \code{lt_pCap_sd} values for
+\code{Nstrata}.
 }
 \description{
 Generate lt_pCap_U values from the pCap model object

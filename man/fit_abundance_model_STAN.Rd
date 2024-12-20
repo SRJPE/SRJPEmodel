@@ -7,17 +7,19 @@
 fit_abundance_model_STAN(input, pCap_fit, lt_pCap_Us)
 }
 \arguments{
-\item{input}{A list containing the inputs for the abundance model.}
+\item{input}{A list containing the inputs for the abundance model. This is created by calling
+\code{prepare_abundance_inputs()}.}
 
-\item{pCap_fit}{A STANfit object resulting from running \code{fit_pCap_model()}}
+\item{pCap_fit}{A STANfit object resulting from running \code{fit_pCap_model()}.}
+
+\item{lt_pCap_Us}{A named list produced by running \code{generate_lt_pCap_Us()}.}
 }
 \value{
-a named list with the required elements for that model run.
+a STANfit object containing abundance model fits.
 }
 \description{
 Fit abundance model in STAN
 }
 \details{
-This function prepares the data list for the abundance STAN model based on what the model name is.
+This function calls a STAN model for abundance. It is currently in development.
 }
-\keyword{internal}

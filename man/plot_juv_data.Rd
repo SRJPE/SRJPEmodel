@@ -18,5 +18,5 @@ A plot
 BT SPAS X raw data plots
 }
 \details{
-This function produces a plot with data used to fit BT SPAS X.
+This function produces a plot with data for a site and run year.
 }
