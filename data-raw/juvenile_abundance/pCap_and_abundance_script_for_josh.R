@@ -28,7 +28,9 @@ pCap_filepath <- "~/Downloads/pCap_model.rds"
 # prepare abundance inputs
 site <- "ubc"
 run_year <- 2018
-abundance_inputs <- prepare_abundance_inputs(site = site, run_year = run_year, effort_adjust = T)
+abundance_inputs <- prepare_abundance_inputs(input_catch_data = SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                             input_efficiency_data = SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                             site = site, run_year = run_year, effort_adjust = T)
 
 # generate lt_pCap_Us from pCap model
 lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
