@@ -22,7 +22,7 @@ pCap <- fit_pCap_model(pCap_inputs$inputs)
 pCap_filepath <- "~/Downloads/pCap_model.rds"
 # saveRDS(pCap, pCap_filepath)
 
-# if you've already fit pCap for VA, just read it in here
+# if you've already fit pCap for data including VA streams, just read it in here
 # pCap <- readRDS(pCap_filepath)
 
 # prepare abundance inputs
@@ -42,4 +42,7 @@ abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
                                       bugs_directory)
 
 # helpful plotting functions
+plot_juv_data("ubc", 2018) # raw data
+generate_diagnostic_plot_juv("ubc", 2018, abundance) # model fit
+
 
