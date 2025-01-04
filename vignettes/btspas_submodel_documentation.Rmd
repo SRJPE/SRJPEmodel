@@ -114,6 +114,8 @@ outputs <- SRJPEmodel::get_summary_table(model_fit_object = bt_spas_x_results,
                                          # weeks_fit = , 
                                          sites_fit = "ubc",
                                          model_name = "2004 Battle Creek Juvenile Abundance")
+# TODO create a table output of this
+
 # This function returns a plot showing weekly estimated abundance from the model (with confidence intervals) compared to lincoln-peterson estimates
 plot <- plot_juvenile_abundance(bt_spas_x_results_clean = bt_spas_x_results)
 

@@ -46,7 +46,13 @@ The survival model is required to estimates juvenile abundance needed for the st
 
 The CJS model is used to estimate survival rate (ɸi) and detection probability (pi) in each reach i. We considered the initial tag location as a "mark" and subsequent detections at downstream receivers as a "recapture". For instance, ɸ1 = survival from location 1 to 2 and p2 = detection probability at location 2. Location 1 is release location. There are 4 reaches in the Sacramento River model: Release to Woodson Bridge, Woodson Bridge to Butte Bridge, Butte Bridge to Sacramento and Sacramento to Delta exit. There are 2 reaches in the Butte Creek and Feather River models: Release to Sacramento and Sacramento to Delta exit. The last reach is used to further improve detection probability estimation at the Sacramento location.
 
+*Figure 2: Diagram describing survival rate and detection probability.*
+
+![](images/survival_submodel_architecture.png)
+
 # Model inputs
+
+The tagging data used for this work were obtained through the Interagency Telemetry Advisory Group (ITAG), which is an interagency coordination group formed to support the planning and implementation of a coordinated acoustic telemetry array in the Sacramento and San Joaquin Rivers, the Sacramento-San Joaquin River Delta, and San Francisco Bay. This data is processed in the SRJPEdata package to produce a `survival_model_inputs` data object.
 
 The `SRJPEdata::survival_model_inputs` data object includes the following columns: the individual fish ID, the fish's detection history ("ch") which gives a 0 when a fish is not detected at one of the location and a 1 if it is, the study ID, fish length and weight, the fish run assignment and source (for instance fall-run from Coleman), the date at release, the release location, the fish condition factor, the year at release, and water year type.
 
@@ -67,13 +73,21 @@ survival_results <- run_survival_model(survival_model_data = SRJPEdata::survival
 
 A model outputs data frame that includes reach specific survival and detection probability rates for each year.
 
-TODO: Add table view of dataframe.
+TODO: Add table view of dataframe. Add code to recreate these plots in script and produce them directly from results.
 
-*Figure 2. Reach-specific annual smolt survival rates from the Sacramento River survival submodel. Survival rates are standardized per 10km.*
+The following plots show predicted survival for reaches and years along with 95% CI. ![]()
 
-![](images/plot_survival_output.jpg)
+*Figure 3. Smolt annual survival estimates (± 95% confidence intervals), from A. Release to Woodson bridge, and B. Woodson Bridge to Sacramento, using the best CJS model: Phi = reach \* year and p = reach + year.*
 
-## Extract predicted juveniles by year, with uncertainty
+![](images/sacramento_survival_plot.png)
+
+*Figure 4. Feather River spring-run smolt annual survival to Sacramento (± 95% confidence intervals), estimated with the best model: Phi = reach \* year and p =1.*
+
+![](images/updated_feather_survival_plot.png)
+
+*Figure 5. Butte Creek smolt annual survival to Sacramento (± 95% confidence intervals), estimated with the best model: Phi = reach \* year and p = 1.*
+
+![](images/updated_butte_survival_plot.png)
 
 # Resources
 
