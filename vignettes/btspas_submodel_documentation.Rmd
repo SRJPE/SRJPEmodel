@@ -34,13 +34,13 @@ BT-SPAS-X is a Bayesian model that estimates the weekly abundance of outmigratin
 
 BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a within season outmigrant forecast model. BT-SPAS-X was specifically designed to address the often-sparse trap efficiency data available to estimate abundance at any given RST site. Trap efficiency is predicted based on a hierarchical model that estimates site-specific means, site-specific flow effects, and unexplained error. Weekly abundance is estimated using a spline model that is fit to the weekly catch data given weekly estimates of trap efficiency. The spline model allows estimation of abundance in weeks when the trap was not operated.
 
-The input data for the model includes weekly catch ('u' in Figure x below, trap efficiency data (releases 'R' and recaptures 'r' ), and weekly average flow (Q'). The model output includes weekly estimates of abundance and uncertainty, and weekly estimates of trap efficiency and uncertainty. Length frequency data for each week is required if calculating abundance by run type in a post-processing step using the PLAD model.
+The input data for the model includes weekly catch ('u' in Figure 2 below, trap efficiency data (releases 'R' and recaptures 'r' ), and weekly average flow (Q'). The model output includes weekly estimates of abundance and uncertainty, and weekly estimates of trap efficiency and uncertainty. Length frequency data for each week is required if calculating abundance by run type in a post-processing step using the PLAD model.
 
 ## Conceptual model
 
 BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a within season outmigrant forecast model. See figure 1 below to see how it fits into the full JPE model system.
 
-*Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model highlighted in red.*
+*Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model shown in yellow.*
 
 ![](images/BTSPASX%20jpe%20diagram.png)
 
@@ -48,13 +48,18 @@ BT-SPAS-X estimates juvenile abundance needed for the stock recruit model or a w
 
 There are two main components of the model: trap efficiency and abundance estimation (Figure 1). The trap efficiency component estimates parameters of a global trap efficiency model by fitting to data from more than 900 efficiency trials across all available tributary RST sites. This model is then used to estimate trap efficiency for each week in a run year (November 1-June 1) at the site the abundance model is run for. There are three levels for the trap efficiency model. The lowest level is where the predicted trap efficiency (P) for any site, year, and week with trap efficiency data is compared to the data. The next level is where site, year, and week-specific trap efficiencies are estimated. The highest level is represented by hyper-distributions which define the distributions where site specific parameters are estimated.
 
-Figure X.1. Directed acyclic diagram (DAG) showing the hierarchical structure of the trap efficiency component of BT-SPAS-X and how predictions of trap efficiency are by the abundance component of the model. Ovals denote stochastic nodes (variables that are estimated) while squares with bolded text denote data. Arrows indicate the direction of influence. For example, the hyper parameters μS and σS define a normal distribution from which site specific intercepts β_S are drawn. The red triangle indicates that trap efficiency estimates contribute to estimates of abundance, but that abundance model parameters do not influence trap efficiency parameters.
+TODO - Add description of CUT function / Bugs & Stan divide
+
+*Figure 2. Directed acyclic diagram (DAG) showing the hierarchical structure of the trap efficiency component of BT-SPAS-X and how predictions of trap efficiency are by the abundance component of the model. Ovals denote stochastic nodes (variables that are estimated) while squares with bolded text denote data. Arrows indicate the direction of influence. For example, the hyper parameters μS and σS define a normal distribution from which site specific intercepts β_S are drawn. The red triangle indicates that trap efficiency estimates contribute to estimates of abundance, but that abundance model parameters do not influence trap efficiency parameters.*
+
+![](images/dag_diagram_screenshot.png)
 
 # Model inputs
 
-The model takes in two datasets:
+The model takes in three datasets:
 
--   **Weekly Juvenile Abundance Model Data** Weekly catch, efficiency, flow, and log normal priors needed to run the model. This is in the `SRJPEdata::weekly_juvenile_abundance_model_data` data object.
+-   **Weekly Juvenile Abundance Catch Data** Weekly catch, flow, and log normal priors needed to run the model. This is in the `SRJPEdata::weekly_juvenile_abundance_catch_data` data object.
+-   **Weekly Juvenile Abundance Efficiency Data** Weekly efficiency needed to run the model. This is in the `SRJPEdata::weekly_juvenile_abundance_efficiency_data` data object.
 -   **BTSPAS params** Bayesian estimation specifications. `SRJPEmodel::bt_spas_x_bayes_params`
 
 # Running BTSPAS-X submodel
@@ -64,13 +69,18 @@ BTSPAS-X can be run in single run mode or multi run mode.
 In the single run mode, BTSPAS-X is run independently for each stream site and run year. Below is an example for the upper battle creek RST in 2004.
 
 ```{r, eval = FALSE}
-bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                         bt_spas_x_input_data = updated_input,
+bt_spas_x_results <- run_single_bt_spas_x(bt_spas_x_bayes_params = 
+                                            SRJPEmodel::bt_spas_x_bayes_params,
+                                         weekly_juvenile_abundance_catch_data = 
+                                           SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                         weekly_juvenile_abundance_efficiency_data = 
+                                           SRJPEdata::weekly_juvenile_abundance_efficiency_data,
                                          site = "ubc",
                                          run_year = 2004,
                                          effort_adjust = T,
                                          bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                         debug_mode = FALSE)
+                                         debug_mode = FALSE,
+                                         no_cut = F)
 
 ```
 
@@ -78,16 +88,37 @@ In the multi run mode, BTSPAS-X is run for all stream sites and run years at onc
 
 ```{r, eval = FALSE}
 
-bt_spas_x_multiple_system_results <- run_multiple_bt_spas_x(bt_spas_x_bayes_params = SRJPEmodel::bt_spas_x_bayes_params,
-                                                            bt_spas_x_input_data = SRJPEdata::weekly_juvenile_abundance_model_data,
-                                                            effort_adjust = T, 
-                                                            bugs_directory = here::here("data-raw", "WinBUGS14"), 
-                                                            debug_mode = FALSE)
+bt_spas_x_multiple_system_results <- run_multiple_bt_spas_x(bt_spas_x_bayes_params = 
+                                            SRJPEmodel::bt_spas_x_bayes_params,
+                                         weekly_juvenile_abundance_catch_data = 
+                                           SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                         weekly_juvenile_abundance_efficiency_data = 
+                                           SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                         effort_adjust = T, 
+                                         bugs_directory = here::here("data-raw", "WinBUGS14"), 
+                                         debug_mode = FALSE,
+                                         no_cut = F)
 ```
 
 # Model Output
 
-TODO - code for model output
+There are a few functions within SRJPEmodel that can be used to view BTSPAS-X outputs and create some simple diagnostic plots.
+
+```{r, eval = F}
+# TODO check that these are working
+# This function takes in a WinBUGS fit object and extracts parameter estimates in a clean tibble.
+outputs <- SRJPEmodel::get_summary_table(model_fit_object = bt_spas_x_results,
+                                         site = "ubc", 
+                                         run_year = 2004,
+                                         lifestage = "smolt", 
+                                         # weeks_fit = , 
+                                         sites_fit = "ubc",
+                                         model_name = "2004 Battle Creek Juvenile Abundance")
+# This function returns a plot showing weekly estimated abundance from the model (with confidence intervals) compared to lincoln-peterson estimates
+plot <- plot_juvenile_abundance(bt_spas_x_results_clean = bt_spas_x_results)
+
+# TODO add screenshot of plot
+```
 
 # Resources
 
