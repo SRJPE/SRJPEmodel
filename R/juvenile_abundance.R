@@ -285,11 +285,12 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   # set lgN priors, using josh's code from 12-11-2024
+  # TODO iterative improvement: set the denominator to be the lower quantile just for lgN_max as an argument
   # data input
-  lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / 0.01), number_weeks_catch)
+  lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / 0.005), number_weeks_catch)
 
   for(j in 1:number_weeks_with_catch){
-    if(is.na(weekly_catch_data[j]) == F) lgN_max[indices_with_catch[j]] = log(0.001 * (weekly_catch_data[j] + 1) / 0.01)
+    if(is.na(weekly_catch_data[j]) == F) lgN_max[indices_with_catch[j]] = log(0.001 * (weekly_catch_data[j] + 1) / 0.005)
   }
 
   # initial value for lgN input
