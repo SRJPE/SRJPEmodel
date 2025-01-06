@@ -39,6 +39,7 @@ lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
 bugs_abundance_filepath <- "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug"
 bugs_directory <- here::here("data-raw", "WinBUGS14")
 
+# TODO add argument for debugging mode
 abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
                                       bugs_abundance_filepath,
                                       bugs_directory)
