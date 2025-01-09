@@ -46,8 +46,13 @@ fit_all_sites_run_years <- function(site, run_year){
 }
 
 # get trials to fit
+site_years_to_exclude <- SRJPEdata::years_to_exclude_rst_data |>
+  mutate(site_year = paste(site, year, sep = "_")) |>
+  pull(site_year)
 trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  filter(life_stage != "yearling",
+  mutate(site_year = paste(site, year, sep = "_")) |>
+  filter(!site_year %in% site_years_to_exclude,
+         life_stage != "yearling",
          stream != "sacramento river",
          week %in% c(seq(45, 53), seq(1, 22))) |>
   group_by(year, week, stream, site, run_year) |>
@@ -61,10 +66,11 @@ trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
             catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
             lgN_prior = mean(lgN_prior, na.rm = T)) |>
   ungroup() |>
-  group_by(run_year, site) |>
-  summarise(count = sum(count, na.rm = T)) |>
-  ungroup() |>
-  filter(!is.na(count)) # filter out those sites where we have no catch data at all (? ubc 2015)
+  distinct(site, run_year)
+  # group_by(run_year, site) |>
+  # summarise(count = sum(count, na.rm = T)) |>
+  # ungroup() |>
+  # filter(!is.na(count)) # filter out those sites where we have no catch data at all (? ubc 2015)
 
 write_csv(trials_to_fit, "C:/Users/Liz/Downloads/bt_spas_x_sites_run_years.csv")
 
