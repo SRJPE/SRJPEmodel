@@ -82,11 +82,12 @@ SRJPE_fits_table <- purrr::pmap(list(trials_to_fit$site,
                             fit_all_sites_run_years,
                             .progress = TRUE)
 
-all_results <- SRJPE_fits_table |>
+all_JPE_sites_clean <- SRJPE_fits_table |>
   bind_rows() |>
   glimpse()
 
-write_csv(all_results, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
+write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
+saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 
   SRJPE_clean_table <- purrr::pmap()
 
