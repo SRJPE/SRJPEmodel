@@ -12,7 +12,7 @@ pCap <- fit_pCap_model(pCap_inputs$inputs)
 saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
 
 # read in
-# pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model.rds")
+pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
 
 abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T)
 lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
@@ -49,8 +49,11 @@ fit_all_sites_run_years <- function(site, run_year){
 site_years_to_exclude <- SRJPEdata::years_to_exclude_rst_data |>
   mutate(site_year = paste(site, year, sep = "_")) |>
   pull(site_year)
+
+site_years_to_exclude <- c(site_years_to_exclude, "okie dam_1996",
+                           "eye riffle_2024")
 trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  mutate(site_year = paste(site, year, sep = "_")) |>
+  mutate(site_year = paste(site, run_year, sep = "_")) |>
   filter(!site_year %in% site_years_to_exclude,
          life_stage != "yearling",
          stream != "sacramento river",
@@ -79,4 +82,11 @@ SRJPE_fits_table <- purrr::pmap(list(trials_to_fit$site,
                             fit_all_sites_run_years,
                             .progress = TRUE)
 
-SRJPE_clean_table <- purrr::pmap()
+all_results <- SRJPE_fits_table |>
+  bind_rows() |>
+  glimpse()
+
+write_csv(all_results, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
+
+  SRJPE_clean_table <- purrr::pmap()
+
