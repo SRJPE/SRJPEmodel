@@ -775,6 +775,7 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
            date = format(final_date, "%b-%d"),
            week_index = row_number())
 
+  # TODO replace with extract() function
   pCap_estimates <- rstan::summary(abundance_model,pars=c("lt_pCap_U"))$summary |>
     data.frame() |>
     tibble::rownames_to_column("parameter") |>
