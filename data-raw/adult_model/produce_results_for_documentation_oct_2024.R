@@ -27,7 +27,8 @@ observed_adult_input_wide <- observed_adult_input |>
 
 # get details on sample sizes
 observed_adult_input_wide |>
-  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  filter(stream %in% streams_to_use,
+         upstream_estimate != 0) |>
   mutate(spawner_count = ifelse(stream == "deer creek",
                                 holding_count, redd_count),
          keep = ifelse(is.na(spawner_count) | is.na(upstream_estimate),
@@ -39,7 +40,7 @@ observed_adult_input_wide |>
 
 # plot
 observed_adult_input_wide |>
-  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  filter(stream %in% streams_to_use) |>
   mutate(stream = str_to_title(stream),
          spawner_count = ifelse(stream == "Deer Creek",
                                 holding_count, redd_count)) |>

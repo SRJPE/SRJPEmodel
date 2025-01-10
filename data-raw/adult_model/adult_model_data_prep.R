@@ -7,99 +7,73 @@ library(googleCloudStorageR)
 library(waterYearType)
 
 # pull adult data & process ----------------------------------------------------------------
-gcs_auth(json_file = Sys.getenv("GCS_AUTH_FILE"))
-gcs_global_bucket(bucket = Sys.getenv("GCS_DEFAULT_BUCKET"))
 
-# upstream passage - use these data for passage timing calculations
-upstream_passage <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_adult_upstream_passage.csv",
-                                            bucket = gcs_get_global_bucket())) |>
-  filter(!is.na(date)) |>
-  mutate(stream = tolower(stream),
-         year = year(date)) |>
-  filter(run %in% c("spring", NA, "not recorded")) |>
-  group_by(year, passage_direction, stream) |>
-  summarise(count = sum(count, na.rm = T)) |>
-  ungroup() |>
-  pivot_wider(names_from = passage_direction, values_from = count) |>
-  # calculate upstream passage for streams where passage direction is recorded
-  mutate(down = ifelse(is.na(down), 0, down),
-         up = case_when(stream %in% c("deer creek", "mill creek") ~ `NA`,
-                        !stream %in% c("deer creek", "mill creek") & is.na(up) ~ 0,
-                        TRUE ~ up)) |>
-  select(-`NA`) |>
-  group_by(year, stream) |>
-  summarise(count = round(up - down), 0) |>
-  select(year, count, stream) |>
-  ungroup() |>
-  glimpse()
+# upstream passage - use these for passage timing calculations
+# upstream_passage <- SRJPEdata::upstream_passage |>
+#   mutate(year = year(date)) |>
+#   filter(run %in% c("spring", NA, "unknown")) |>
+#   group_by(year, direction, stream) |>
+#   summarise(count = sum(count, na.rm = T)) |>
+#   ungroup() |>
+#   pivot_wider(names_from = direction, values_from = count) |>
+#   # calculate upstream passage for streams where passage direction is recorded
+#   mutate(down = ifelse(is.na(down), 0, down),
+#          up = case_when(stream %in% c("deer creek", "mill creek") ~ `not recorded`,
+#                         !stream %in% c("deer creek", "mill creek") & is.na(up) ~ 0,
+#                         TRUE ~ up)) |>
+#   select(-`not recorded`) |>
+#   group_by(year, stream) |>
+#   summarise(count = round(up - down), 0) |>
+#   select(year, count, stream) |>
+#   ungroup() |>
+#   glimpse()
 
 # pull in passage estimates and use these for upstream_count
-upstream_passage_estimates <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_adult_passage_estimate.csv",
-                                                      bucket = gcs_get_global_bucket())) |>
-  mutate(upstream_count = round(passage_estimate, 0)) |>
+upstream_passage_estimates <- SRJPEdata::upstream_passage_estimates |>
+  mutate(upstream_estimate = round(passage_estimate, 0)) |>
+  filter(upstream_estimate > 0) |>
+  select(year, stream, upstream_estimate) |>
   glimpse()
 
 # holding
-holding <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_holding.csv",
-                                   bucket = gcs_get_global_bucket())) |>
-  group_by(year, stream) |>
-  summarise(count = sum(count, na.rm = T)) |>
+holding <- SRJPEdata::holding |>
+  group_by(year = year(date), stream) |>
+  summarise(holding_count = sum(count, na.rm = T)) |>
   ungroup() |>
   glimpse()
 
 # redd
-redd <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_annual_redd.csv",
-                                bucket = gcs_get_global_bucket())) |>
+redd <- SRJPEdata::redd |>
   filter(run %in% c("spring", "not recorded")) |>
+  mutate(count = 1) |>
   # redds in these reaches are likely fall, so set to 0 for battle & clear
-  mutate(annual_redd_count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
+  mutate(count = case_when(reach %in% c("R6", "R6A", "R6B", "R7") &
                                              stream %in% c("battle creek", "clear creek") ~ 0,
-                                           TRUE ~ annual_redd_count)) |>
-  group_by(year, stream) |>
-  summarise(count = sum(annual_redd_count, na.rm = T)) |>
+                                           TRUE ~ count)) |>
+  group_by(year = year(date), stream) |>
+  summarise(redd_count = sum(count, na.rm = T)) |>
   ungroup() |>
-  select(year, stream, count) |>
-  filter(!is.na(year)) |>
-  glimpse()
-
-# raw carcass
-carcass <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_carcass.csv",
-                                   bucket = gcs_get_global_bucket())) |>
-  filter(run %in% c("spring", NA, "unknown")) |>
-  group_by(year(date), stream) |>
-  summarise(count = sum(count, na.rm = T)) |>
-  ungroup() |>
-  select(year = `year(date)`, stream, count) |>
   glimpse()
 
 # estimates from CJS model (carcass survey)
-carcass_estimates <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_carcass_cjs_estimate.csv",
-                                             bucket = gcs_get_global_bucket())) |>
-  rename(carcass_spawner_estimate = spawner_abundance_estimate) |>
+carcass_estimates <- SRJPEdata::carcass_estimates |>
+  select(year, stream, carcass_estimate) |>
   glimpse()
 
 # join all together for raw input -----------------------------------------
-adult_model_input_raw <- full_join(upstream_passage_estimates |>
-                                     select(year, stream,
-                                            upstream_estimate = upstream_count),
-                                   redd |>
-                                     rename(redd_count = count),
+adult_model_input_raw <- full_join(upstream_passage_estimates,
+                                   redd,
                                    by = c("year", "stream")) |>
-  full_join(holding |>
-              rename(holding_count = count),
+  full_join(holding,
             by = c("year", "stream")) |>
-  full_join(carcass_estimates |>
-              select(year, stream, carcass_estimate = carcass_spawner_estimate,
-                     carcass_90_lcl = lower, carcass_90_ucl = upper),
+  full_join(carcass_estimates,
             by = c("year", "stream")) |>
-  pivot_longer(c(upstream_estimate, redd_count, holding_count, carcass_estimate,
-                 carcass_90_lcl, carcass_90_ucl),
+  pivot_longer(upstream_estimate:carcass_estimate,
                values_to = "count",
                names_to = "data_type") |>
   filter(!is.na(count)) |>
   arrange(stream, year) |>
   glimpse()
-
 
 
 # temperature -------------------------------------------------------------
@@ -113,33 +87,32 @@ threshold <- 20
 # migratory temps - sac, months = 3:5
 # holding temps - trib specific; 5-7
 
-standard_temp <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_temperature.csv",
-                                         bucket = gcs_get_global_bucket()))
+standard_temp <- SRJPEdata::environmental_data |>
+  filter(parameter == "temperature",
+         statistic == "mean")
 
 # temperature covariates: migratory temperature (march - may in sacramento river)
 migratory_temp <- standard_temp |>
-  filter(stream == "sacramento river") |>
-  filter(month(date) %in% 3:5) |>
-  group_by(year(date)) |>
-  mutate(above_threshold = ifelse(mean_daily_temp_c > threshold, TRUE, FALSE)) |>
+  filter(stream == "sacramento river",
+         month %in% 3:5) |>
+  group_by(year) |>
+  mutate(above_threshold = ifelse(value > threshold, TRUE, FALSE)) |>
   summarise(prop_days_exceed_threshold = round(sum(above_threshold, na.rm = T)/length(above_threshold), 2)) |>
   ungroup() |>
   mutate(prop_days_below_threshold = 1 - prop_days_exceed_threshold,
          prop_days_below_threshold = ifelse(prop_days_below_threshold == 0, 0.001, prop_days_below_threshold)) |>
-  rename(year = `year(date)`) |>
   select(year, prop_days_exceed_threshold_migratory = prop_days_exceed_threshold) |>
   glimpse()
 
 # temperature covariates: migratory temperature (may - july by tributary)
 holding_temp <- standard_temp |>
-  filter(month(date) %in% 5:7) |>
-  group_by(year(date), stream) |>
-  mutate(above_threshold = ifelse(mean_daily_temp_c > threshold, TRUE, FALSE)) |>
+  filter(month %in% 5:7) |>
+  group_by(year, stream) |>
+  mutate(above_threshold = ifelse(value > threshold, TRUE, FALSE)) |>
   summarise(prop_days_exceed_threshold = round(sum(above_threshold, na.rm = T)/length(above_threshold), 2)) |>
   ungroup() |>
   mutate(prop_days_below_threshold = 1 - prop_days_exceed_threshold,
          prop_days_below_threshold = ifelse(prop_days_below_threshold == 0, 0.001, prop_days_below_threshold)) |>
-  rename(year = `year(date)`) |>
   select(prop_days_exceed_threshold_holding = prop_days_exceed_threshold,
          stream, year) |>
   glimpse()
@@ -149,21 +122,20 @@ gdd_base_sac <- 20 # https://journals.plos.org/plosone/article?id=10.1371/journa
 gdd_base_trib <- 20
 
 gdd_sac <- standard_temp |>
-  filter(month(date) %in% 3:5, stream == "sacramento river") |>
-  mutate(gdd_sac = mean_daily_temp_c - gdd_base_sac,
+  filter(month %in% 3:5,
+         stream == "sacramento river") |>
+  mutate(gdd_sac = value - gdd_base_sac,
          gdd_sac = ifelse(gdd_sac < 0, 0, gdd_sac)) |>
-  group_by(year(date)) |>
+  group_by(year) |>
   summarise(gdd_sac = sum(gdd_sac, na.rm = T)) |>
-  rename(year = `year(date)`) |>
   ungroup()
 
 gdd_trib <- standard_temp |>
-  filter(month(date) %in% 5:8 & stream != "sacramento river") |>
-  mutate(gdd_trib = mean_daily_temp_c - gdd_base_trib,
+  filter(month %in% 5:8 & stream != "sacramento river") |>
+  mutate(gdd_trib = value - gdd_base_trib,
          gdd_trib = ifelse(gdd_trib < 0, 0, gdd_trib)) |>
-  group_by(year(date), stream) |>
+  group_by(year, stream) |>
   summarise(gdd_trib = sum(gdd_trib, na.rm = T)) |>
-  rename(year = `year(date)`) |>
   ungroup()
 
 gdd <- left_join(gdd_trib, gdd_sac,
@@ -177,74 +149,69 @@ gdd <- left_join(gdd_trib, gdd_sac,
 
 # flow --------------------------------------------------------------------
 
-standard_flow <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_flow.csv",
-                                         bucket = gcs_get_global_bucket())) |>
-  filter(month(date) %in% 3:8) |>
-  mutate(year = year(date)) |>
+standard_flow <- SRJPEdata::environmental_data |>
+  filter(parameter == "flow",
+         statistic == "mean") |>
+  filter(month %in% 3:8) |>
   group_by(stream, year) |>
-  summarise(mean_flow = mean(flow_cfs, na.rm = T),
-            max_flow = max(flow_cfs, na.rm = T)) |>
+  summarise(mean_flow = mean(value, na.rm = T),
+            max_flow = max(value, na.rm = T)) |>
   glimpse()
 
 # prespawn survival -------------------------------------------------------
 
 carcass_streams <- c("butte creek", "feather river")
 
-prespawn_survival <- left_join(upstream_passage_estimates |>
-                                 select(-passage_estimate),
-                               redd |>
-                                 rename(redd_count = count),
+# left join because we need passage estimates
+prespawn_survival <- left_join(upstream_passage_estimates,
+                               redd,
                                by = c("year", "stream")) |>
-  left_join(holding |>
-              rename(holding_count = count),
+  left_join(holding,
             by = c("year", "stream")) |>
-  left_join(carcass_estimates |>
-              rename(carcass_estimate = carcass_spawner_estimate) |>
-              select(-c(upper, lower, confidence_interval)),
+  left_join(carcass_estimates,
             by = c("year", "stream")) |>
-  mutate(female_upstream = upstream_count * 0.5,
-         prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_count,
-                                       stream %in% carcass_streams ~ carcass_estimate / upstream_count,
-                                       TRUE ~ redd_count / female_upstream)) |>
-  filter(prespawn_survival != Inf) |>
-#         stream != "butte creek") |>
+  mutate(prespawn_survival = case_when(stream == "deer creek" ~ holding_count / upstream_estimate,
+                                       stream %in% carcass_streams ~ carcass_estimate / upstream_estimate,
+                                       # assume that for every redd counted, it represents two fish (sex ratio of 0.5)
+                                       TRUE ~ (redd_count * 2) / upstream_estimate)) |>
   glimpse()
 
 
 # passage timing ----------------------------------------------------------
-upstream_passage_timing <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_adult_upstream_passage.csv",
-                                            bucket = gcs_get_global_bucket())) |>
-  filter(!is.na(date)) |>
-  mutate(stream = tolower(stream),
-         year = year(date),
+upstream_passage_timing <- SRJPEdata::upstream_passage |>
+  mutate(year = year(date),
          week = week(date)) |>
-  filter(run %in% c("spring","not recorded")) |>
+  filter(run %in% c("spring", "unknown", NA),
+         direction %in% c("up", "not recorded")) |>
   group_by(year, stream) |>
   summarise(count = sum(count, na.rm = T),
             median_passage_timing = median(week, na.rm = T),
             mean_passage_timing = mean(week, na.rm = T),
             min_passage_timing = min(week, na.rm = T)) |>
-  ungroup() |> # TODO look at up-down
-  select(-c(count)) |> glimpse()
+  ungroup() |>
+  select(-c(count)) |>
+  glimpse()
 
 # water year --------------------------------------------------------------
 
 water_year_data <- waterYearType::water_year_indices |>
   mutate(water_year_type = case_when(Yr_type %in% c("Wet", "Above Normal") ~ "wet",
-                               Yr_type %in% c("Dry", "Below Normal", "Critical") ~ "dry",
-                               TRUE ~ Yr_type)) |>
+                                     Yr_type %in% c("Dry", "Below Normal", "Critical") ~ "dry",
+                                     TRUE ~ Yr_type)) |>
   filter(location == "Sacramento Valley") |>
-  dplyr::select(WY, water_year_type) |>
+  select(WY, water_year_type) |>
   glimpse()
-
 
 # total passage as index --------------------------------------------------
 upstream_passage_index <- upstream_passage_estimates |>
-  mutate(passage_index = passage_estimate) |>
+  mutate(passage_index = upstream_estimate) |>
   select(year, stream, passage_index)
 
-
 # standardized covariates -------------------------------------------------
+scale_covar <- function(x) {
+  as.vector(scale(x))
+}
+
 adult_model_covariates_standard <- full_join(standard_flow,
                                              gdd,
                                              by = c("year", "stream")) |>
@@ -256,14 +223,9 @@ adult_model_covariates_standard <- full_join(standard_flow,
             by = c("year", "stream")) |>
   filter(!is.na(stream),
          stream != "sacramento river") |>
-  select(-c(mean_flow, mean_passage_timing, min_passage_timing,
-            gdd_trib, gdd_sac)) |>
-  mutate(wy_type = ifelse(water_year_type == "dry", 0, 1),
-         max_flow_std = as.vector(scale(max_flow)),
-         gdd_std = as.vector(scale(gdd_total)),
-         passage_index = as.vector(scale(passage_index)),
-         median_passage_timing_std = as.vector(scale(median_passage_timing))) |>
-  select(year, stream, wy_type, max_flow_std, gdd_std, passage_index, median_passage_timing_std) |>
+  rename(wy_type = water_year_type) |>
+  mutate(wy_type = ifelse(wy_type == "dry", 0, 1),
+         across(mean_flow:passage_index, scale_covar)) |>
   arrange(stream, year) |>
   glimpse()
 
@@ -286,56 +248,4 @@ survival_model_data_raw <- left_join(prespawn_survival |>
   left_join(gdd,
             by = c("year", "stream")) |>
   glimpse()
-
-
-# yuba data ---------------------------------------------------------------
-yuba_data <- upstream_passage_estimates |>
-  filter(stream == "yuba river") |>
-  select(year, passage_estimate) |>
-  glimpse()
-
-
-# butte data --------------------------------------------------------------
-butte_data <- carcass_estimates |>
-  filter(stream == "butte creek") |>
-  select(year, spawner_estimate = carcass_spawner_estimate,
-         lcl_90 = lower, ucl_90 = upper) |>
-  glimpse()
-
-
-# feather data ------------------------------------------------------------
-
-feather_data <- carcass_estimates |>
-  filter(stream == "feather river") |>
-  select(year, spawner_estimate = carcass_spawner_estimate,
-         lcl_90 = lower, ucl_90 = upper) |>
-  glimpse()
-
-# write data objects to bucket -------------------------------------------------------
-f <- function(input, output) write_csv(input, file = output)
-
-gcs_upload(adult_model_input_raw,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/adult_data_input_raw.csv")
-gcs_upload(adult_model_covariates_standard,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/adult_model_covariates_standard.csv")
-gcs_upload(survival_model_data_raw,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/survival_model_data_raw.csv")
-gcs_upload(yuba_data,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/yuba_data.csv")
-gcs_upload(feather_data,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/feather_data.csv")
-gcs_upload(butte_data,
-           object_function = f,
-           type = "csv",
-           name = "jpe-model-data/adult-model/butte_data.csv")
 
