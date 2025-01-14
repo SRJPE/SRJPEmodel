@@ -727,6 +727,97 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
   return(formatted_table)
 }
 
+#' Run all JPE sites.
+#' @details This function automates running BT-SPAS-X for all JPE sites/run years.
+#' @param sites_to_run
+#' @param run_pCap
+#' @param pCap_model_object_filepath
+#' @param bugs_model_file
+#' @param bugs_directory
+#' @returns A table with the format:
+#' * **model_name**
+#' * **site**
+#' * **run_year**
+#' * **week_fit**
+#' * **location_fit**
+#' * **parameter**
+#' * **statistic**
+#' * **value**
+#' * **srjpedata_version**
+#' @export
+#' @md
+run_bt_spas_x_JPE_sites <- function(sites_to_run,
+                                    run_pCap = FALSE,
+                                    pCap_model_object_filepath = NULL,
+                                    bugs_model_file,
+                                    bugs_directory) {
+
+  # run pCap model if necessary
+  if(run_pCap) {
+    pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
+    pCap <- fit_pCap_model(pCap_inputs$inputs)
+  } else {
+    pCap <- readRDS(pCap_model_object_filepath)
+  }
+
+  # prep inputs as vectors
+  sites_to_run_inputs <- sites_to_run |>
+    mutate(bugs_model_file = bugs_model_file,
+           bugs_directory = bugs_directory)
+
+  # now run abundance workflow
+  SRJPE_fits_table <- purrr::pmap(list(sites_to_run_inputs$site,
+                                       sites_to_run_inputs$run_year,
+                                       sites_to_run_inputs$bugs_model_file,
+                                       sites_to_run_inputs$bugs_directory),
+                                  run_abundance_workflow,
+                                  .progress = TRUE)
+
+  all_JPE_sites_clean <- SRJPE_fits_table |>
+    bind_rows()
+
+  # extract clean table
+  return(all_JPE_sites_clean)
+
+}
+
+#' Run abundance BUGS workflow.
+#' @details This function runs the abundance BUGS workflow.
+#' @param site
+#' @param run_year
+#' @param pCap
+#' @param bugs_model_file
+#' @param bugs_directory
+#' @returns A table.
+#' @export
+#' @md
+run_abundance_workflow <- function(site,
+                                   run_year,
+                                   pCap,
+                                   bugs_model_file,
+                                   bugs_directory) {
+
+  abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = T)
+
+  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
+
+  abundance <- tryCatch({fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+                                        bugs_model_file,
+                                        bugs_directory)
+  },
+    error = function(e) return(tibble("error" = TRUE))
+  )
+
+  clean_table <- tryCatch({extract_abundance_estimates(site, run_year,
+                                                       abundance_inputs, abundance)
+  },
+  error = function(e) return(tibble("error" = TRUE))
+  )
+
+  return(clean_table)
+}
+
+
 
 #' BT SPAS X diagnostic plots
 #' @details This function produces a plot with data and results of fitting the pCap and abundance models for

@@ -89,5 +89,15 @@ all_JPE_sites_clean <- SRJPE_fits_table |>
 write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
 saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 
-  SRJPE_clean_table <- purrr::pmap()
+
+
+# test --------------------------------------------------------------------
+
+sites_to_run <- tibble("site" = c("ubc", "lcc"),
+                       "run_year" = c(2002, 2002))
+
+test <- run_bt_spas_x_JPE_sites(sites_to_run = sites_to_run, run_pCap = FALSE,
+                                pCap_model_object_filepath = ,
+                                bugs_model_file = ,
+                                bugs_directory = )
 
