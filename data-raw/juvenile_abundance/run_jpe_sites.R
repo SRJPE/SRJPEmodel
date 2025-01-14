@@ -44,3 +44,22 @@ all_JPE_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = sites_to_run, run_
 write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
 saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 
+
+# generate data for Noble -------------------------------------------------
+
+# data to run PLAD that applies filter
+# sent 1-14-2025
+
+data_for_PLAD <- SRJPEdata::rst_catch |>
+  mutate(run_year = ifelse(julian_week >= 45, julian_year + 1, julian_year)) |>
+  left_join(SRJPEdata::chosen_site_years_to_model |> # need to make sure to filter out years that have been excluded
+              select(run_year = monitoring_year, stream, site) |>
+              mutate(include = T)) |>
+  filter(include == T) |>
+  select(-include) |>
+  mutate(exclude = ifelse(site == "mill creek" & run_year == 2025, TRUE, FALSE)) |>
+  filter(!exclude) |>
+  select(-exclude)
+
+write_csv(data_for_PLAD, "~/Downloads/rst_catch_filtered_for_PLAD.csv")
+
