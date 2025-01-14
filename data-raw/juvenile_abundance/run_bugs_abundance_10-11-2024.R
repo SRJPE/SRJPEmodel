@@ -4,6 +4,9 @@ library(SRJPEmodel)
 library(SRJPEdata)
 library(R2WinBUGS)
 
+
+# run for one site/run year -----------------------------------------------
+
 # pCap model
 pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
 pCap <- fit_pCap_model(pCap_inputs$inputs)
@@ -11,13 +14,11 @@ pCap <- fit_pCap_model(pCap_inputs$inputs)
 # save, fit 01-09-2025
 saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
 
-# read in
 pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
 
 abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T)
 lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
 
-# BUGS --------------------------------------------------------------------
 abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
                                       "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                       "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
@@ -29,75 +30,17 @@ saveRDS(abundance_inputs, "ubc_2018_abundance_inputs.rds")
 saveRDS(abundance_table, "ubc_2018_abundance_fit_table.rds")
 
 
-
 # run for all SRJPE sites -------------------------------------------------
 
+sites_to_run <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+  distinct(site, run_year) |>
+  arrange(site, run_year)
 
-fit_all_sites_run_years <- function(site, run_year){
-
-  abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = T)
-  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
-  abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
-                                        "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
-                                        "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
-  clean_table <- extract_abundance_estimates(site, run_year,
-                                             abundance_inputs, abundance)
-  return(clean_table)
-}
-
-# get trials to fit
-site_years_to_exclude <- SRJPEdata::years_to_exclude_rst_data |>
-  mutate(site_year = paste(site, year, sep = "_")) |>
-  pull(site_year)
-
-site_years_to_exclude <- c(site_years_to_exclude, "okie dam_1996",
-                           "eye riffle_2024")
-trials_to_fit <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  mutate(site_year = paste(site, run_year, sep = "_")) |>
-  filter(!site_year %in% site_years_to_exclude,
-         life_stage != "yearling",
-         stream != "sacramento river",
-         week %in% c(seq(45, 53), seq(1, 22))) |>
-  group_by(year, week, stream, site, run_year) |>
-  # keep NAs in count columns
-  summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
-            mean_fork_length = mean(mean_fork_length, na.rm = T),
-            hours_fished = mean(hours_fished, na.rm = T),
-            flow_cfs = mean(flow_cfs, na.rm = T),
-            average_stream_hours_fished = mean(average_stream_hours_fished, na.rm = T),
-            standardized_flow = mean(standardized_flow, na.rm = T),
-            catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
-            lgN_prior = mean(lgN_prior, na.rm = T)) |>
-  ungroup() |>
-  distinct(site, run_year)
-  # group_by(run_year, site) |>
-  # summarise(count = sum(count, na.rm = T)) |>
-  # ungroup() |>
-  # filter(!is.na(count)) # filter out those sites where we have no catch data at all (? ubc 2015)
-
-write_csv(trials_to_fit, "C:/Users/Liz/Downloads/bt_spas_x_sites_run_years.csv")
-
-SRJPE_fits_table <- purrr::pmap(list(trials_to_fit$site,
-                            trials_to_fit$run_year),
-                            fit_all_sites_run_years,
-                            .progress = TRUE)
-
-all_JPE_sites_clean <- SRJPE_fits_table |>
-  bind_rows() |>
-  glimpse()
+all_JPE_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = sites_to_run, run_pCap = FALSE,
+                                               pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds",
+                                               bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                               bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
 write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
 saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
-
-
-
-# test --------------------------------------------------------------------
-
-sites_to_run <- tibble("site" = c("ubc", "lcc"),
-                       "run_year" = c(2002, 2002))
-
-test <- run_bt_spas_x_JPE_sites(sites_to_run = sites_to_run, run_pCap = FALSE,
-                                pCap_model_object_filepath = ,
-                                bugs_model_file = ,
-                                bugs_directory = )
 

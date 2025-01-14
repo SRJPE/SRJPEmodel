@@ -748,7 +748,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
 #' @md
 run_bt_spas_x_JPE_sites <- function(sites_to_run,
                                     run_pCap = FALSE,
-                                    pCap_model_object_filepath = NULL,
+                                    pCap_model_object_filepath,
                                     bugs_model_file,
                                     bugs_directory) {
 
@@ -756,20 +756,18 @@ run_bt_spas_x_JPE_sites <- function(sites_to_run,
   if(run_pCap) {
     pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
     pCap <- fit_pCap_model(pCap_inputs$inputs)
-  } else {
-    pCap <- readRDS(pCap_model_object_filepath)
+    saveRDS(pCap, pCap_model_object_filepath)
   }
 
   # prep inputs as vectors
-  sites_to_run_inputs <- sites_to_run |>
-    mutate(bugs_model_file = bugs_model_file,
-           bugs_directory = bugs_directory)
+  sites_to_run_inputs <- sites_to_run
 
   # now run abundance workflow
   SRJPE_fits_table <- purrr::pmap(list(sites_to_run_inputs$site,
                                        sites_to_run_inputs$run_year,
-                                       sites_to_run_inputs$bugs_model_file,
-                                       sites_to_run_inputs$bugs_directory),
+                                       pCap_model_object_filepath,
+                                       bugs_model_file,
+                                       bugs_directory),
                                   run_abundance_workflow,
                                   .progress = TRUE)
 
@@ -793,28 +791,33 @@ run_bt_spas_x_JPE_sites <- function(sites_to_run,
 #' @md
 run_abundance_workflow <- function(site,
                                    run_year,
-                                   pCap,
+                                   pCap_model_object_filepath,
                                    bugs_model_file,
                                    bugs_directory) {
 
-  abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = T)
+  cli::cli_bullets(paste0("Running abundance model for ", site, " for run year ", run_year))
 
-  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
+  results <- tryCatch({
 
-  abundance <- tryCatch({fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
-                                        bugs_model_file,
-                                        bugs_directory)
+    abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = T)
+
+    pCap <- readRDS(pCap_model_object_filepath)
+
+    lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
+
+    abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+                                          bugs_model_file,
+                                          bugs_directory)
+    clean_table <- extract_abundance_estimates(site, run_year,
+                                               abundance_inputs, abundance)
+    return(clean_table)
+
   },
-    error = function(e) return(tibble("error" = TRUE))
-  )
+  error = function(e) return(tibble("site" = site,
+                                    "run_year" = run_year,
+                                    "error" = TRUE)))
 
-  clean_table <- tryCatch({extract_abundance_estimates(site, run_year,
-                                                       abundance_inputs, abundance)
-  },
-  error = function(e) return(tibble("error" = TRUE))
-  )
-
-  return(clean_table)
+  return(results)
 }
 
 
