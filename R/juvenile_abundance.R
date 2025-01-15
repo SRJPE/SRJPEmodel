@@ -880,12 +880,12 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
 
   pCap_estimates <- model_table |>
     filter(parameter == "lt_pCap_U") |>
-    select(week_index = week_fit,
+    select(week = week_fit,
            mean:`97.5`)
 
   N_estimates <- model_table |>
     filter(parameter == "N") |>
-    select(week_index = week_fit,
+    select(week = week_fit,
            mean:`97.5`)
 
   # abundance plot
@@ -897,7 +897,7 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
     geom_bar(stat = "identity", fill = "grey", width = 5) +
     geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
     geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
-               shape = 1, color = "blue") +
+               shape = 1, color = "blue" ,size = 3) +
     geom_point(aes(x = final_date, y = Inf, color = sampled),
                size = 3) +
     geom_text(aes(x = final_date, y = Inf,
@@ -926,7 +926,7 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
     geom_bar(stat = "identity", width = 4) +
     geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
     geom_point(aes(x = final_date, y = lincoln_peterson_efficiency),
-               shape = 1, color = "blue") +
+               shape = 1, color = "blue", size = 3) +
     geom_text(aes(x = final_date, y = Inf,
                   label = paste(number_released_label, number_recaptured_label),
                   angle = 90),
