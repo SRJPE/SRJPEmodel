@@ -834,6 +834,13 @@ run_abundance_workflow <- function(site,
 generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
                                          abundance_model) {
 
+  abundance_inputs <- prepare_abundance_inputs(site_arg, run_year_arg,
+                                               T)
+
+  model_table <- extract_abundance_estimates(site_arg, run_year_arg,
+                                             abundance_inputs, abundance_model) |>
+    pivot_wider(names_from = statistic,
+                values_from = value)
 
   julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
@@ -861,7 +868,9 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
            across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # plot things
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
-           lincoln_peterson_efficiency = number_recaptured / number_released) |>
+           lincoln_peterson_efficiency = number_recaptured / number_released,
+           sampled = ifelse(is.na(count), FALSE, TRUE),
+           efficiency_trial = ifelse(is.na(lincoln_peterson_efficiency), FALSE, TRUE)) |>
     left_join(julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
     mutate(year = ifelse(week >= 43, run_year - 1, run_year),
            fake_date = ymd(paste0(year, "-01-01")),
@@ -869,36 +878,19 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
            date = format(final_date, "%b-%d"),
            week_index = row_number())
 
-  # TODO replace with extract() function
-  pCap_estimates <- rstan::summary(abundance_model,pars=c("lt_pCap_U"))$summary |>
-    data.frame() |>
-    tibble::rownames_to_column("parameter") |>
-    mutate(week_index = readr::parse_number(parameter)) |>
-    select(week_index, mean, sd, `50` = X50., `2.5` = X2.5., `97.5` = X97.5.) |>
-    mutate(parameter = "lt_pCap_U")
+  pCap_estimates <- model_table |>
+    filter(parameter == "lt_pCap_U") |>
+    select(week_index = week_fit,
+           mean:`97.5`)
 
-  N_estimates <- rstan::summary(abundance_model,pars=c("N"))$summary |>
-    data.frame() |>
-    tibble::rownames_to_column("parameter") |>
-    mutate(week_index = readr::parse_number(parameter)) |>
-    select(week_index, mean, sd, `50` = X50., `2.5` = X2.5., `97.5` = X97.5.) |>
-    mutate(parameter = "N")
-
-
-  data |>
-    ggplot(aes(x = final_date, y = catch_standardized_by_hours_fished)) +
-    geom_bar(stat = "identity", fill = "grey", width = 5) +
-    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
-    #scale_x_date(date_breaks = "1 week", date_labels = "%V") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-    labs(x = "Date",
-         y = "Raw catch",
-         title = paste0("Catch at ", site_arg, " for run year ",
-                        run_year_arg))
+  N_estimates <- model_table |>
+    filter(parameter == "N") |>
+    select(week_index = week_fit,
+           mean:`97.5`)
 
   # abundance plot
   abundance_plot <- data |>
+    mutate(count_label = ifelse(is.na(count), "", count)) |>
     left_join(N_estimates) |>
     #mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis)) |>
     ggplot(aes(x = final_date, y = `50`)) +
@@ -906,14 +898,14 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
     geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
     geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
                shape = 1, color = "blue") +
-    # geom_point(aes(x = fake_date, y = Inf, color = sampled),
-    #            size = 3) +
+    geom_point(aes(x = final_date, y = Inf, color = sampled),
+               size = 3) +
     geom_text(aes(x = final_date, y = Inf,
-                  label = paste(count),
+                  label = paste(count_label),
                   angle = 90),
               hjust = 1,
               size = 3) +
-    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "red")) +
+    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "#ec5858")) +
     theme_minimal() +
     labs(x = "",
          #x = "Date",
@@ -921,7 +913,8 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
          title = paste(site_arg, run_year_arg)) +
     #theme(axis.text.x=element_blank()) +
     scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+          legend.position = "")
 
   # efficiency
   efficiency_plot <- data |>
@@ -929,8 +922,8 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
     mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis),
            number_released_label = ifelse(is.na(number_released), "", number_released),
            number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
-    ggplot(aes(x = final_date, y = `50`)) +
-    geom_bar(stat = "identity", fill = "grey", width = 4) +
+    ggplot(aes(x = final_date, y = `50`, fill = efficiency_trial)) +
+    geom_bar(stat = "identity", width = 4) +
     geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
     geom_point(aes(x = final_date, y = lincoln_peterson_efficiency),
                shape = 1, color = "blue") +
@@ -939,12 +932,12 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
                   angle = 90),
               hjust = 1,
               size = 3) +
-    # geom_point(aes(x = fake_date, y = Inf, color = sampled),
-    #            size = 3) +
+    scale_fill_manual(values = c("TRUE" = "grey", "FALSE" = "#ec5858")) +
     theme_minimal() +
     labs(x = "Date", y = "Weekly Efficiency") +
     scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+          legend.position = "")
 
   # arrange together
   gridExtra::grid.arrange(abundance_plot, efficiency_plot)
