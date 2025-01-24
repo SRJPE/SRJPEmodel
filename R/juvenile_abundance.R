@@ -840,6 +840,8 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
                                                T)
 
   model_table <- abundance_model_fit_table |>
+    filter(site == site_arg,
+           run_year == run_year_arg) |>
     pivot_wider(names_from = statistic,
                 values_from = value)
 
