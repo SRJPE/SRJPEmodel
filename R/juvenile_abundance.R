@@ -748,13 +748,14 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
 #' @md
 run_bt_spas_x_JPE_sites <- function(sites_to_run,
                                     run_pCap = FALSE,
+                                    mainstem,
                                     pCap_model_object_filepath,
                                     bugs_model_file,
                                     bugs_directory) {
 
   # run pCap model if necessary
   if(run_pCap) {
-    pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
+    pCap_inputs <- prepare_pCap_inputs(mainstem = mainstem)
     pCap <- fit_pCap_model(pCap_inputs$inputs)
     saveRDS(pCap, pCap_model_object_filepath)
   }
