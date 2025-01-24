@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{build_spline_data}
 \alias{build_spline_data}
-\title{Prepare spline parameters object for BT-SPAS-X WinBUGs call}
+\title{Prepare spline parameters object for BT-SPAS-X model}
 \usage{
 build_spline_data(number_weeks_catch, k_int)
 }
@@ -16,7 +16,7 @@ Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 
 a named list containing \emph{K} and \emph{b_spline_matrix} for passing to WinBUGS
 }
 \description{
-Prepare spline parameters object for BT-SPAS-X WinBUGs call
+Prepare spline parameters object for BT-SPAS-X model
 }
 \details{
 This function is called within \code{run_single_bt_spas_x()} and prepares spline parameters

@@ -1,0 +1,34 @@
+model {
+    #Priors on SD terms controlling variability in spline parameters (flexibility) and extra-spline variation
+  tau.N~dgamma(1,0.05);sd.N<-1/pow(tau.N,0.5)
+  tau.Ne~dgamma(1,0.05);sd.Ne<-1/pow(tau.Ne,0.5) #0.1,0.1Prior on extra-spline variation in logU. Relative to tauN prior, tauNe has higher probs for greater precision which reduces overfitting problem (pValue too high)
+  
+  #Priors on spline coefficients
+  b_sp[1]~dflat()
+  #b_sp[1]~dnorm(0,1.0)	
+  b_sp[2]~dflat()	#in cases with u=NA at start of time series large values of b_sp[1:2] lead to unrealistically high values of U[1:2]
+  for(i in 3:K){
+    xi[i-2]<-2*b_sp[i-1]-b_sp[i-2]	 #Second order random walk to set mean of normal prior on b 
+    b_sp[i] ~ dnorm(xi[i-2],tau.N) 	 #The higher the estimated precision of tau.N, the lower the flexibility in b[i]'s, and hence a smoother the curve. 
+  }
+  
+  
+  #beta_dev~dnorm(0,1.0E-03)
+  for(i in 1:Nstrata){
+    Usp[i]<-inprod(ZP[i,],b_sp[])			#spline-based estimate of log U
+    lg_N[i]~dnorm(Usp[i],tau.Ne)I(,lgN_max[i])	#spline + extra-spline variation estimate of log U
+    #log(N[i])<-lg_N[i]				#Convert lg_N to N
+    N[i]<-exp(lg_N[i])*1000.0
+    
+    lt_pCap_U[i] ~ dnorm(lt_pCap_mu[i], lt_pCap_tau[i])
+    logit(pCap_U[i])<- cut(lt_pCap_U[i])
+    lg_CumN[i]<-sum(lg_N[1:i])
+  }
+  Ntot<-sum(N[])
+  
+  #Only loop through strata with unmarked catch observations
+  for(i in 1:Nstrata_wc){
+      u[i]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]]) 
+  }	
+  
+}
