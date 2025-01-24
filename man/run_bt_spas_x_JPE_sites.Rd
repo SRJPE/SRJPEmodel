@@ -7,7 +7,8 @@
 run_bt_spas_x_JPE_sites(
   sites_to_run,
   run_pCap = FALSE,
-  pCap_model_object_filepath = NULL,
+  mainstem,
+  pCap_model_object_filepath,
   bugs_model_file,
   bugs_directory
 )

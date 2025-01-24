@@ -4,7 +4,13 @@
 \alias{run_abundance_workflow}
 \title{Run abundance BUGS workflow.}
 \usage{
-run_abundance_workflow(site, run_year, pCap, bugs_model_file, bugs_directory)
+run_abundance_workflow(
+  site,
+  run_year,
+  pCap_model_object_filepath,
+  bugs_model_file,
+  bugs_directory
+)
 }
 \value{
 A table.

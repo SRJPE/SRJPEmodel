@@ -731,6 +731,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
 #' @details This function automates running BT-SPAS-X for all JPE sites/run years.
 #' @param sites_to_run
 #' @param run_pCap
+#' @param mainstem
 #' @param pCap_model_object_filepath
 #' @param bugs_model_file
 #' @param bugs_directory
@@ -828,18 +829,17 @@ run_abundance_workflow <- function(site,
 #' a given site and run year.
 #' @param site_arg The site being fit
 #' @param run_year_arg The run year being fit
-#' @param abundance_model The STANfit model object produced by running `fit_abundance_model_BUGS()`
+#' @param abundance_model_fit_table A table that is produced from running `extract_abundance_estimates()`.
 #' @returns A plot.
 #' @export
 #' @md
 generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
-                                         abundance_model) {
+                                         abundance_model_fit_table) {
 
   abundance_inputs <- prepare_abundance_inputs(site_arg, run_year_arg,
                                                T)
 
-  model_table <- extract_abundance_estimates(site_arg, run_year_arg,
-                                             abundance_inputs, abundance_model) |>
+  model_table <- abundance_model_fit_table |>
     pivot_wider(names_from = statistic,
                 values_from = value)
 

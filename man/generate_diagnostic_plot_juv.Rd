@@ -4,14 +4,14 @@
 \alias{generate_diagnostic_plot_juv}
 \title{BT SPAS X diagnostic plots}
 \usage{
-generate_diagnostic_plot_juv(site_arg, run_year_arg, abundance_model)
+generate_diagnostic_plot_juv(site_arg, run_year_arg, abundance_model_fit_table)
 }
 \arguments{
 \item{site_arg}{The site being fit}
 
 \item{run_year_arg}{The run year being fit}
 
-\item{abundance_model}{The STANfit model object produced by running \code{fit_abundance_model_BUGS()}}
+\item{abundance_model_fit_table}{A table that is produced from running \code{extract_abundance_estimates()}.}
 }
 \value{
 A plot.
