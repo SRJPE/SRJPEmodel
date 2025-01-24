@@ -90,7 +90,8 @@ run_survival_model <- function(survival_model_data, number_detection_locations, 
   inits <- list(initial_parameter_values, initial_parameter_values, initial_parameter_values)
 
   cli::cli_process_start("Fitting STAN survival model")
-  fit <- rstan::stan(file = paste0("model_files/", model_name, ".stan"),
+  stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code"))
+  fit <- rstan::stan(model_code = stan_model,
                      model_name = model_name,
                      data = model_data,
                      init = inits, chains = 3, iter = 1500, include = T,

@@ -74,3 +74,8 @@
 #' @description A character string containing the STAN model code for the Passage to Spawner submodel.
 'p2s_model_code'
 
+#' @title Passage to Spawner model code
+#' @name survival_model_code
+#' @description A character string containing the STAN model code for the juvenile outmigration survival submodel.
+'survival_model_code'
+
