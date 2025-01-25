@@ -48,18 +48,20 @@ write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
 saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 
 # mainstem
-mainstem_sites <- sites_to_run |>
+mainstem_sites <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
+  distinct(site, run_year) |>
   filter(site %in% c("knights landing", "red bluff diversion dam",
-                     "tisdale")) |>
+                      "tisdale")) |>
   arrange(site, run_year)
 
-all_JPE_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites, run_pCap = TRUE,
+mainstem_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites, run_pCap = TRUE,
                                                mainstem = TRUE,
                                                pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_model_mainstem_2025-01-24.rds",
                                                bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                                bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
-write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/mainstem_jpe_sites_fit.csv")
+write_csv(mainstem_sites_clean, "C:/Users/Liz/Downloads/mainstem_jpe_sites_fit.csv")
+saveRDS(mainstem_sites_clean, "C:/Users/Liz/Downloads/mainstem_sites_fit.rds")
 
 
 # generate data for Noble -------------------------------------------------
