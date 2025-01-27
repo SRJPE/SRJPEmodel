@@ -668,9 +668,8 @@ extract_abundance_estimates <- function(site, run_year,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(week_lookup, by = "week_index") |>
-    rename(rhat = Rhat) |>
     # now clean up statistics
-    pivot_longer(mean:rhat,
+    pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
     mutate(statistic = str_remove_all(statistic, "\\%"),
@@ -715,9 +714,8 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(site_lookup, by = "site_index") |>
-    rename(rhat = Rhat) |>
     # now clean up statistics
-    pivot_longer(mean:rhat,
+    pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
     mutate(statistic = str_remove_all(statistic, "\\%"),
