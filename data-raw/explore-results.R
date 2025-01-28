@@ -5,77 +5,26 @@ library(R2WinBUGS)
 library(scales)
 
 # bt-spas-x ---------------------------------------------------------------
+# example for upper battle creek (ubc) 2018
 
-# TODO replace these with the SRJPEdata objects when merged in
-weekly_juvenile_abundance_catch_data <- read_csv("~/Downloads/catch_data_new.csv")
-weekly_juvenile_abundance_efficiency_data <- read_csv("~/Downloads/efficiency_data_new.csv")
+# run pCap model
+pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
+pCap <- fit_pCap_model(pCap_inputs$inputs)
 
-# TODO added check in get_summary_table() that filters out non convergence
-# single run
-bt_spas_x_results <- run_single_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                          weekly_juvenile_abundance_catch_data,
-                                          weekly_juvenile_abundance_efficiency_data,
-                                          site = "ubc",
-                                          run_year = 2009,
-                                          lifestage = "fry",
-                                          effort_adjust = F,
-                                          # when running on remote computer, we have the WinBUGS14 in this folder
-                                          # however, messaging should be included here to say that the
-                                          # WinBUGS folder needs to be in a folder where you have write permissions
-                                          # because this errors out frequently
-                                          bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                          debug_mode = FALSE,
-                                          # TODO remove once we make a decision
-                                          no_cut = T)
-write_rds(bt_spas_x_results, "data-raw/juvenile_abundance/ubc_2009_2024-09-6.rds")
-results <- readRDS("data-raw/juvenile_abundance/ubc_2004_2024-07-23.rds")
+# run abundance model
+abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T)
+lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
 
-# plot single run results
-plot_juvenile_abundance(results$final_results)
-plot_weekly_capture_probability(results$final_results)
+abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+                                      # point towards where you store the .bug model
+                                      "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                      # point to where you have WinBUGS
+                                      "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
-# test with smaller df
-multi_run_results <- run_multiple_bt_spas_x(SRJPEmodel::bt_spas_x_bayes_params,
-                                            SRJPEdata::weekly_juvenile_abundance_model_data,
-                                            effort_adjust = T,
-                                            bugs_directory = here::here("data-raw", "WinBUGS14"),
-                                            debug_mode = F)
-readr::write_rds(multi_run_results, paste0("data-raw/juvenile_abundance/multi_run_results_", Sys.Date(), ".rds"))
+abundance_table <- extract_abundance_estimates("ubc", 2018, abundance_inputs, abundance)
 
-# explore multi run results
-multi_run_results <- read_rds("data-raw/juvenile_abundance/multi_run_results.rds")
-non_errored_results <- unlist(lapply(multi_run_results, function(x) is_tibble(x)))
-multi_run_df <- multi_run_results[non_errored_results] |>
-  bind_rows()
+generate_diagnostic_plot("ubc", 2018, abundance_table)
 
-# this plot code is stolen from juvenile_abundance_plots.R, will be functionalized
-julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
-
-# plot
-multi_run_df |>
-  filter(site == "eye riffle",
-         str_detect(parameter, "N\\["),
-         life_stage == "fry") |>
-  left_join(julian_week_to_date_lookup, by = c("week_fit" = "Jwk")) |>
-  pivot_wider(id_cols = c("date", "site", "run_year", "life_stage", "week_fit"),
-              names_from = "statistic",
-              values_from = "value") |>
-  mutate(fake_date = ifelse(week_fit > 35, paste0(1969, "-", date),
-                            paste0(1970, "-", date)),
-           # fake_date = ifelse(week_fit > 35, paste0(run_year - 1, "-", date),
-           #                  paste0(run_year, "-", date)),
-         fake_date = as.Date(fake_date, format = "%Y-%b-%d"),
-         week = factor(week_fit,
-                       levels = c(35:53, 1:34))) |>
-  ggplot(aes(x = fake_date, y = `50`)) +
-  geom_bar(stat = "identity", fill = "grey") +
-  # geom_errorbar(aes(x = fake_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-  facet_wrap(~run_year, scales = "free_y", nrow = 4) +
-  theme_minimal() +
-  labs(x = "Date", y = "Abundance",
-       title = "Upper Battle Creek") +
-  scale_x_date(breaks = "1 week", date_labels = "%b-%d") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # passage to spawner ------------------------------------------------------
 
