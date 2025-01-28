@@ -27,7 +27,8 @@ observed_adult_input_wide <- observed_adult_input |>
 
 # get details on sample sizes
 observed_adult_input_wide |>
-  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  filter(stream %in% streams_to_use,
+         upstream_estimate != 0) |>
   mutate(spawner_count = ifelse(stream == "deer creek",
                                 holding_count, redd_count),
          keep = ifelse(is.na(spawner_count) | is.na(upstream_estimate),
@@ -39,7 +40,7 @@ observed_adult_input_wide |>
 
 # plot
 observed_adult_input_wide |>
-  filter(!stream %in% c("butte creek", "yuba river", "feather river")) |>
+  filter(stream %in% streams_to_use) |>
   mutate(stream = str_to_title(stream),
          spawner_count = ifelse(stream == "Deer Creek",
                                 holding_count, redd_count)) |>
@@ -50,6 +51,23 @@ observed_adult_input_wide |>
   labs(x = "Upstream Estimate",
        y = "Spawner Count",
        title = "Observed Adult Data")
+
+# plot
+observed_adult_input_wide |>
+  filter(stream %in% streams_to_use) |>
+  mutate(stream = str_to_title(stream)) |>
+  rename(spawner_count = redd_count) |>
+  ggplot(aes(x = year, y = spawner_count, color = "Spawner count (redd)")) +
+  geom_line() +
+  geom_line(aes(x = year, y = upstream_estimate, color = "Upstream passage")) +
+  facet_wrap(~stream, scales = "free_y",
+             nrow = 2) +
+  xlab("Year") + ylab("Abundance") +
+  ggtitle("Spawner survey data and upstream passage by stream") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+        legend.position = "bottom") +
+  scale_color_manual("Adult data type", values = wes_palette("GrandBudapest1")[2:3])
 
 
 # do covariate selection --------------------------------------------------

@@ -77,5 +77,5 @@ winbugs <- list(cut = cut,
 
 # passage to spawner ------------------------------------------------------
 
-p2s_model_code <- readr::read_file(here::here("model_files", "passage_to_spawner.txt"))
+p2s_model_code <- readr::read_file(here::here("model_files", "passage_to_spawner.stan"))
 usethis::use_data(p2s_model_code, overwrite = T)

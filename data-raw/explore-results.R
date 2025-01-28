@@ -79,12 +79,14 @@ multi_run_df |>
 
 # passage to spawner ------------------------------------------------------
 
-P2S_results <- run_passage_to_spawner_model("battle creek", "wy_type", FALSE)
-P2S_spawners <- get_predicted_spawners_from_P2S(P2S_results$formatted_pars)
+P2S_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
+P2S_results <- run_passage_to_spawner_model(P2S_inputs)
+P2S_spawners <- extract_P2S_estimates(P2S_results)
 
 P2S_spawners |>
-  ggplot(aes(x = year, y = median_predicted_spawners)) +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
+  filter(parameter == "predicted_spawners") |>
+  ggplot(aes(x = year, y = `50`)) +
+  geom_ribbon(aes(ymin = `2.5`, ymax = `97.5`), alpha = 0.2) +
   geom_line() +
   theme_minimal()
 
