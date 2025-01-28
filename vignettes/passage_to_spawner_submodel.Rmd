@@ -65,76 +65,52 @@ The model takes in two datasets:
 
 # Running the P2S submodel
 
+## For a given stream and covariate
+
 The model is run for a given stream and environmental covariate.
 
-* Options for streams are `battle creek`, `clear creek`, `deer creek`, and `mill creek`. 
-* Environmental covariates are `water year type`, `growing degree days`, and `maximum flow`. 
+* Options for streams are `battle creek` and `clear creek`.
+* Environmental covariates are `water year type`, `growing degree days`, `maximum flow`, `median passage timing`, and `passage index`.
  
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 # run the model for battle creek and water year type
-battle_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                   SRJPEdata::adult_model_covariates_standard,
-                                                   "battle creek",
-                                                   "wy_type",
-                                                   FALSE)
-# run the model for clear creek and water year type
-clear_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                  SRJPEdata::adult_model_covariates_standard,
-                                                  "clear creek",
-                                                  "wy_type",
-                                                  FALSE)
-# run the model for deer creek and water year type
-deer_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                 SRJPEdata::adult_model_covariates_standard,
-                                                 "deer creek",
-                                                 "wy_type",
-                                                 FALSE)
-# run the model for mill creek and water year type
-mill_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                 SRJPEdata::adult_model_covariates_standard,
-                                                 "mill creek",
-                                                 "wy_type",
-                                                 FALSE)
+battle_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
+battle_P2S_model <- run_passage_to_spawner_model(battle_inputs)
 ```
 
-Once the model has been fit to separate streams, you can combine them into one data frame:
+## For all covariates within a stream
+
+This truncates the dataset to only those years where all covariate data is available.
+
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
-# join model summaries
-P2S_model_fits <- bind_rows(battle_P2S_results$formatted_pars,
-                            clear_P2S_results$formatted_pars,
-                            mill_P2S_results$formatted_pars,
-                            deer_P2S_results$formatted_pars)
+# run the model for battle creek and water year type
+battle_covariate_comparison <- compare_P2S_model_covariates("battle creek")
+
+knitr::kable(head(battle_covariate_comparison, 10))
 ```
+
 
 # Model Output
 
-The P2S model produces two objects when run: 
+The P2S model produces a STANfit object when run. You can extract parameter estimates from the model object with the function `extract_P2S_estimates()`. This produces a table.
 
-* a `full_object`, which contains all output of the STAN model (class `stanfit`)
-* `formatted_pars`, a data table with all parameter estimates and associated statistics.
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+battle_parameter_estimates <- extract_P2S_estimates(battle_P2S_model)
 
-The most recent results from fitting the model to all streams is stored as a data object `SRJPEmodel::P2S_model_fits` and contains the full parameter list, many of which are technical and not directly of interest to the `SRJPEmodel` ecosystem. 
-`SRJPEmodel` has additional functions to extract parameter estimates of interest from this larger table and can quickly produce a table of predicted spawners by year and tributary.
+knitr::kable(head(battle_parameter_estimates, 10))
+```
 
 ## Extract predicted spawners by year, with uncertainty
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
-# obtain the years associated with observed data
-P2S_predicted_spawners <- SRJPEmodel::get_predicted_spawners_from_P2S(P2S_model_fits)
-knitr::kable(head(P2S_predicted_spawners, 5))
-```
-
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
-
-P2S_predicted_spawners |>
-  mutate(stream = str_to_title(stream)) |>
-  ggplot(aes(x = year, y = median_predicted_spawners)) +
-  geom_line(col = wes_palette("GrandBudapest1")[2]) +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
-  facet_wrap(~stream, scales = "free_y") +
+battle_parameter_estimates |>
+  filter(parameter == "predicted_spawners") |>
+  ggplot(aes(x = year, y = `50`)) +
+  geom_ribbon(aes(ymin = `2.5`, ymax = `97.5`), alpha = 0.2) +
+  geom_line() +
   labs(x = "Year",
        y = "Predicted Spawner Count",
-       title = "Predicted Spawner Count for Modeled Tributaries") +
+       title = "Predicted Spawner Count for Battle Creek") +
   theme_minimal()
 ```
 

@@ -94,7 +94,7 @@ to pass to \code{bugs}. If running on a PC or another operating system capable o
 returns a nested list containing the following elements:
 \itemize{
 \item \strong{model_results} the \code{BUGs} object from fitting the model
-\item \strong{model_called} the model called on the data
+\item \strong{model_called} the model called on the databugs_
 \item \strong{data_inputs} the data passed to the model
 \item \strong{init_inputs} the initial values passed to the model
 }
