@@ -49,11 +49,7 @@ multi_run_df <- multi_run_results[non_errored_results] |>
   bind_rows()
 
 # this plot code is stolen from juvenile_abundance_plots.R, will be functionalized
-julian_week_to_date_lookup <- read.table(file = "data-raw/juvenile_abundance/btspas_model_code/Jwk_Dates.txt", header = F) |>
-  tibble() |>
-  filter(V1 != "Jwk") |>
-  mutate(V1 = as.numeric(V1)) |>
-  select(Jwk = V1, date = V2)
+julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
 # plot
 multi_run_df |>
@@ -82,6 +78,7 @@ multi_run_df |>
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # passage to spawner ------------------------------------------------------
+
 P2S_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
 P2S_results <- run_passage_to_spawner_model(P2S_inputs)
 P2S_spawners <- extract_P2S_estimates(P2S_results)

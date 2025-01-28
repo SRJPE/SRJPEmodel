@@ -1,0 +1,50 @@
+# example script for fitting the pCap and abundance models (now in separate STAN files)
+# 12-19-2024
+
+# uncomment these if you need to
+#remotes::install_github("SRJPE/SRJPEdata")
+#remotes::install_github("SRJPE/SRJPEmodel")
+library(rstan)
+library(tidyverse)
+library(SRJPEmodel)
+library(SRJPEdata)
+
+# run pCap general model --------------------------------------------------
+
+# prepare pCap inputs
+# this function now automatically calls on SRJPEdata for weekly catch and efficiency
+pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
+
+# fit pCap model
+pCap <- fit_pCap_model(pCap_inputs$inputs)
+
+# save fit
+pCap_filepath <- "~/Downloads/pCap_model.rds"
+# saveRDS(pCap, pCap_filepath)
+
+# if you've already fit pCap for data including VA streams, just read it in here
+# pCap <- readRDS(pCap_filepath)
+
+# prepare abundance inputs
+site <- "ubc"
+run_year <- 2018
+abundance_inputs <- prepare_abundance_inputs(input_catch_data = SRJPEdata::weekly_juvenile_abundance_catch_data,
+                                             input_efficiency_data = SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+                                             site = site, run_year = run_year, effort_adjust = T)
+
+# generate lt_pCap_Us from pCap model
+lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
+
+# fit abundance BUGS model
+bugs_abundance_filepath <- "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug"
+bugs_directory <- here::here("data-raw", "WinBUGS14")
+
+# TODO add argument for debugging mode
+abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+                                      bugs_abundance_filepath,
+                                      bugs_directory)
+
+# helpful plotting functions
+plot_juv_data("ubc", 2018) # raw data
+
+
