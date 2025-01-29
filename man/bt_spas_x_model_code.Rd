@@ -7,10 +7,9 @@
 \format{
 A named list with 4 elements:
 \itemize{
-\item \code{all_mark_recap}: TODO
-\item \code{missing_mark_recap}:
-\item \code{no_mark_recap}:
-\item \code{no_mark_recap_no_trib}:
+\item \code{pCap_all}: pCap model code
+\item \code{abundance}: abundance model code (STAN)
+\item \code{abundance_BUGS}: abundance model code (BUGS)
 }
 }
 \usage{

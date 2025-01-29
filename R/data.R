@@ -29,8 +29,3 @@
 #' @description A character string containing the STAN model code for the Passage to Spawner submodel.
 'p2s_model_code'
 
-#' @title Stock recruit model code
-#' @name survival_model_code
-#' @description A character string containing the STAN model code for the stock recruit submodel.
-'survival_model_code'
-
