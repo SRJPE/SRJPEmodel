@@ -77,9 +77,8 @@
 #' @title Survival model code
 #' @name survival_model_code
 #' @description A nested named list containing model code for versions of the survival models.
-#' @format A named list with 3 elements:
+#' @format A named list with 2 elements:
 #' \itemize{
-#'   \item \code{survival_CovIndWY}: TODO
 #'   \item \code{survival_CovWY}:
 #'   \item \code{survival_NoCov}:
 #'   }
