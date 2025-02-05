@@ -29,6 +29,11 @@ usethis::use_data(p2s_model_code, overwrite = T)
 
 
 # survival ----------------------------------------------------------------
+survival_CovIndWY <- readr::read_file(here::here("model_files", "survival_CovIndWY.stan"))
+survival_CovWY <- readr::read_file(here::here("model_files", "survival_CovWY.stan"))
+survival_NoCov <- readr::read_file(here::here("model_files", "survival_NoCov.stan"))
 
-survival_model_code <- readr::read_file(here::here("model_files", "survival_model_STAN.stan"))
+survival_model_code <- list(survival_CovIndWY = survival_CovIndWY,
+                            survival_CovWY = survival_CovWY,
+                            survival_NoCov = survival_NoCov)
 usethis::use_data(survival_model_code, overwrite = T)

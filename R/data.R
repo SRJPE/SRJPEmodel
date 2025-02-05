@@ -74,8 +74,14 @@
 #' @description A character string containing the STAN model code for the Passage to Spawner submodel.
 'p2s_model_code'
 
-#' @title Passage to Spawner model code
+#' @title Survival model code
 #' @name survival_model_code
-#' @description A character string containing the STAN model code for the juvenile outmigration survival submodel.
+#' @description A nested named list containing model code for versions of the survival models.
+#' @format A named list with 3 elements:
+#' \itemize{
+#'   \item \code{survival_CovIndWY}: TODO
+#'   \item \code{survival_CovWY}:
+#'   \item \code{survival_NoCov}:
+#'   }
 'survival_model_code'
 
