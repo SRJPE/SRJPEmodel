@@ -3,13 +3,31 @@
 # options(mc.cores = parallel::detectCores())
 # rstan_options(auto_write = TRUE)
 
-#' Call Survival Model
-#' @details TODO
-#' @param survival_model_data
+#' Prepare inputs for survival model
+#' @details Runs the survival model for both Sacramento releases and Feather/Butte releases.
 #' @returns TODO
 #' @export
 #' @md
-run_survival_model <- function(survival_model_data, number_detection_locations, number_reaches) {
+prepare_survival_inputs <- function(){
+
+  data <- SRJPEdata::survival_model_inputs |>
+    glimpse()
+
+  # create a sorted sac
+  # created a sorted
+
+}
+
+#' Call Survival Model
+#' @details TODO
+#' @param use_covariate either `TRUE` or `FALSE`. If `TRUE`, will call a version of the survival
+#' model that fits a covariate effect (water year type). If `FALSE`, it will call a version of the survival model
+#' with no covariate effect.
+#' @returns TODO
+#' @export
+#' @md
+run_survival_model <- function(use_covariate) {
+  # function(survival_model_data, number_detection_locations, number_reaches) {
 
   # TODO confirm CovWY3_Reach model is the best fitting model (the one we want to use)
   model_name <- "survival_model_STAN" # "CovWY3_Reach" reach-specific 3 water year type covariate effect effect on survival (C, D/BN, W)
