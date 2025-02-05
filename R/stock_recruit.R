@@ -2,11 +2,13 @@
 #' @details This function prepares data for input into a stock recruit model.
 #' @param adult_data_type the type of survey the adult data came from. Either `upstream_estimate`,
 #' `redd_count`, `holding_count`, or `carcass_estimate`.
-#' @site The RST site from which you want to use juvenile abundance estimates.
+#' @site The stream for which you are fitting the model.
 #' @covariate The covariate you would like to use to fit the model. Either `gdd_spawn`,
 #' `above_13_temp_day`, `above_13_temp_week`, `weekly_max_temp_max`, `weekly_max_temp_mean`, `weekly_max_temp_median`,
 #' `mean_flow`, `max_flow`, `min_flow`, `median_flow`, or `null`
-#' @covariate_lifestage The corresponding lifestage for the covariate: either `spawning and incubation` or `rearing`.
+#' @truncate_dataset either `TRUE` or `FALSE`. If `TRUE`, will filter the dataset to only include years where
+#' there are data for ALL covariates. If `FALSE`, will filter the dataset to include years where there are data
+#' for YOUR SELECTED covariate.
 #' @returns a list of tables:
 #' * **stock_recruit_table** juvenile abundance and adult abundance by brood year.
 #' * **full_covariate_table** full table of covariates associated with the site, stream, and brood years in the stock recruit table
@@ -41,10 +43,12 @@ prepare_stock_recruit_inputs <- function(year, stream, adult_data_type,
     glimpse()
 
   data_with_adult_juv_and_covars <- full_join(adult_data_and_covariates, juv) |>
+    mutate(null_covar = 0) |>
     # TODO filter by adult data type
     glimpse()
 
   # TODO now filter by covariate args according to josh's code
+  # TODO truncate dataset (if we want)
   # TODO produce data and inits
 
 }
