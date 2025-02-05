@@ -13,102 +13,39 @@
 #' * **truncated_covariate_table** table of covariates limited to only those years where all covariates are available (for covariate comparison analyses)
 #' @export
 #' @md
-prepare_stock_recruit_inputs <- function(adult_data_type, site, covariate,
-                                         covariate_lifestage) {
+prepare_stock_recruit_inputs <- function(year, stream, adult_data_type,
+                                         covariate, truncate_dataset = FALSE) {
 
-  adult_stream <- SRJPEdata::site_lookup |>
-    filter(site == !!site) |>
-    distinct(stream) |>
-    pull()
+  years_filter <- SRJPEdata::stock_recruit_year_lookup |>
+    mutate(have_both_data = ifelse(adult & rst, TRUE, FALSE)) |>
+    filter(have_both_data) |>
+    distinct(brood_year, run_year, stream, site) |>
+    filter(stream == !!stream)
 
-  minimum_brood_year <- 2001 # TODO confirm purpose of this with josh
-  all_covariate_options <- c("si_gdd_spawn", "si_above_13_temp_day", "si_above_13_temp_week",
-                             "si_weekly_max_temp_max", "si_weekly_max_temp_mean", "si_weekly_max_temp_median",
-                             "si_mean_flow", "si_max_flow", "si_min_flow", "si_median_flow",
-                             "rr_mean_flow", "rr_max_flow", "rr_min_flow", "rr_median_flow")
+  adult_data_and_covariates <- SRJPEdata::stock_recruit_model_inputs |>
+    ungroup() |>
+    rename(brood_year = year) |>
+    right_join(years_filter, by = c("brood_year", "stream")) |>
+    glimpse()
 
-  # adult data
-  adult_data <- SRJPEdata::observed_adult_input |>
-    filter(stream == adult_stream,
-           data_type == adult_data_type) |>
-    rename(adult_year = year,
-           adult_count = count,
-           adult_data_type = data_type)
-
-  # juvenile abundance estimates
-  # TODO build out workflow for pulling total abundance fits
-  # TODO this should be after PLAD application
-  juvenile_data <- readRDS("~/Downloads/all_JPE_sites_clean.rds") |>
-    filter(parameter == "Ntot",
-           is.na(error)) |>
-    mutate(parameter = "total_abundance") |>
+  # TODO pull from model storage
+  juv <- readRDS("~/Downloads/all_JPE_sites_clean.rds") |>
+    mutate(brood_year = run_year - 1) |>
     pivot_wider(names_from = "statistic",
                 values_from = "value") |>
-    filter(site == site) |>
-    select(-c(model_name, week_fit, location_fit, srjpedata_version, error,
-              Rhat)) |>
-    mutate(adult_year = run_year - 1) |>
-    left_join(SRJPEdata::site_lookup |>
-                select(site, stream) |>
-                distinct(site, stream))
-
-  combined_data <- full_join(juvenile_data, adult_data,
-                             by = c("stream", "adult_year")) |>
-    mutate(both_have_data = ifelse(!is.na(`50`) & !is.na(adult_count), TRUE, FALSE),
-           # TODO check calculation of mean and cv of juvenile abundance based on PLAD output
+    filter(parameter == "Ntot") |>
+    mutate(mean_juvenile_abundance = mean,
            cv_juvenile_abundance = sd/mean) |>
-    filter(both_have_data) |>
-    select(-both_have_data) |>
-    rename(brood_year = adult_year) |>
-    select(brood_year, adult_count, mean_juvenile_abundance = mean,
-           cv_juvenile_abundance)
+    select(brood_year, site, mean_juvenile_abundance, cv_juvenile_abundance) |>
+    right_join(years_filter, by = c("brood_year", "site")) |>
+    glimpse()
 
-  # TODO Confirm that covariates are summarized at stream level? if not, we will have to
-  # get a site lookup??
-  # TODO stop here - causing lists for non-distinct values. need to figure out how to match
-  # covariates with stock recruit table
-  covariates <- SRJPEdata::stock_recruit_covariates |>
-    ungroup() |>
-    filter(stream == adult_stream, #TODO do we filter to site too, esp for feather?
-           # TODO confirm year in covariate table is a brood year
-           year %in% combined_data$brood_year,
-           year >= minimum_brood_year,
-           # TODO fix -Inf values in table
-           is.finite(value)) |>
-    suppressWarnings() |>
-    mutate(variable = ifelse(lifestage == "spawning and incubation", "si", "rr"),
-           variable = paste(variable, covariate_structure, sep = "_")) |>
-    select(year, variable, value) |>
-    pivot_wider(names_from = variable,
-                values_from = value) |>
-    mutate(null = "0") |>
-    pivot_longer(-year,
-                 values_to = "value",
-                 names_to = "variable")
+  data_with_adult_juv_and_covars <- full_join(adult_data_and_covariates, juv) |>
+    # TODO filter by adult data type
+    glimpse()
 
-  truncated_covariates <- covariates |>
-    distinct(year, variable, value) |>
-    pivot_wider(names_from = variable,
-                values_from = value) |>
-    # truncate
-    drop_na(all_of(all_covariate_options)) |>
-    pivot_longer(-year,
-                 names_to = "variable",
-                 values_to = "value")
-
-  # data tables
-
-  return(list("stock_recruit_table" = combined_data,
-              "full_covariate_table" = covariates,
-              "truncated_covariate_table" = truncated_covariates))
-
-  # now prep data inputs based on what model you want to run
-  if(covariate == "null") {
-    covariate_filter <- "null"
-  } else {
-    ls <- ifelse(covariate_lifestage == "spawning and incubation", "si", "rr")
-    covariate_filter <- paste(ls, covariate, sep = "_")
-  }
+  # TODO now filter by covariate args according to josh's code
+  # TODO produce data and inits
 
 }
 
