@@ -3,14 +3,18 @@
 \docType{data}
 \name{survival_model_code}
 \alias{survival_model_code}
-\title{Passage to Spawner model code}
+\title{Survival model code}
 \format{
-An object of class \code{character} of length 1.
+A named list with 2 elements:
+\itemize{
+\item \code{survival_CovWY}:
+\item \code{survival_NoCov}:
+}
 }
 \usage{
 survival_model_code
 }
 \description{
-A character string containing the STAN model code for the juvenile outmigration survival submodel.
+A nested named list containing model code for versions of the survival models.
 }
 \keyword{datasets}

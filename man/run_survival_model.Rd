@@ -4,11 +4,7 @@
 \alias{run_survival_model}
 \title{Call Survival Model}
 \usage{
-run_survival_model(
-  survival_model_data,
-  number_detection_locations,
-  number_reaches
-)
+run_survival_model(use_covariate)
 }
 \value{
 TODO
