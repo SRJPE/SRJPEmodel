@@ -24,7 +24,7 @@ A table containing the following variables:
 }
 }
 \description{
-This function fits the Passage to Spawner (\code{run_passage_to_spawner_model()}) for a given stream to all
+This function fits the Passage to Spawner (\code{fit_passage_to_spawner_model()}) for a given stream to all
 environmental covariates. For a stream, the dataset is truncated to only include years for which all environmental
 covariates are available. Parameters that are helpful for selecting a covariate are: \code{R2_data}, \code{R2_fixed}, \code{mean_redds_per_spawner},
 \code{b1_survival}, \code{sigma_redds_per_spawner}, and \code{spawner_abundance_forecast}.
@@ -32,6 +32,6 @@ covariates are available. Parameters that are helpful for selecting a covariate 
 \seealso{
 Other passage_to_spawner: 
 \code{\link{extract_P2S_estimates}()},
-\code{\link{run_passage_to_spawner_model}()}
+\code{\link{fit_passage_to_spawner_model}()}
 }
 \concept{passage_to_spawner}

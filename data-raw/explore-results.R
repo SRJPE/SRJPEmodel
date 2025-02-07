@@ -29,7 +29,7 @@ generate_diagnostic_plot("ubc", 2018, abundance_table)
 # passage to spawner ------------------------------------------------------
 
 P2S_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
-P2S_results <- run_passage_to_spawner_model(P2S_inputs)
+P2S_results <- fit_passage_to_spawner_model(P2S_inputs)
 P2S_spawners <- extract_P2S_estimates(P2S_results)
 
 P2S_spawners |>
