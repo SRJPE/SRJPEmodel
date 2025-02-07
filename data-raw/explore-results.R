@@ -23,7 +23,8 @@ abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
 
 abundance_table <- extract_abundance_estimates("ubc", 2018, abundance_inputs, abundance)
 
-generate_diagnostic_plot("ubc", 2018, abundance_table)
+plot_juv_data("ubc", 2018)
+generate_diagnostic_plot_juv("ubc", 2018, abundance_table)
 
 
 # passage to spawner ------------------------------------------------------
