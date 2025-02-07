@@ -4,23 +4,27 @@
 \alias{prepare_survival_inputs}
 \title{Prepare inputs for survival model}
 \usage{
-prepare_survival_inputs(use_covariate, number_of_water_year_types, effect)
+prepare_survival_inputs(number_of_water_year_types = NULL, effect = NULL)
 }
 \arguments{
-\item{use_covariate}{either \code{TRUE} or \code{FALSE}. If \code{TRUE}, will call a version of the survival
-model that fits a covariate effect (water year type). If \code{FALSE}, it will call a version of the survival model
-with no covariate effect.}
+\item{number_of_water_year_types}{either \code{2}, \code{3}, or leave empty. If empty, the function will call a
+version of the survival with no covariate effect.}
 
-\item{number_of_water_year_types}{either \code{2} or \code{3}}
-
-\item{effect}{one of \code{no_size_effect}, \code{size_effect}, \code{fork_length_effect}, \code{weight_effect}, \code{condition},}
+\item{effect}{one of \code{no_biological_effect}, \code{fork_length_effect}, \code{weight_effect}, or \code{condition}.
+If supplying an effect, you must supply an argument for \code{number_of_water_year_types}}
 }
 \value{
-TODO
+a named list containing the inputs to the \code{run_survival_model()} function:
+\itemize{
+\item \strong{data_inputs} a named list of data inputs for passing to the STAN model.
+\item \strong{inits} a list of initial values for passing to the STAN model.
+\item \strong{parameters} a vector of parameter names to save from calling the STAN model.
+}
 }
 \description{
 Prepare inputs for survival model
 }
 \details{
-Runs the survival model for both Sacramento releases and Feather/Butte releases.
+This function prepares the data, initial values, and parameter list needed to call the
+survival STAN model. It will prepare these data based on what model you want to run.
 }
