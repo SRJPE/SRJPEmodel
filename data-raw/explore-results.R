@@ -43,7 +43,7 @@ P2S_spawners |>
 # survival model ----------------------------------------------------------
 
 # explore results for survival model
-survival_results <- run_survival_model(SRJPEdata::survival_model_inputs,
-                                       number_detection_locations = 5,
-                                       number_reaches = 4)
+survival_inputs <- prepare_survival_inputs(number_of_water_year_types = 2,
+                                           effect = "condition")
+survival_results <- fit_survival_model(survival_inputs)
 
