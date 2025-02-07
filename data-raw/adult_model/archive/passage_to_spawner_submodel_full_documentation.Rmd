@@ -1,12 +1,12 @@
 ---
 title: "Passage to Spawner Submodel Full documentation"
 # output: html_document # to see tabset
-output:
-  html_document:
-  code_folding: hide
+# output:
+#   html_document:
+#   code_folding: hide
 theme: flatly
 # output: rmarkdown::html_vignette
-# output: rmarkdown::word_document
+output: rmarkdown::word_document
 author:
   - Liz Stebbins, Ashley Vizek, Erin Cain, Josh Korman
 ---
@@ -32,10 +32,15 @@ library(SRJPEmodel)
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 observed_adult_input <- SRJPEdata::observed_adult_input
-adult_model_covariates <- SRJPEdata::adult_model_covariates_standard
+adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 
-observed_adult_input_wide <- observed_adult_input |>
-  pivot_wider(id_cols = c("year", "stream"), names_from = data_type, values_from = count)
+observed_adult_input_wide <- observed_adult_input |> 
+  select(-reach) |> # empty
+  group_by(year, stream, data_type) |> 
+  summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
+  ungroup() |> 
+  pivot_wider(id_cols = c("year", "stream"), 
+              names_from = data_type, values_from = count)
 
 P2S_model_fits <- SRJPEmodel::P2S_model_fits |>
   mutate(lcl = round(`2.5%`, 3), ucl = round(`97.5%`, 3)) |>
@@ -117,7 +122,7 @@ observed_adult_input_with_prespawn_survival |>
 
 As preliminary analyses, we examined the relationship between `prespawn survival` and several potential environmental covariates:
 
-  * maximum flow over migratory (March-May) and holding (May-August) periods
+* maximum flow over migratory (March-May) and holding (May-August) periods
 * temperature - growing degree days over 20 degrees C from March-August in the Sacramento River and tributaries
 * median upstream passage timing (week)
 * water year type (wet or dry)
@@ -210,7 +215,7 @@ The STAN model is a mixed-effects model and as such is expected to produce predi
 To run the model, load the necessary data from `SRJPEdata`:
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 observed_adult_input <- SRJPEdata::observed_adult_input
-adult_model_covariates <- SRJPEdata::adult_model_covariates_standard
+adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 ```
 
 Then run the model for each stream and selected covariate:
@@ -327,9 +332,7 @@ Across all streams, water year type showed the most error in forecasting ability
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 predicted_vs_observed_spawner_counts <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawner")) |>
-  mutate(year_index = readr::parse_number(par_names)) |>
-  left_join(years_modeled, by = c("stream", "year_index")) |>
-  rename(pred_spawner_count = mean) |>
+  rename(pred_spawner_count = mean) |> 
   left_join(observed_adult_input_wide |>
               mutate(obsv_spawner_count = ifelse(stream == "deer creek", holding_count, redd_count)) |>
               select(obsv_spawner_count, year, stream),
@@ -449,12 +452,10 @@ After modeling, the stock-recruit model will be fed a table of spawner counts by
 all_data_sources <- P2S_model_fits |>
   filter(str_detect(par_names, "predicted_spawner")) |>
   arrange(stream) |>
-  mutate(year_index = readr::parse_number(par_names),
-         data_type = "P2S spawners estimates",
+  mutate(data_type = "P2S spawners estimates",
          ucl = `97.5%`,
          lcl = `2.5%`,
          adult_count = `50%`) |>
-  left_join(years_modeled, by = c("year_index", "stream")) |>
   bind_rows(observed_adult_input_wide |>
               filter(stream %in% c("yuba river", "butte creek", "feather river")) |>
               mutate(adult_count = ifelse(stream == "yuba river", upstream_estimate, carcass_estimate),
@@ -470,7 +471,7 @@ all_data_sources |>
   theme_minimal() +
   xlab("Year") + ylab("Spawner Count") +
   ggtitle("Spawner Counts by Method") +
-  scale_color_manual("Covariate type", values = wes_palette("GrandBudapest1")) +
+  scale_color_manual("Data type", values = wes_palette("GrandBudapest1")) +
   theme(plot.title = element_text(hjust = 0.5, size = 15),
         legend.position = "bottom",
         strip.text = element_text(size = 12),
@@ -706,7 +707,6 @@ P2S_model_fits |>
            str_detect(par_names, "conversion_rate")) |>
   mutate(par_name = ifelse(str_detect(par_names, "log_redds_per_spawner"), "log_rps", "conversion_rate"),
          year_index = readr::parse_number(par_names)) |>
-  left_join(years_modeled, by = c("year_index", "stream")) |>
   mutate(stream = str_to_title(stream)) |>
   ggplot(aes(x = year, y = mean, color = par_name)) +
   geom_point() +
@@ -838,7 +838,7 @@ Bayesian convergence plots
 
 ### Battle
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
 # https://mc-stan.org/bayesplot/articles/visual-mcmc-diagnostics.html
 # https://cran.r-project.org/web/packages/rstan/vignettes/stanfit-objects.html
 # https://cran.r-project.org/web/packages/bayesplot/vignettes/plotting-mcmc-draws.html
@@ -855,7 +855,7 @@ mcmc_rhat(rhat(battle_P2S_results$full_object))
 
 ### Clear
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
 clear_P2S_results <- SRJPEmodel::clear_P2S_results
 
 mcmc_pairs(clear_P2S_results$full_object, pars = c("b1_survival", "mean_redds_per_spawner"))
@@ -866,7 +866,7 @@ mcmc_rhat(rhat(clear_P2S_results$full_object))
 
 ### Deer
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
 deer_P2S_results <- SRJPEmodel::deer_P2S_results
 
 mcmc_pairs(deer_P2S_results$full_object, pars = c("b1_survival", "mean_redds_per_spawner"))
@@ -878,7 +878,7 @@ mcmc_rhat(rhat(deer_P2S_results$full_object))
 ### Mill
 TODO this is not looking good
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = FALSE, eval = FALSE}
 mill_P2S_results <- SRJPEmodel::mill_P2S_results
 
 mcmc_pairs(mill_P2S_results$full_object, pars = c("b1_survival", "mean_redds_per_spawner"))
