@@ -44,7 +44,6 @@ P2S_spawners |>
 # survival model ----------------------------------------------------------
 
 # explore results for survival model
-survival_inputs <- prepare_survival_inputs(number_of_water_year_types = 2,
-                                           effect = "condition")
+survival_inputs <- prepare_survival_inputs()
 survival_results <- fit_survival_model(survival_inputs)
 

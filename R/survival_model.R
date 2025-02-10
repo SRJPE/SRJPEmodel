@@ -20,6 +20,13 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     cli::cli_abort("You must specify a number of water year types if you are supplying a biological effect.")
   }
 
+  null_effect = ifelse(is.null(effect), TRUE, FALSE)
+
+  if(is.null(effect)) {
+    effect <- "no_biological_effect"
+    cli::cli_bullets("No biological effect was supplied, running the no biological effect model")
+  }
+
   # TODO replace with updated SRJPEdata
   # TODO ensure these are sorted, standardized, etc. per PrepData_flora.R
   sac_data <- read.csv(here("data-raw", "survival_model", "Sac_data.csv"),  stringsAsFactors = F)
@@ -28,14 +35,11 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
   sac_data_list <- get_survival_data_list("sacramento", sac_data, fb_data)
   fb_data_list <- get_survival_data_list("feather_butte", sac_data, fb_data)
 
-  use_covariate <- ifelse(is.null(number_of_water_year_types) & is.null(effect), FALSE, TRUE)
+  if(is.null(number_of_water_year_types) & null_effect) {
 
-  if(!use_covariate) {
-
-    parameters <- c("P_b", "muPb", "sdPb", "S_bReach", "S_bTrib", "S_bCov", "S_bCovT", "S_bSz",
-                    "RE_sd", "RE_sdT", "S_RE","S_REt", "pred_surv", "SurvRelSac", "SurvWoodSac",
-                    "SurvForecast", "SurvRelSacSz", "SurvWoodSacSz", "SurvForecastSz", "pred_pcap",
-                    "pred_survT", "pred_survTSz", "TribSurvForecast", "TribSurvForecastSz")
+    parameters <- c("P_b", "muPb", "sdPb", "S_bReach", "S_bTrib", "RE_sd",
+                    "RE_sdT", "S_RE", "S_REt", "pred_surv", "SurvRelSac", "SurvWoodSac",
+                    "SurvForecast", "pred_pcap", "pred_survT", "TribSurvForecast")
 
 
     inits <- list(P_b = matrix(data = 2.2,
@@ -93,10 +97,6 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     # set effect-specific variables
 
     # if no effect supplied, run no_biological_effect
-    if(is.null(effect)) {
-      effect <- "no_biological_effect"
-      cli::cli_bullets("No biological effect was supplied, running the no biological effect model")
-    }
 
     if (effect == "no_biological_effect") {
 
@@ -165,7 +165,7 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                      CovXT = CovXT,
 
                      # variables set based on effect
-                     UseSizeEffect = ifelse(effect == "no_size_effect", 0, 1),
+                     UseSizeEffect = ifelse(effect == "no_biological_effect", 0, 1),
                      NS_bCov = NS_bCov,
                      Sz = Sz,
                      SzT = SzT,
@@ -174,6 +174,7 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                      # feather/butte-specific variables
                      NindT = fb_data_list$n_ind,
                      NrgT = fb_data_list$n_release_groups,
+                     Ntribs = fb_data_list$n_tribs,
                      trib_ind = fb_data_list$trib_ind,
                      firstCapT = fb_data_list$first_capture,
                      lastCapT = fb_data_list$last_capture,
@@ -181,7 +182,7 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                      yrindT = fb_data_list$year_index,
                      rgindT = fb_data_list$release_group_index,
                      CHT = fb_data_list$capture_history,
-                     trib_rg = fb_data_list$rib_rg,
+                     trib_rg = fb_data_list$trib_rg,
 
                      # hard-coded variables
                      Nsz = 25, # number of size classes to plot size effect over
@@ -233,8 +234,9 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
       unname()
 
     # specific to feather/butte
-    trib_ind = NULL
-    trib_index_for_release_groups = NULL
+    n_tribs <- NULL
+    trib_ind <- NULL
+    trib_index_for_release_groups <- NULL
 
   } else {
     # Upper Butte 2019 does not have weight information so use average values across all release group instead.
@@ -294,6 +296,7 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 
   # prep the full list
   data_list <- list(n_ind = nrow(data),
+                    n_tribs = n_tribs,
                     n_reaches = n_reaches,
                     n_detection_locations = n_detection_locations,
                     n_size_classes = 25, # of size classes to plot size effect over
@@ -345,7 +348,7 @@ fit_survival_model <- function(survival_inputs) {
                      chains = 3,
                      iter = 2000,
                      include = T,
-                     pars = parameters,
+                     pars = survival_inputs$parameters,
                      seed=1234)
   cli::cli_process_done("STAN survival model fitting complete")
 
