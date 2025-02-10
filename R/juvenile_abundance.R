@@ -308,27 +308,36 @@ prepare_abundance_inputs <- function(site, run_year,
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
+
+    # prepare "mark recapture" dataset - all mark-recap trials in the system
+    mark_recapture_data <- input_efficiency_data |>
+      # grab standardized_flow
+      left_join(input_catch_data |>
+                  select(year, week, stream, site, run_year, standardized_flow),
+                by = c("year", "week", "run_year", "stream", "site")) |>
+      # or do we want to filter just no number released?
+      dplyr::filter(!site %in% remove_sites &
+                      !is.na(standardized_flow),
+                    !is.na(number_released) &
+                      !is.na(number_recaptured)) |>
+      # right now there's lifestage in the dataset, so we have to do distinct()
+      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+
   } else {
-    remove_sites <- input_efficiency_data |>
-      filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
-      distinct(site) |>
-      pull(site)
+    # prepare "mark recapture" dataset but filter to only the mainstem site
+    mark_recapture_data <- input_efficiency_data |>
+      # grab standardized_flow
+      left_join(input_catch_data |>
+                  select(year, week, stream, site, run_year, standardized_flow),
+                by = c("year", "week", "run_year", "stream", "site")) |>
+      # or do we want to filter just no number released?
+      dplyr::filter(site == !!site &
+                      !is.na(standardized_flow),
+                    !is.na(number_released) &
+                      !is.na(number_recaptured)) |>
+      # right now there's lifestage in the dataset, so we have to do distinct()
+      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
   }
-
-  # prepare "mark recapture" dataset - all mark-recap trials in the system
-  mark_recapture_data <- input_efficiency_data |>
-    # grab standardized_flow
-    left_join(input_catch_data |>
-                select(year, week, stream, site, run_year, standardized_flow),
-              by = c("year", "week", "run_year", "stream", "site")) |>
-    # or do we want to filter just no number released?
-    dplyr::filter(!site %in% remove_sites &
-                    !is.na(standardized_flow),
-                  !is.na(number_released) &
-                    !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
-
 
 
   # bring together efficiency and catch data so that we can get the indices of
@@ -583,85 +592,167 @@ fit_pCap_model <- function(input,
 #' @md
 generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
-  # set up objects
-  ModelName <- abundance_inputs$model_name
-  Nstrata <- abundance_inputs$inputs$data$Nstrata
-  catch_flow <- abundance_inputs$lt_pCap_U_data$catch_flow
-  use_trib <- abundance_inputs$lt_pCap_U_data$use_trib
-  Nwmr <- abundance_inputs$lt_pCap_U_data$Nwmr
-  Nwomr <- abundance_inputs$lt_pCap_U_data$Nwomr
-  Uind_wMR <- abundance_inputs$lt_pCap_U_data$Uind_wMR
-  Uind_woMR <- abundance_inputs$lt_pCap_U_data$Uind_woMR
-  ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
+  # if mainstem
+  if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale"))) {
 
-  # extract from pCap model fit object
+    # set up objects
+    ModelName <- abundance_inputs$model_name
+    Nstrata <- abundance_inputs$inputs$data$Nstrata
+    catch_flow <- abundance_inputs$lt_pCap_U_data$catch_flow
+    use_trib <- abundance_inputs$lt_pCap_U_data$use_trib
+    Nwmr <- abundance_inputs$lt_pCap_U_data$Nwmr
+    Nwomr <- abundance_inputs$lt_pCap_U_data$Nwomr
+    Uind_wMR <- abundance_inputs$lt_pCap_U_data$Uind_wMR
+    Uind_woMR <- abundance_inputs$lt_pCap_U_data$Uind_woMR
+    ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
 
-  samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                                           "flow_mu_P", "flow_sd_P"),
-                            permuted = TRUE)
-  Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
-  logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
-  b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
-  b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
-  pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
-  trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
-  trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
-  flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
-  flow_sd_P <- samples$flow_sd_P # flow_sd_P[1:Ntrials] #hyper sd for b_flow
+    # extract from pCap model fit object
 
-  # calculations
-  lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
-  sim_pro_dev=vector(length=Ntrials)
-  lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
-  lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+    samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P",
+                                                          "flow_mu_P", "flow_sd_P"),
+                              permuted = TRUE)
+    Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
+    logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
+    b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
+    b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
+    pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+    flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
+    flow_sd_P <- samples$flow_sd_P # flow_sd_P[1:Ntrials] #hyper sd for b_flow
 
-  if(ModelName=="all_mark_recap" ){
+    # calculations
+    lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
+    sim_pro_dev=vector(length=Ntrials)
+    lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
+    lt_pCap_sd=lt_pCap_mu                        #function needs to return this
 
+    if(ModelName=="all_mark_recap" ){
+
+      for(i in 1:Nstrata){
+        lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
+      }
+
+    } else if (ModelName=="missing_mark_recap"){
+
+      for(i in 1:Nwmr){
+        #Assign estimated pCaps for strata with efficiency data
+        lt_pCap_U[,Uind_wMR[i]] = logit_pCap[,ind_pCap[i]];
+      }
+      for (i in 1:Nwomr) {
+        #for weeks without efficiency trials
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+      }
+
+    } else if (ModelName=="no_mark_recap"){
+
+      for (i in 1:Nwomr) {
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+      }
+
+    } else if (ModelName=="no_mark_recap_no_trib"){
+
+      logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
+      for(itrial in 1:Ntrials){
+        logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
+        logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
+      }
+
+      for (i in 1:Nwomr) {
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];
+      }
+
+    }#end if on ModelName
+
+
+    #Calculate mean and sd for each lt_pCap_U and return these from function
     for(i in 1:Nstrata){
-      lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
+      lt_pCap_mu[i,]=mean(lt_pCap_U[,i])
+      lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
+      # lt_pCap_mu[,i]=mean(lt_pCap_U[i])
+      # lt_pCap_sd[,i]=sd(lt_pCap_U[i])
     }
 
-  } else if (ModelName=="missing_mark_recap"){
+  } else {
+    # set up objects
+    ModelName <- abundance_inputs$model_name
+    Nstrata <- abundance_inputs$inputs$data$Nstrata
+    catch_flow <- abundance_inputs$lt_pCap_U_data$catch_flow
+    use_trib <- abundance_inputs$lt_pCap_U_data$use_trib
+    Nwmr <- abundance_inputs$lt_pCap_U_data$Nwmr
+    Nwomr <- abundance_inputs$lt_pCap_U_data$Nwomr
+    Uind_wMR <- abundance_inputs$lt_pCap_U_data$Uind_wMR
+    Uind_woMR <- abundance_inputs$lt_pCap_U_data$Uind_woMR
+    ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
 
-    for(i in 1:Nwmr){
-      #Assign estimated pCaps for strata with efficiency data
-      lt_pCap_U[,Uind_wMR[i]] = logit_pCap[,ind_pCap[i]];
+    # extract from pCap model fit object
+
+    samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+                                                          "flow_mu_P", "flow_sd_P"),
+                              permuted = TRUE)
+    Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
+    logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
+    b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
+    b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
+    pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+    trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
+    trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
+    flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
+    flow_sd_P <- samples$flow_sd_P # flow_sd_P[1:Ntrials] #hyper sd for b_flow
+
+    # calculations
+    lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
+    sim_pro_dev=vector(length=Ntrials)
+    lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
+    lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+
+    if(ModelName=="all_mark_recap" ){
+
+      for(i in 1:Nstrata){
+        lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
+      }
+
+    } else if (ModelName=="missing_mark_recap"){
+
+      for(i in 1:Nwmr){
+        #Assign estimated pCaps for strata with efficiency data
+        lt_pCap_U[,Uind_wMR[i]] = logit_pCap[,ind_pCap[i]];
+      }
+      for (i in 1:Nwomr) {
+        #for weeks without efficiency trials
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+      }
+
+    } else if (ModelName=="no_mark_recap"){
+
+      for (i in 1:Nwomr) {
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+      }
+
+    } else if (ModelName=="no_mark_recap_no_trib"){
+
+      logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
+      for(itrial in 1:Ntrials){
+        logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
+        logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
+      }
+
+      for (i in 1:Nwomr) {
+        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];
+      }
+
+    }#end if on ModelName
+
+
+    #Calculate mean and sd for each lt_pCap_U and return these from function
+    for(i in 1:Nstrata){
+      lt_pCap_mu[i,]=mean(lt_pCap_U[,i])
+      lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
     }
-    for (i in 1:Nwomr) {
-      #for weeks without efficiency trials
-      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-      lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
-    }
-
-  } else if (ModelName=="no_mark_recap"){
-
-    for (i in 1:Nwomr) {
-      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
-      lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
-    }
-
-  } else if (ModelName=="no_mark_recap_no_trib"){
-
-    logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
-    for(itrial in 1:Ntrials){
-      logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
-      logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
-    }
-
-    for (i in 1:Nwomr) {
-      for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
-      lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];
-    }
-
-  }#end if on ModelName
-
-
-  #Calculate mean and sd for each lt_pCap_U and return these from function
-  for(i in 1:Nstrata){
-    lt_pCap_mu[i,]=mean(lt_pCap_U[,i])
-    lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
-    # lt_pCap_mu[,i]=mean(lt_pCap_U[i])
-    # lt_pCap_sd[,i]=sd(lt_pCap_U[i])
   }
 
   return(list("lt_pCap_mu" = lt_pCap_mu |> rowMeans(),
