@@ -8,6 +8,7 @@
 # pCap_no_mark_recap <- readr::read_file(here::here("model_files", "pCap_no_mark_recap.stan"))
 # pCap_no_mark_recap_no_trib <- readr::read_file(here::here("model_files", "pCap_no_mark_recap_no_trib.stan"))
 pCap_all <- readr::read_file(here::here("model_files", "pCap_all.stan"))
+pCap_mainstem <- readr::read_file(here::here("model_files", "pCap_mainstem.stan"))
 abundance <- readr::read_file(here::here("model_files", "abundance_model.stan"))
 abundance_BUGS <- readr::read_file(here::here("model_files", "abundance_model.bug"))
 
@@ -16,6 +17,7 @@ bt_spas_x_model_code <- list(#pCap_all_mark_recap = pCap_all_mark_recap,
                              #pCap_no_mark_recap = pCap_no_mark_recap,
                              #pCap_no_mark_recap_no_trib = pCap_no_mark_recap_no_trib,
                              pCap_all = pCap_all,
+                             pCap_mainstem = pCap_mainstem,
                              abundance = abundance,
                              abundance_BUGS = abundance_BUGS)
 

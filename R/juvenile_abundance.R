@@ -3,6 +3,8 @@
 #' @param mainstem Whether or not you want to evaluate efficiency trials for a mainstem site
 #' (`knights landing`, `tisdale`, and `red bluff diversion dam`) or for a tributary site. If `FALSE`,
 #' the mark recapture dataset will be filtered to exclude those mainstem sites.
+#' @param mainstem_site If you are fitting the model with `mainstem == TRUE`, you must supply a
+#' mainstem site for which to prepare inputs. Can be either `knights landing` or `tisdale`.
 #' @param input_catch_data Optional argument for weekly catch data.
 #' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
 #' passed in, structure of data frame must match that of the default.
@@ -15,6 +17,7 @@
 #' @export
 #' @md
 prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
+                                mainstem_site = NULL,
                                 input_catch_data = NULL,
                                 input_efficiency_data = NULL) {
 
@@ -33,10 +36,14 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   if(!mainstem) {
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    remove_sites <- input_efficiency_data |>
-      filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
-      distinct(site) |>
-      pull(site)
+    if(missing(mainstem_site)) {
+      cli::cli_abort("If you are running a mainstem model, you must supply a mainstem site, either
+                     knights landing or tisdale.")
+    }
+
+    mainstem_inputs <- prepare_mainstem_pCap_data(mainstem_site)
+
+    return("mainstem_inputs" = mainstem_inputs)
   }
 
   # prepare "mark recapture" dataset - all mark-recap trials in the system
@@ -140,6 +147,95 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
   return(list("inputs" = inputs,
               "sites_fit" = sites_fit))
+
+}
+
+#' Prepare mainstem inputs for abundance model
+#' @details This function is called within `prepare_pCap_inputs()`
+#' @param mainstem_site site on the mainstem Sacramento River (either `knights landing`,
+#' `tisdale`, or `red bluff diversion dam`) for which you want to prepare inputs
+#' @returns a named list, with each element containing the inputs required for one of the three
+#' mainstem sites. In this named list are
+#' * **inputs** a list of data and inits for input into the abundance model.
+#' * **sites_fit** The site the inputs were prepared for (either `knights landing`,
+#' `tisdale`, or `red bluff diversion dam`).
+#' @export
+#' @md
+prepare_mainstem_pCap_data <- function(mainstem_site) {
+
+  # prepare "mark recapture" dataset - all mark-recap trials in the system
+  mark_recapture_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+    # grab standardized_flow
+    left_join(SRJPEdata::weekly_juvenile_abundance_catch_data |>
+                select(year, week, stream, site, run_year, standardized_flow),
+              by = c("year", "week", "run_year", "stream", "site")) |>
+    # or do we want to filter just no number released?
+    dplyr::filter(site == mainstem_site & # mainstem model is only run on one site at a time
+                    !is.na(standardized_flow),
+                  !is.na(number_released) &
+                    !is.na(number_recaptured)) |>
+    # right now there's lifestage in the dataset, so we have to do distinct()
+    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+
+
+  # get indexing for "mark recap" dataset (pCap model)
+  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
+    nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
+
+  # build data list with ALL elements
+  data <- list("Nmr" = number_efficiency_experiments,
+               "Releases" = mark_recapture_data$number_released,
+               "Recaptures" = mark_recapture_data$number_recaptured,
+               "mr_flow" = mark_recapture_data$standardized_flow)
+
+
+  # check data list for NaNs and Infs
+  cli::cli_process_start("Checking data inputs",
+                         msg_done = "Data checked",
+                         msg_failed = "Data check failed")
+  invisible(lapply(names(data), function(x) {
+    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    }
+  }))
+  cli::cli_process_done()
+
+  pCap_parameters <-  c("flow_mu.P", "flow_sd.P", "pro_sd.P", "b0_pCap", "b_flow")
+
+  # initial parameter values
+  ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
+                          sum(mark_recapture_data$number_released))
+  if(is.nan(ini_b0_pCap) | is.infinite(ini_b0_pCap)) {
+    # -Inf happens when number recaptured == 0, logit of 0 is -Inf
+    ini_b0_pCap <- -5
+  }
+
+  init_list <- list(b0_pCap = ini_b0_pCap,
+                    flow_mu.P = 0,
+                    b_flow = 0,
+                    flow_tau.P = 1,
+                    pro_tau.P = 1)
+
+
+  cli::cli_process_start("Checking init inputs for pCap model",
+                         msg_done = "Inits checked",
+                         msg_failed = "Init check failed")
+  invisible(lapply(names(init_list), function(x) {
+    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
+      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    }
+  }))
+  cli::cli_process_done()
+
+  inits <- list(init_list, init_list, init_list)
+
+  # inputs for pCap model
+  inputs <- list(data = data,
+                 inits = inits,
+                 parameters = pCap_parameters)
+
+  return(list("inputs" = inputs,
+              "sites_fit" = mainstem_site))
 
 }
 
@@ -394,6 +490,8 @@ prepare_abundance_inputs <- function(site, run_year,
               "sites_fit" = sites_fit))
 }
 
+
+
 #' Prepare spline parameters object for BT-SPAS-X model
 #' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
 #' to pass to the data list
@@ -422,26 +520,54 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' Fit pCap model
 #' @details This function prepares the data list for the abundance STAN model based on what the model name is.
 #' @param input A list containing the inputs for the pCap model.
+#' @param mainstem Whether or not you want to evaluate efficiency trials for a mainstem site
+#' (`knights landing`, `tisdale`, and `red bluff diversion dam`) or for a tributary site. If `FALSE`,
+#' the mark recapture dataset will be filtered to exclude those mainstem sites.
 #' @returns a STANfit object with the pCap model fit.
 #' @export
 #' @md
-fit_pCap_model <- function(input) {
+fit_pCap_model <- function(input,
+                           mainstem = c(FALSE, TRUE)) {
 
-  stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_all"))
+  # check if it's trib or mainstem
+  # if mainstem
+  if(mainstem) {
 
-  options(mc.cores=parallel::detectCores())
-  cli::cli_alert("running pCap model")
-  pcap <- rstan::stan(model_code = stan_model,
-                      data = input$data,
-                      init = input$inits,
-                      # do not save logit_pCap or pro_dev_P (way too big)
-                      pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                               "flow_mu_P", "flow_sd_P"), # for new efficient model
-                      chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                      iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
-                      seed = 84735)
+    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_mainstem"))
 
-  return(pcap)
+    options(mc.cores=parallel::detectCores())
+    cli::cli_alert("running pCap model")
+    pcap <- rstan::stan(model_code = stan_model,
+                        data = input$data,
+                        init = input$inits,
+                        # do not save logit_pCap or pro_dev_P (way too big)
+                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P",
+                                 "flow_mu_P", "flow_sd_P"), # for new efficient model
+                        chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
+                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
+                        seed = 84735)
+
+    return(pcap)
+
+  } else {
+
+    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_all"))
+
+    options(mc.cores=parallel::detectCores())
+    cli::cli_alert("running pCap model")
+    pcap <- rstan::stan(model_code = stan_model,
+                        data = input$data,
+                        init = input$inits,
+                        # do not save logit_pCap or pro_dev_P (way too big)
+                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+                                 "flow_mu_P", "flow_sd_P"), # for new efficient model
+                        chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
+                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
+                        seed = 84735)
+
+    return(pcap)
+
+  }
 }
 
 #' Generate lt_pCap_U values from the pCap model object
