@@ -595,7 +595,7 @@ fit_pCap_model <- function(input) {
 generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
   # if mainstem
-  if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale"))) {
+  if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
 
     # set up objects
     ModelName <- abundance_inputs$model_name
