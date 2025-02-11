@@ -26,6 +26,8 @@ library(bayesplot)
 library(wesanderson)
 library(SRJPEdata)
 library(SRJPEmodel)
+
+battle_parameter_estimates <- readRDS(here::here("data-raw", "adult_model", "battle_P2S_parameter_estimates.rds"))
 ```
 
 ## Overview
@@ -65,99 +67,74 @@ The model takes in two datasets:
 
 # Running the P2S submodel
 
+## For a given stream and covariate
+
 The model is run for a given stream and environmental covariate.
 
-* Options for streams are `battle creek`, `clear creek`, `deer creek`, and `mill creek`. 
-* Environmental covariates are `water year type`, `growing degree days`, and `maximum flow`. 
+* Options for streams are `battle creek` and `clear creek`.
+* Environmental covariates are `water year type`, `growing degree days`, `maximum flow`, `median passage timing`, and `passage index`.
  
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 # run the model for battle creek and water year type
-battle_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                   SRJPEdata::adult_model_covariates_standard,
-                                                   "battle creek",
-                                                   "wy_type",
-                                                   FALSE)
-# run the model for clear creek and water year type
-clear_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                  SRJPEdata::adult_model_covariates_standard,
-                                                  "clear creek",
-                                                  "wy_type",
-                                                  FALSE)
-# run the model for deer creek and water year type
-deer_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                 SRJPEdata::adult_model_covariates_standard,
-                                                 "deer creek",
-                                                 "wy_type",
-                                                 FALSE)
-# run the model for mill creek and water year type
-mill_P2S_results <- run_passage_to_spawner_model(SRJPEdata::observed_adult_input,
-                                                 SRJPEdata::adult_model_covariates_standard,
-                                                 "mill creek",
-                                                 "wy_type",
-                                                 FALSE)
+battle_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
+battle_P2S_model <- fit_passage_to_spawner_model(battle_inputs)
 ```
 
-Once the model has been fit to separate streams, you can combine them into one data frame:
+## For all covariates within a stream
+
+This truncates the dataset to only those years where all covariate data is available. You can look at parameters that help diagnose the performance of the different covariates like `R2_data`, `R2_fixed`, `mean_redds_per_spawner`, and `b1_survival`.
+
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
-# join model summaries
-P2S_model_fits <- bind_rows(battle_P2S_results$formatted_pars,
-                            clear_P2S_results$formatted_pars,
-                            mill_P2S_results$formatted_pars,
-                            deer_P2S_results$formatted_pars)
+# run the model for battle creek and water year type
+battle_covariate_comparison <- compare_P2S_model_covariates("battle creek")
+
+battle_covariate_comparison |> 
+  filter(parameter %in% c("R2_data", "R2_fixed", "mean_redds_per_spawner",
+                          "sigma_redds_per_spawner", "b1_survival",
+                          "spawner_abundance_forecast"))
 ```
+
 
 # Model Output
 
-The P2S model produces two objects when run: 
+The P2S model produces a STANfit object when run. You can extract parameter estimates from the model object with the function `extract_P2S_estimates()`. This produces a table.
 
-* a `full_object`, which contains all output of the STAN model (class `stanfit`)
-* `formatted_pars`, a data table with all parameter estimates and associated statistics.
-
-The most recent results from fitting the model to all streams is stored as a data object `SRJPEmodel::P2S_model_fits` and contains the full parameter list, many of which are technical and not directly of interest to the `SRJPEmodel` ecosystem. 
-`SRJPEmodel` has additional functions to extract parameter estimates of interest from this larger table and can quickly produce a table of predicted spawners by year and tributary.
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+battle_parameter_estimates <- extract_P2S_estimates(battle_P2S_model)
+```
+```{r, message = FALSE, warning = FALSE}
+knitr::kable(head(battle_parameter_estimates, 10))
+```
 
 ## Extract predicted spawners by year, with uncertainty
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
-# obtain the years associated with observed data
-P2S_predicted_spawners <- SRJPEmodel::get_predicted_spawners_from_P2S(P2S_model_fits)
-knitr::kable(head(P2S_predicted_spawners, 5))
-```
-
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
-
-P2S_predicted_spawners |>
-  mutate(stream = str_to_title(stream)) |>
-  ggplot(aes(x = year, y = median_predicted_spawners)) +
-  geom_line(col = wes_palette("GrandBudapest1")[2]) +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2) +
-  facet_wrap(~stream, scales = "free_y") +
+battle_parameter_estimates |>
+  filter(parameter == "predicted_spawners") |>
+  ggplot(aes(x = year, y = `50`)) +
+  geom_ribbon(aes(ymin = `2.5`, ymax = `97.5`), alpha = 0.2) +
+  geom_line() +
   labs(x = "Year",
        y = "Predicted Spawner Count",
-       title = "Predicted Spawner Count for Modeled Tributaries") +
+       title = "Predicted Spawner Count for Battle Creek") +
   theme_minimal()
 ```
 
 We can also see forecasted spawner count for a wet or dry year with uncertainty by looking at the `abundance_forecast` parameters, which use the average upstream passage as a predictor variable and water year type as the predictive covariate. Deer and Mill Creek model fits are limited in utility due to a lack of available data, so the confidence intervals for those tributaries are much greater than for Battle and Clear Creeks.
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
-forecasts <- SRJPEmodel::P2S_model_fits |>
-  filter(str_detect(par_names, "abundance_forecast")) |>
-  mutate(pred_index = readr::parse_number(par_names),
-         par_names = ifelse(pred_index == "1", "forecast_dry_year", "forecast_wet_year"),
-         forecast_level = ifelse(par_names == "forecast_dry_year", "Dry", "Wet"),
-         data_type = "forecast",
-         stream = str_to_title(stream))
+forecasts <- battle_parameter_estimates |>
+  filter(parameter == "spawner_abundance_forecast") |>
+  mutate(pred_index = row_number()) |> 
+  mutate(parameter = ifelse(pred_index == 1, "forecast_dry_year", "forecast_wet_year"),
+         forecast_level = ifelse(parameter == "forecast_dry_year", "Dry", "Wet"),
+         data_type = "forecast")
 
 forecasts |>
-  mutate(adult_count = `50%`,
-         lcl = `2.5%`,
-         ucl = `97.5%`) |>
-  filter(!adult_count %in% c(0, Inf)) |>
-  ggplot(aes(x = forecast_level, y = adult_count)) +
-  geom_errorbar(aes(x = forecast_level, ymin = lcl, ymax = ucl),
-                width = 0.3, alpha = 0.7) +
-  geom_point(aes(x = forecast_level, y = adult_count,
+  ggplot(aes(x = forecast_level, y = `50`)) +
+  geom_errorbar(aes(x = forecast_level, ymin = `2.5`, ymax = `97.5`),
+                width = 0.1, alpha = 0.7) +
+  geom_point(aes(x = forecast_level, y = `50`,
                  color = forecast_level),
              size = 4) +
   labs(x = "Forecast Type (Wet or Dry)",
@@ -165,7 +142,6 @@ forecasts |>
        title = "Forecasted Spawner Count for Wet and Dry Years") +
   scale_color_manual("Forecast Year Type",
                      values = wes_palette("GrandBudapest1")[2:3]) +
-  facet_wrap(~stream, scales = "free") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5, size = 15),
         legend.position = "bottom",
@@ -178,7 +154,7 @@ forecasts |>
 
 # Resources
 
-See `data-raw/adult_model/passage_to_spawner_full_docmentation.Rmd` for full documentation of development, testing, and results of the Passage to Spawner submodel.
+See the [Passage to Spawner Full Model Description](https://srjpe.s3.us-west-1.amazonaws.com/P2S_documentation_2025-01-28.pdf) for full documentation of development, testing, and results of the submodel. Codebase for the analysis in the Full Model Description can be found [here](https://github.com/SRJPE/SRJPEmodel/tree/main/data-raw/adult_model).
 See `adult data report` for full documentation on adult Chinook salmon data collection.
 
 
