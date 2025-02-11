@@ -529,14 +529,16 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' Fit pCap model
 #' @details This function prepares the data list for the abundance STAN model based on what the model name is.
 #' @param input A list containing the inputs for the pCap model.
-#' @param mainstem Whether or not you want to evaluate efficiency trials for a mainstem site
-#' (`knights landing`, `tisdale`, and `red bluff diversion dam`) or for a tributary site. If `FALSE`,
-#' the mark recapture dataset will be filtered to exclude those mainstem sites.
 #' @returns a STANfit object with the pCap model fit.
 #' @export
 #' @md
-fit_pCap_model <- function(input,
-                           mainstem = c(FALSE, TRUE)) {
+fit_pCap_model <- function(input) {
+
+  if("trib_mu.P" %in% input$parameters) {
+    mainstem <- FALSE
+  } else {
+    mainstem <- TRUE
+  }
 
   # check if it's trib or mainstem
   # if mainstem

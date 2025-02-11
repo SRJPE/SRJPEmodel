@@ -4,17 +4,10 @@
 \alias{fit_pCap_model}
 \title{Fit pCap model}
 \usage{
-fit_pCap_model(input, mainstem = c(FALSE, TRUE), mainstem_site = NULL)
+fit_pCap_model(input)
 }
 \arguments{
 \item{input}{A list containing the inputs for the pCap model.}
-
-\item{mainstem}{Whether or not you want to evaluate efficiency trials for a mainstem site
-(\verb{knights landing}, \code{tisdale}, and \verb{red bluff diversion dam}) or for a tributary site. If \code{FALSE},
-the mark recapture dataset will be filtered to exclude those mainstem sites.}
-
-\item{mainstem_site}{If you are fitting the model with \code{mainstem == TRUE}, you must supply a
-mainstem site for which to prepare inputs. Can be either \verb{knights landing} or \code{tisdale}.}
 }
 \value{
 a STANfit object with the pCap model fit.
