@@ -10,6 +10,8 @@ Imports:
     rstanarm,
     here,
     scales,
+    AzureStor,
+    pins
     dplyr,
     cli,
     rstan,
