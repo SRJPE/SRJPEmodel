@@ -1093,9 +1093,7 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
            efficiency_trial = ifelse(is.na(lincoln_peterson_efficiency), FALSE, TRUE)) |>
     left_join(julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
     mutate(year = ifelse(week >= 43, run_year - 1, run_year),
-           fake_date = ymd(paste0(year, "-01-01")),
-           final_date = fake_date + weeks(week - 1),
-           date = format(final_date, "%b-%d"),
+           date = factor(date, levels = date),
            week_index = row_number())
 
   pCap_estimates <- model_table |>
@@ -1111,16 +1109,16 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
   # abundance plot
   abundance_plot <- data |>
     mutate(count_label = ifelse(is.na(count), "", count)) |>
-    left_join(N_estimates) |>
+    left_join(N_estimates, by = "week") |>
     #mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis)) |>
-    ggplot(aes(x = final_date, y = `50`)) +
-    geom_bar(stat = "identity", fill = "grey", width = 5) +
-    geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-    geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
+    ggplot(aes(x = date, y = `50`)) +
+    geom_bar(stat = "identity", fill = "grey", width = .75) +
+    geom_errorbar(aes(x = date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = date, y = lincoln_peterson_abundance),
                shape = 1, color = "blue" ,size = 3) +
-    geom_point(aes(x = final_date, y = Inf, color = sampled),
+    geom_point(aes(x = date, y = Inf, color = sampled),
                size = 3) +
-    geom_text(aes(x = final_date, y = Inf,
+    geom_text(aes(x = date, y = Inf,
                   label = paste(count_label),
                   angle = 90),
               hjust = 1,
@@ -1132,22 +1130,21 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
          y = "Abundance",
          title = paste(site_arg, run_year_arg)) +
     #theme(axis.text.x=element_blank()) +
-    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
           legend.position = "")
 
   # efficiency
   efficiency_plot <- data |>
-    left_join(pCap_estimates) |>
+    left_join(pCap_estimates, by = "week") |>
     mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis),
            number_released_label = ifelse(is.na(number_released), "", number_released),
            number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
-    ggplot(aes(x = final_date, y = `50`, fill = efficiency_trial)) +
-    geom_bar(stat = "identity", width = 4) +
-    geom_errorbar(aes(x = final_date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-    geom_point(aes(x = final_date, y = lincoln_peterson_efficiency),
+    ggplot(aes(x = date, y = `50`, fill = efficiency_trial)) +
+    geom_bar(stat = "identity", width = .75) +
+    geom_errorbar(aes(x = date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
+    geom_point(aes(x = date, y = lincoln_peterson_efficiency),
                shape = 1, color = "blue", size = 3) +
-    geom_text(aes(x = final_date, y = Inf,
+    geom_text(aes(x = date, y = Inf,
                   label = paste(number_released_label, number_recaptured_label),
                   angle = 90),
               hjust = 1,
@@ -1155,7 +1152,6 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
     scale_fill_manual(values = c("TRUE" = "grey", "FALSE" = "#ec5858")) +
     theme_minimal() +
     labs(x = "Date", y = "Weekly Efficiency") +
-    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
           legend.position = "")
 
@@ -1198,45 +1194,36 @@ plot_juv_data <- function(site, run_year) {
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
            lincoln_peterson_efficiency = number_recaptured / number_released) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
-    mutate(year = ifelse(week >= 43, run_year - 1, run_year),
-           fake_date = ymd(paste0(year, "-01-01")),
-           final_date = fake_date + weeks(week - 1),
-           date = format(final_date, "%b-%d"),
+    mutate(date = factor(date, levels = date),
            week_index = row_number())
 
   abundance_plot <- data |>
-    ggplot(aes(x = final_date, y = count)) +
-    geom_bar(stat = "identity", fill = "grey", width = 5) +
-    # geom_point(aes(x = final_date, y = lincoln_peterson_abundance),
-    #            shape = 1, color = "blue") +
-    geom_text(aes(x = final_date, y = Inf,
+    ggplot(aes(x = date, y = count)) +
+    geom_bar(stat = "identity", fill = "grey", width = .75) +
+    geom_text(aes(x = date, y = Inf,
                   label = paste(count),
                   angle = 90),
               hjust = 1,
               size = 3) +
     theme_minimal() +
     labs(x = "",
-         #x = "Date",
          y = "Abundance",
          title = paste(site, run_year)) +
-    #theme(axis.text.x=element_blank()) +
-    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
 
   efficiency_plot <- data |>
     mutate(number_released_label = ifelse(is.na(number_released), "", number_released),
            number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
-    ggplot(aes(x = final_date, y = lincoln_peterson_efficiency)) +
+    ggplot(aes(x = date, y = lincoln_peterson_efficiency)) +
     geom_point(shape = 1, color = "blue") +
     # geom_bar(stat = "identity", fill = "grey", width = 4) +
-    geom_text(aes(x = final_date, y = Inf,
+    geom_text(aes(x = date, y = Inf,
                   label = paste(number_released_label, number_recaptured_label),
                   angle = 90),
               hjust = 1,
               size = 3) +
     theme_minimal() +
     labs(x = "Date", y = "Weekly Efficiency") +
-    scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
 
   # arrange together
