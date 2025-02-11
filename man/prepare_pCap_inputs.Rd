@@ -6,6 +6,7 @@
 \usage{
 prepare_pCap_inputs(
   mainstem = c(FALSE, TRUE),
+  mainstem_site = NULL,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
@@ -14,6 +15,9 @@ prepare_pCap_inputs(
 \item{mainstem}{Whether or not you want to evaluate efficiency trials for a mainstem site
 (\verb{knights landing}, \code{tisdale}, and \verb{red bluff diversion dam}) or for a tributary site. If \code{FALSE},
 the mark recapture dataset will be filtered to exclude those mainstem sites.}
+
+\item{mainstem_site}{If you are fitting the model with \code{mainstem == TRUE}, you must supply a
+mainstem site for which to prepare inputs. Can be either \verb{knights landing} or \code{tisdale}.}
 
 \item{input_catch_data}{Optional argument for weekly catch data.
 Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If
