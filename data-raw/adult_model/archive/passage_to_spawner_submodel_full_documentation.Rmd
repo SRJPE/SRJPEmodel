@@ -220,22 +220,22 @@ adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 
 Then run the model for each stream and selected covariate:
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
-battle_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
+battle_P2S_results <- fit_passage_to_spawner_model(observed_adult_input,
                                                    adult_model_covariates,
                                                    "battle creek",
                                                    "wy_type")
 
-clear_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
+clear_P2S_results <- fit_passage_to_spawner_model(observed_adult_input,
                                                   adult_model_covariates,
                                                   "clear creek",
                                                   "wy_type")
 
-deer_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
+deer_P2S_results <- fit_passage_to_spawner_model(observed_adult_input,
                                                  adult_model_covariates,
                                                  "deer creek",
                                                  "wy_type")
 
-mill_P2S_results <- run_passage_to_spawner_model(observed_adult_input,
+mill_P2S_results <- fit_passage_to_spawner_model(observed_adult_input,
                                                  adult_model_covariates,
                                                  "mill creek",
                                                  "wy_type")

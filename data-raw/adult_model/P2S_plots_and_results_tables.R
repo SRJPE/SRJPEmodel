@@ -128,19 +128,19 @@ P2S_comparison_results |>
 
 # run model ---------------------------------------------------------------
 
-battle_P2S_results <- run_passage_to_spawner_model("battle creek",
+battle_P2S_results <- fit_passage_to_spawner_model("battle creek",
                                                    "wy_type",
                                                    FALSE)
 
-clear_P2S_results <- run_passage_to_spawner_model("clear creek",
+clear_P2S_results <- fit_passage_to_spawner_model("clear creek",
                                                   "wy_type",
                                                   FALSE)
 #
-# deer_P2S_results <- run_passage_to_spawner_model("deer creek",
+# deer_P2S_results <- fit_passage_to_spawner_model("deer creek",
 #                                                  "wy_type",
 #                                                  FALSE)
 #
-# mill_P2S_results <- run_passage_to_spawner_model(adult_model_covariates,
+# mill_P2S_results <- fit_passage_to_spawner_model(adult_model_covariates,
 #                                                  "mill creek",
 #                                                  "wy_type",
 #                                                  FALSE)

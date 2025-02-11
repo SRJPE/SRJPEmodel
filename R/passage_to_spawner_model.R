@@ -2,7 +2,7 @@
 
 #' @title Passage to Spawner Sum of Squares
 #' @description This function calculates the total sum of squares, which is required
-#' as input to the `data` call for `run_passage_to_spawner_model()`.
+#' as input to the `data` call for `fit_passage_to_spawner_model()`.
 #' @keywords internal
 #' @export
 #' @md
@@ -17,7 +17,7 @@ calculate_ss_tot <- function(data) {
 }
 
 #' @title Prepare data for P2S
-#' @description This function prepares data for running P2S on a single stream and covariate. It is called in `run_passage_to_spawner_model()`.
+#' @description This function prepares data for running P2S on a single stream and covariate. It is called in `fit_passage_to_spawner_model()`.
 #' @param stream_name: The name of the stream for which you would like to run the P2S model. Can be
 #' `battle creek`, `clear creek`, `deer creek`, `mill creek`, or (draft form) `butte creek`.
 #' @param selected_covariate: The environmental covariate you'd like to run the model for. Can be
@@ -98,7 +98,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
 }
 
 
-#' @title Run Passage to Spawner (P2S) STAN Model
+#' @title Fit Passage to Spawner (P2S) STAN Model
 #' @description This functions take in a list of data required to run the Passage to Spawner STAN model. The function
 #' will return the full fitted `stanfit` object.
 #' See \code{vignette("passage_to_spawner_submodel.Rmd", package = "SRJPEmodel")} for more details.
@@ -115,7 +115,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
 #' @export
 #' @family passage_to_spawner
 #' @md
-run_passage_to_spawner_model <- function(data_inputs) {
+fit_passage_to_spawner_model <- function(data_inputs) {
 
   p2s_model <- eval(parse(text = "SRJPEmodel::p2s_model_code"))
 
@@ -130,7 +130,7 @@ run_passage_to_spawner_model <- function(data_inputs) {
 }
 
 #' @title Extract parameter estimates from P2S
-#' @description This function takes in a STAN fit object produced by running `run_passage_to_spawner_model()` and produces a formatted
+#' @description This function takes in a STAN fit object produced by running `fit_passage_to_spawner_model()` and produces a formatted
 #' table of parameter estimates from the Passage to Spawner model.
 #' @param passage_to_spawner_model_object
 #' @returns a table with the following variables:
@@ -186,7 +186,7 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
 
 
 #' @title Compare Environmental Covariates in Passage to Spawner (P2S) Model
-#' @description This function fits the Passage to Spawner (`run_passage_to_spawner_model()`) for a given stream to all
+#' @description This function fits the Passage to Spawner (`fit_passage_to_spawner_model()`) for a given stream to all
 #' environmental covariates. For a stream, the dataset is truncated to only include years for which all environmental
 #' covariates are available. Parameters that are helpful for selecting a covariate are: `R2_data`, `R2_fixed`, `mean_redds_per_spawner`,
 #' `b1_survival`, `sigma_redds_per_spawner`, and `spawner_abundance_forecast`.
@@ -219,7 +219,7 @@ compare_P2S_model_covariates <- function(stream) {
                         prepare_P2S_inputs)
   names(inputs) <- approved_covariates
 
-  fits <- lapply(inputs, run_passage_to_spawner_model)
+  fits <- lapply(inputs, fit_passage_to_spawner_model)
 
   estimates <- lapply(fits, extract_P2S_estimates)
 
