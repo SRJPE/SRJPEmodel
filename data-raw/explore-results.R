@@ -33,10 +33,10 @@ tis_abundance_inputs <- prepare_abundance_inputs("tisdale", 2017, effort_adjust 
 tis_lt_pCap_Us <- generate_lt_pCap_Us(tis_abundance_inputs, tis_fit)
 
 tis_abundance <- fit_abundance_model_BUGS(tis_abundance_inputs, tis_lt_pCap_Us,
-                                      # point towards where you store the .bug model
-                                      "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
-                                      # point to where you have WinBUGS
-                                      "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+                                          # point towards where you store the .bug model
+                                          "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                          # point to where you have WinBUGS
+                                          "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
 tis_abundance_table <- extract_abundance_estimates("tisdale", 2017,
                                                    tis_abundance_inputs, tis_abundance)
