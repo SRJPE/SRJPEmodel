@@ -56,3 +56,31 @@ plot_juv_data("ubc", 2018) # raw data
 generate_diagnostic_plot_juv(site, run_year, parameter_table)
 
 
+# example for mainstem ----------------------------------------------------
+
+mainstem_site <- "tisdale" # or "knights landing"
+run_year <- 2017
+
+# fit pCap for one mainstem site
+tis_pCap_inputs <- prepare_pCap_inputs(mainstem = TRUE,
+                                  mainstem_site)
+tis_pCap_fit <- fit_pCap_model(tis_pCap_inputs$inputs)
+
+tis_abundance_inputs <- prepare_abundance_inputs(mainstem_site,
+                                                 run_year,
+                                                 effort_adjust = T)
+tis_lt_pCap_Us <- generate_lt_pCap_Us(tis_abundance_inputs,
+                                      tis_pCap_fit)
+
+tis_abundance <- fit_abundance_model_BUGS(tis_abundance_inputs,
+                                          tis_lt_pCap_Us,
+                                          # point towards where you store the .bug model
+                                          "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                          # point to where you have WinBUGS
+                                          "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+
+tis_abundance_table <- extract_abundance_estimates(mainstem_site, run_year,
+                                                   tis_abundance_inputs,
+                                                   tis_abundance)
+
+
