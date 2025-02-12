@@ -181,17 +181,16 @@ load_model_fit <- function(con, model_name){
 
 storage_account = "geneticsedidata"
 container_name = "model-fits"
-url <- model_pin_board(storage_account, container_name)
-file_path <- "data/pCap_model_2025-01-09.rds"
+# url <- model_pin_board(storage_account, container_name)
+# file_path <- "data/pCap_model_2025-01-09.rds"
 model_fits <- readRDS("data/pCap_model_2025-01-09.rds")
-file_name <- basename(file_path)
 store_model_fit(con,
                 storage_account = storage_account,
                 container_name = container_name,
-                access_key = access_key,
+                # access_key = access_key,
                 data = model_fits,
-                results_name = "new_model_pcap_test",
-                descript = "test upload")
+                results_name = "new_model_pcap_test_v2",
+                description = "test upload")
 # insert_model_name(model_fits, con)
 insert_model_run(con, model_fits, blob_url, "test upload")
 # insert_model_parameters(con, model_fits, "www.azure.com/3")

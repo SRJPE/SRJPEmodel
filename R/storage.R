@@ -452,23 +452,28 @@ insert_model_run <- function(con, model, blob_url, description){
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url, file_name) {
+insert_model_parameters <- function(con, model, blob_url) {
 
   model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
   # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
-  model_final_results$model_fit_filename <- file_name
+  # model_final_results$model_fit_filename <- file_name
   model_final_results$blob_url <- blob_url
 
 
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
   model_final_results <- join_lookup(model_final_results, "trap_location", "site", "site", "location_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
-  model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
+  # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
-  model_final_results <- join_lookup(model_final_results, "trap_location", "site_fit_hierarchical", "site", "location_fit_id")
+  model_final_results <- join_lookup(model_final_results, "trap_location", "location_fit", "site", "location_fit_id")
 
   model_final_results <-  model_final_results |>
-    select(model_run_id, location_id, run_year, week_fit, lifestage_id, model_fit_filename, parameter_id, statistic_id, value, location_fit_id)
+    select(model_run_id, location_id, run_year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
+    mutate(
+      run_year = as.integer(run_year),
+      week_fit = as.integer(week_fit)
+      )
+
 
   query <- glue::glue_sql(
     "INSERT INTO model_parameters (
@@ -476,8 +481,6 @@ insert_model_parameters <- function(con, model, blob_url, file_name) {
           location_id,
           run_year,
           week_fit,
-          lifestage_id,
-          model_fit_filename,
           parameter_id,
           statistic_id,
           value,
@@ -487,8 +490,6 @@ insert_model_parameters <- function(con, model, blob_url, file_name) {
           UNNEST(ARRAY[{model_final_results$location_id*}]),
           UNNEST(ARRAY[{model_final_results$run_year*}]),
           UNNEST(ARRAY[{model_final_results$week_fit*}]),
-          UNNEST(ARRAY[{model_final_results$lifestage_id*}]),
-          UNNEST(ARRAY[{model_final_results$model_fit_filename*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
           UNNEST(ARRAY[{model_final_results$value*}]),

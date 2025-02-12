@@ -51,7 +51,9 @@ blob_url <- store_model_fit(con,
                             container_name = "my_container",
                             access_key = "my_access_key",
                             data = model_results,
-                            results_name = "model_name")
+                            results_name = "model_name",
+                            description = "model_description",
+                            file_name = "file_name")
 
 print(blob_url)
 
