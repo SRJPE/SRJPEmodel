@@ -12,7 +12,7 @@ pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
 pCap <- fit_pCap_model(pCap_inputs$inputs)
 
 # save, fit 01-09-2025
-saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
+saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-02-10.rds")
 
 pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
 

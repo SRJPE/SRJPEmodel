@@ -548,7 +548,8 @@ fit_pCap_model <- function(input) {
 
     options(mc.cores=parallel::detectCores())
     cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_code = stan_model,
+    pcap <- rstan::stan(model_name = "pCap_mainstem",
+                        model_code = stan_model,
                         data = input$data,
                         init = input$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
@@ -566,7 +567,8 @@ fit_pCap_model <- function(input) {
 
     options(mc.cores=parallel::detectCores())
     cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_code = stan_model,
+    pcap <- rstan::stan(model_name = "pCap_all",
+                        model_code = stan_model,
                         data = input$data,
                         init = input$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
@@ -929,7 +931,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
                                NA),
            site = NA,
            run_year = NA,
-           model_name = "pCap_all",
+           model_name = model_object@model_name,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(site_lookup, by = "site_index") |>
