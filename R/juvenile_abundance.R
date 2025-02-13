@@ -200,7 +200,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("flow_mu.P", "flow_sd.P", "pro_sd.P", "b0_pCap", "b_flow")
+  pCap_parameters <-  c("pro_sd.P", "b0_pCap", "b_flow")
 
   # initial parameter values
   ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
@@ -211,9 +211,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }
 
   init_list <- list(b0_pCap = ini_b0_pCap,
-                    flow_mu.P = 0,
                     b_flow = 0,
-                    flow_tau.P = 1,
                     pro_tau.P = 1)
 
 
@@ -553,8 +551,7 @@ fit_pCap_model <- function(input) {
                         data = input$data,
                         init = input$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
-                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P",
-                                 "flow_mu_P", "flow_sd_P"), # for new efficient model
+                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
                         iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                         seed = 84735)

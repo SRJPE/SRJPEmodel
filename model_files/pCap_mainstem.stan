@@ -7,8 +7,6 @@ data {
 }
 
 parameters {
-  real flow_mu_P; //
-  real <lower = 0.01> flow_tau_P; // Hyper-parameter precision for flow effect on pCap
   real <lower = 0.01> pro_tau_P; // Process error precision
   real b0_pCap; // pCap intercept
   real b_flow; // flow effects
@@ -16,12 +14,10 @@ parameters {
 }
 
 transformed parameters {
-  real flow_sd_P;
   real pro_sd_P;
   array[Nmr] real logit_pCap;// Logit of pCap for MR data
 
   // Compute derived quantities
-  flow_sd_P = 1/sqrt(flow_tau_P);
   pro_sd_P = 1 / sqrt(pro_tau_P);
 
   // Calculate logit of pCap for MR data
@@ -32,8 +28,8 @@ transformed parameters {
 
 model {
   // Priors
-  flow_mu_P ~ normal(0, 1000);
-  flow_tau_P ~ gamma(0.001, 0.001);
+  //b0_pCap ~ normal(0, 1.0E-06);
+  //b_flow ~ normal(0, 1.0E-06);
   pro_tau_P ~ gamma(0.001, 0.001);
 
   // Likelihood for MR data
