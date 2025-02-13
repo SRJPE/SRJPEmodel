@@ -332,7 +332,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     select(-c("statistic_id", "updated_at.x","updated_at.y", "description")) |>
     rename("statistic" = "definition")
 
-  location_lookup <- tbl(con, "model_location") |>
+  location_lookup <- tbl(con, "trap_location") |>
     as_tibble() |>
     rename("location_id" = "id")
 
@@ -340,13 +340,6 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     select(-c("location_id", "updated_at", "site", "description")) |>
     rename("location" = "stream")
 
-  lifestage_lookup <- tbl(con, "lifestage") |>
-    as_tibble() |>
-    rename("lifestage_id" = "id")
-
-  model_parameters <- model_parameters |> left_join(lifestage_lookup, by = "lifestage_id") |>
-    select(-c("lifestage_id", "updated_at", "description")) |>
-    rename("lifestage" = "definition")
 
   parameter_lookup <- tbl(con, "parameter") |>
     as_tibble() |>
@@ -390,7 +383,7 @@ get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sy
   container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
   blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
-  board <- model_pin_board(storage_account, container_name)
+  model_board <- model_pin_board(storage_account, container_name)
   model_object <- pins::pin_read(model_board, blob_path)
 
   return(model_object)
