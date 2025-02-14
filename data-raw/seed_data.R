@@ -20,12 +20,13 @@ store_model_fit(con,
                 container_name = container_name,
                 # access_key = access_key,
                 data = model_fits,
-                results_name = "new_model_pcap_test_v4",
-                description = "test upload v4")
+                results_name = "new_model_pcap_test_v6",
+                description = "test upload v6",
+                mainstem = FALSE)
 
-model_run <- search_model_run(con, keyword=NULL, model_run_id=25, view_all=FALSE)
-model_object <- get_model_object(con, keyword = NULL, model_run_id = 25)
-model_results <- get_model_results_parameters(con, keyword = NULL, model_run_id=25)
+model_run <- search_model_run(con, keyword=NULL, model_run_id=28, view_all=TRUE)
+model_object <- get_model_object(con, keyword = NULL, model_run_id = 28)
+model_results <- get_model_results_parameters(con, keyword = NULL, model_run_id=28)
 # x <- load_model_fit(con, "missing_mark_recap.bug")
 # new_model_fits <- readRDS("data/pCap_model_2025-01-09.rds")
 # abundance_fit <- readRDS("data/abundance_model_inputs.rds")

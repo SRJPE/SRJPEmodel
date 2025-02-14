@@ -35,7 +35,7 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, description,...){
+store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, description, mainstem = FALSE, ...){
 
   model_board <- model_pin_board(storage_account, container_name)
 
@@ -46,7 +46,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
     ...
   )
 
-  total_run_rows <- insert_model_run(con, data, blob_url, description)
+  total_run_rows <- insert_model_run(con, data, blob_url, description, mainstem)
   message(glue::glue("Inserted new model run into database."))
   total_rows <- insert_model_parameters(con, data, blob_url)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
@@ -409,8 +409,8 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description){
-  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+insert_model_run <- function(con, model, blob_url, description, mainstem){
+  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = mainstem))
   # model_final_results <- model$final_results
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
