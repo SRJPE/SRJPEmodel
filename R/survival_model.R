@@ -357,3 +357,124 @@ fit_survival_model <- function(survival_inputs) {
   return("fit" = fit)
 }
 
+#' Extract parameter estimates from the survival STAN model object
+#' @details This function extracts parameter estimates from the survival STAN model and returns them in a tidy data frame format.
+#' @param model_object the STAN object produced by running `fit_survival_model()`.
+#' @returns A table with the format:
+#' * **parameter**
+#' * **year**
+#' * **reach_name**
+#' * **release_group**
+#' * **statistic**
+#' * **value**
+#' * **srjpedata_version**
+#' @export
+#' @md
+extract_survival_estimates <- function(model_object) {
+  # get year lookup
+  year_lookup <- tibble(year = unique(SRJPEdata::survival_model_inputs$year) |>
+                          sort()) |>  # all sac and tribs years combined
+    mutate(year_index = row_number())
+
+  # get reach lookup - hard-coded
+  reach_lookup_sac <- tibble("sac_reach_index" = 1:4,
+                             "reach_name_sac" = c("Woodson", "Butte", "Sacramento", "Delta")) # hard-coded in GetData_flora.R
+
+  reach_lookup_trib <- tibble("trib_reach_index" = 1:2,
+                              "reach_name_trib" = c("Sacramento", "Delta"))# taken from powerpoint in sharepoint
+
+  # release group lookup
+  release_group_lookup_sac <- SRJPEdata::survival_model_inputs |>
+    filter(is.na(trib_ind)) |>
+    arrange(year) |>
+    group_by(study_id) |>
+    mutate(release_group_index_sac = cur_group_id()) |>
+    ungroup() |>
+    distinct(release_group_sac = study_id, release_group_index_sac)
+
+  release_group_lookup_trib <- SRJPEdata::survival_model_inputs |>
+    filter(!is.na(trib_ind)) |>
+    arrange(year) |>
+    group_by(study_id) |>
+    mutate(release_group_index_trib = cur_group_id()) |>
+    ungroup() |>
+    distinct(release_group_trib = study_id, release_group_index_trib)
+
+  # get release group lookup
+
+  formatted_table <- rstan::summary(survival_fit)$summary |>
+    as.data.frame() |>
+    tibble::rownames_to_column("parameter") |>
+    # get indices to match to year, reach, etc. for parameters
+    separate_wider_delim(parameter, delim = "[", names = c("parameter", "indices"),
+                         too_few = "align_start") |>
+    mutate(indices = str_remove_all(indices, "\\]")) |>
+    separate_wider_delim(indices, ",", names = c("index_1", "index_2"),
+                         too_few = "align_start") |>
+    mutate(across(index_1:index_2, as.numeric),
+           # year-structured parameters
+           year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
+           # reach-structured parameters
+           sac_reach_index = case_when(parameter == "P_b" ~ index_2,
+                                       parameter %in% c("muPb", "sdPb", "S_bReach") ~ index_1,
+                                       parameter %in% c("pred_surv", "pred_pcap") ~ index_2,
+                                       TRUE ~ NA),
+           # trib-structured parameters
+           trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
+                                        parameter == "pred_survT" ~ index_2, # TODO confirm this, it's hard coded as c(1, 2), it's the trib model reaches?
+                                        TRUE ~ NA),
+           # release group structured parameters
+           release_group_index_sac = ifelse(parameter %in% c("SurvRelSac","SurvWoodSac", "pred_surv",
+                                                             "S_RE"), index_1, NA),
+           release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT"), index_1, NA),
+           pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA)) |>
+    # now join in lookups
+    left_join(year_lookup, by = "year_index") |>
+    left_join(reach_lookup_sac, by = "sac_reach_index") |>
+    left_join(reach_lookup_trib, by = "trib_reach_index") |>
+    left_join(release_group_lookup_sac, by = "release_group_index_sac") |>
+    left_join(release_group_lookup_trib, by = "release_group_index_trib") |>
+    # now combine reach lookups into one column
+    mutate(reach_name = ifelse(is.na(reach_name_trib), reach_name_sac, reach_name_trib),
+           release_group = ifelse(is.na(release_group_trib), release_group_sac, release_group_trib),
+           parameter = ifelse(parameter == "TribSurvForecast",
+                              paste0(parameter, "_", pred_forecast_index_trib),
+                              parameter)) |>
+    select(-c(year_index, sac_reach_index, trib_reach_index, release_group_index_sac,
+              release_group_index_trib, reach_name_sac, reach_name_trib, release_group_sac,
+              release_group_trib, pred_forecast_index_trib, index_1, index_2)) |>
+    pivot_longer(mean:Rhat,
+                 values_to = "value",
+                 names_to = "statistic") |>
+    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")))
+
+  return(formatted_table)
+}
+
+#' Plot smolt survival rate
+#' @details This function produces a plot showing the parameter estimates for `SurvRelSac` and `SurvWoodSac`, which
+#' are survival rates for Release to Woodson Bridge and Woodson Bridge to Sacramento.
+#' @param survival_estimates A table that is produced from running `extract_survival_estimates()`.
+#' @returns A plot.
+#' @export
+#' @md
+generate_survival_rate_plot <- function(survival_estimates) {
+  # TODO this should be the parameter "surv", which right now is not reported...or is it correct?
+  survival_estimates |>
+    filter(parameter %in% c("SurvRelSac", "SurvWoodSac")) |>
+    mutate(Reach = ifelse(parameter == "SurvRelSac",
+                          "Release to Woodson Bridge",
+                          "Woodson Bridge to Sacramento")) |>
+    pivot_wider(names_from = "statistic",
+                values_from = "value") |>
+    ggplot() +
+    geom_errorbar(aes(x = release_group, ymin = `2.5%`, ymax = `97.5%`),
+                  color = "blue", width = 0.2) +
+    geom_point(aes(x = release_group, y = `50%`), size = 2) +
+    facet_wrap(~Reach) +
+    labs(x = "Release Group",
+         y = "Median Survival Rate") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.9, hjust=1))
+
+}

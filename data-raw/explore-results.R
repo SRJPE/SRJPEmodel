@@ -63,4 +63,6 @@ P2S_spawners |>
 # explore results for survival model
 survival_inputs <- prepare_survival_inputs()
 survival_results <- fit_survival_model(survival_inputs)
+survival_estimates <- extract_survival_estimates(survival_results)
+generate_survival_rate_plot(survival_estimates)
 
