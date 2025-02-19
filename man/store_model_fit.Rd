@@ -12,6 +12,7 @@ store_model_fit(
   data,
   results_name,
   description,
+  mainstem = FALSE,
   ...
 )
 }
