@@ -12,8 +12,8 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
                       password = cfg$db_password)
 
 
-storage_account = "geneticsedidata"
-container_name = "model-fits"
+storage_account = "jpemodelresults"
+container_name = "model-results"
 model_fits <- readRDS("data/pCap_model_2025-01-09.rds")
 store_model_fit(con,
                 storage_account = storage_account,
