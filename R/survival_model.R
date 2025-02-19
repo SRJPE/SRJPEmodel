@@ -27,6 +27,10 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     cli::cli_bullets("No biological effect was supplied, running the no biological effect model")
   }
 
+  if(!effect %in% c("no_biological_effect", "fork_length", "weight", "condition")) {
+    cli::cli_abort("Effect argument must be one of no_biological_effect, fork_length, weight, or condition")
+  }
+
   sac_data <- SRJPEdata::survival_model_inputs |>
     filter(is.na(trib_ind))
 
@@ -105,7 +109,7 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
       SzT <- rep(0, fb_data_list$n_ind)
       Xsz <- rep(0, sac_data_list$n_size_classes)
 
-    } else if (effect == "fork_length_effect") {
+    } else if (effect == "fork_length") {
 
       all_fork_lengths <- c(sac_data_list$fork_length, fb_data_list$fork_length)
       mean_fork_length <- mean(all_fork_lengths, na.rm = TRUE)
@@ -117,7 +121,7 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                   to = max(c(Sz, SzT), na.rm = TRUE),
                   length.out = sac_data_list$n_size_classes)
 
-    } else if (effect == "weight_effect") {
+    } else if (effect == "weight") {
 
       all_weights <- c(sac_data_list$weight, fb_data_list$weight)
       mean_weight <- mean(all_weights, na.rm = TRUE)
@@ -402,16 +406,17 @@ extract_survival_estimates <- function(model_object) {
 
   # get release group lookup
 
-  formatted_table <- rstan::summary(survival_fit)$summary |>
+  formatted_table <- rstan::summary(model_object)$summary |>
     as.data.frame() |>
     tibble::rownames_to_column("parameter") |>
     # get indices to match to year, reach, etc. for parameters
     separate_wider_delim(parameter, delim = "[", names = c("parameter", "indices"),
                          too_few = "align_start") |>
     mutate(indices = str_remove_all(indices, "\\]")) |>
-    separate_wider_delim(indices, ",", names = c("index_1", "index_2"),
+    separate_wider_delim(indices, ",", names = c("index_1", "index_2", "index_3"),
                          too_few = "align_start") |>
-    mutate(across(index_1:index_2, as.numeric),
+    mutate(across(index_1:index_3, as.numeric),
+           # TODO S_bCov, s_bCovT, SurvForecast, SurvRelSacSz, SurvWoodSacSz, SurfForecastSz, pred_SurvTSz
            # year-structured parameters
            year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
            # reach-structured parameters
@@ -422,12 +427,15 @@ extract_survival_estimates <- function(model_object) {
            # trib-structured parameters
            trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
                                         parameter == "pred_survT" ~ index_2, # TODO confirm this, it's hard coded as c(1, 2), it's the trib model reaches?
+                                        parameter %in% c("pred_survTSz", "TribSurvForecastSz") ~ index_3,
                                         TRUE ~ NA),
            # release group structured parameters
            release_group_index_sac = ifelse(parameter %in% c("SurvRelSac","SurvWoodSac", "pred_surv",
                                                              "S_RE"), index_1, NA),
            release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT"), index_1, NA),
-           pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA)) |>
+           pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
+           size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_1, NA),
+           covariate_dimension_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_2 - 1, NA)) |>
     # now join in lookups
     left_join(year_lookup, by = "year_index") |>
     left_join(reach_lookup_sac, by = "sac_reach_index") |>
