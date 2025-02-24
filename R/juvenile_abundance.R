@@ -416,6 +416,8 @@ prepare_abundance_inputs <- function(site, run_year,
                          "Nwomr" = number_weeks_without_mark_recapture,
                          "Uind_wMR" = indices_with_mark_recapture,
                          "Uind_woMR" = indices_without_mark_recapture,
+                         # this is to help josh with his plotting code (which we are not refactoring)
+                         "weeks_with_mark_recapture" = weeks_with_mark_recapture,
                          "ind_pCap" = indices_pCap)
 
   # use number of experiments at site to determine which model to call
