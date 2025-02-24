@@ -269,7 +269,6 @@ prepare_abundance_inputs <- function(site, run_year,
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
-  cli::cli_bullets("Filtering catch data to site, run year, and weeks")
   catch_data <- input_catch_data |>
     filter(life_stage != "yearling") |>
     filter(run_year == !!run_year,
@@ -341,7 +340,10 @@ prepare_abundance_inputs <- function(site, run_year,
   # bring together efficiency and catch data so that we can get the indices of
   # catch data (hence left join) that correspond to certain efficiency trial
   # information.
-  all_data_for_indexing <- left_join(catch_data, mark_recapture_data)
+  all_data_for_indexing <- left_join(catch_data, mark_recapture_data,
+                                     by = c("year", "week", "stream",
+                                            "site", "run_year", "flow_cfs",
+                                            "standardized_flow"))
 
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
@@ -370,6 +372,12 @@ prepare_abundance_inputs <- function(site, run_year,
                           mark_recapture_data$run_year == run_year &
                           mark_recapture_data$week %in% weeks_with_mark_recapture)   # indices (in mark-recap data) for the selected site and run year, filtered to weeks where mark-recap were performed (in catch data)
   indices_sites_pCap <- which(sites_fit == site) # indices of those sites where efficiency trials were performed, can be length = 0
+
+  # plotting vectors for josh
+  efficiency_plotting_vectors <- all_data_for_indexing |>
+    arrange(year, week) |>
+    filter(week %in% weeks_with_mark_recapture) |>
+    select(week, number_released, number_recaptured)
 
   # set up b-spline basis matrix
   # this corresponds to line 148-153 in josh_original_model_code.R
@@ -410,14 +418,15 @@ prepare_abundance_inputs <- function(site, run_year,
                "lgN_max" = lgN_max)
 
   # data needed for generating lt_pCap_Us
+  # also plotting data needs (sorted) for Josh's code
   lt_pCap_U_data <- list("catch_flow" = catch_data$standardized_flow,
                          "use_trib" = indices_sites_pCap,
                          "Nwmr" = number_weeks_with_mark_recapture,
                          "Nwomr" = number_weeks_without_mark_recapture,
                          "Uind_wMR" = indices_with_mark_recapture,
                          "Uind_woMR" = indices_without_mark_recapture,
-                         # this is to help josh with his plotting code (which we are not refactoring)
-                         "weeks_with_mark_recapture" = weeks_with_mark_recapture,
+                         "releases_sort" = efficiency_plotting_vectors$number_released, # this is for josh's plots
+                         "recaptures_sort" = efficiency_plotting_vectors$number_recaptured, # for josh's plots
                          "ind_pCap" = indices_pCap)
 
   # use number of experiments at site to determine which model to call
