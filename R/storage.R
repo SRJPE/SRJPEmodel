@@ -6,10 +6,10 @@
 #' @param storage_account A string specifying the Azure storage account name, typically `jpemodelresults`.
 #' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
 #' @param access_key A string specifying the Azure storage access key with write permissions.
-#' @param data The model result data object that needs to be stored, of class `stanfit` or `bugs`.
+#' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `all_mark_recap`,
 #'`missing_mark_recap`, `no_mark_recap`,  `no_mark_recap_no_trib`, `pcap_all`, `pcap_mainstem`, or `p2s`.
-#' @param site If uploading an abundance model output, you must supply the site for which you fit the model.
+#' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
 #' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
@@ -28,7 +28,7 @@
 #'                             storage_account = "my_storage_account",
 #'                             container_name = "my_container",
 #'                             access_key = "my_access_key",
-#'                             data = model_results,
+#'                             model_fit_object = model_results,
 #'                             results_name = "model_name",
 #'                             description = "model_description")
 #'
@@ -37,31 +37,46 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, site = NULL, run_year = NULL, description, ...){
+store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, site = NULL, run_year = NULL, description, ...){
 
+  # checks
+  # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
                           "pcap_all", "pcap_mainstem", "p2s")) {
     cli::cli_abort("You must supply an approved value to the results_name argument.")
   }
 
+  # check that the model objects align with the model type (bugs or stanfit)
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
+    cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
+  } else {
+    if(class(model_fit_object) != "stanfit") {
+      cli::cli_abort("For models pcap_all, pcap_mainstem, and p2s, model object must be of class 'stanfit'.")
+    }
+  }
+
+  # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
     if(is.null(site) | is.null(run_year)){
       cli::cli_abort("You must supply a site and run year if uploading an abundance model result.")
     }
+  }
+  if(results_name == "pcap_mainstem" & is.null(site)) {
+    cli::cli_abort("You must supply a site (either knights landing or tisdale) if uploading a pcap_mainstem model result.")
   }
 
   model_board <- model_pin_board(storage_account, container_name)
 
   blob_url <- pin_model_data(
     model_board,
-    data,
+    model_fit_object,
     name = results_name,
     ...
   )
 
-  total_run_rows <- insert_model_run(con, data, blob_url, description, results_name, site, run_year)
+  total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
   message(glue::glue("Inserted new model run into database."))
-  total_rows <- insert_model_parameters(con, data, blob_url, results_name, site, run_year)
+  total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
 
   return(blob_url)
@@ -427,11 +442,11 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
     model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model_object)
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model)
   } else if(results_name == "pcap_all") {
     model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
   } else if(results_name == "pcap_mainstem") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE))
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
   }
@@ -475,11 +490,11 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
     model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model_object)
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model)
   } else if(results_name == "pcap_all") {
     model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
   } else if(results_name == "pcap_mainstem") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE))
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
   }
