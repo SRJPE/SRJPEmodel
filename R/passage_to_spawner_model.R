@@ -173,14 +173,25 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
     filter(!str_detect(parameter, "years")) |>
     mutate(index = suppressWarnings(readr::parse_number(parameter)),
            parameter = str_remove_all(parameter, "\\[|\\]|[0-9]+")) |>
-    left_join(year_lookup) |>
+    left_join(year_lookup, by = "index") |>
     select(-index)
 
   if(any(table_with_years$Rhat > 1.05)) {
     cli::cli_alert_warning("Some estimates have an Rhat statistic over 1.05.")
   }
 
-  return(table_with_years)
+  table_with_years_long <- table_with_years |>
+    pivot_longer(mean:Rhat, names_to = "statistic",
+                 values_to = "value") |>
+    mutate(model_name = "p2s",
+           site = NA,
+           run_year = NA,
+           week_fit = NA,
+           location_fit = NA,
+           srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
+    select(model_name, site, run_year, week_fit, location_fit, year, parameter, statistic, value, srjpedata_version)
+
+  return(table_with_years_long)
 
 }
 
