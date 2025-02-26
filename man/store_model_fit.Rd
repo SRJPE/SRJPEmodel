@@ -9,7 +9,7 @@ store_model_fit(
   storage_account,
   container_name,
   access_key,
-  data,
+  model_fit_object,
   results_name,
   site = NULL,
   run_year = NULL,
@@ -26,12 +26,12 @@ store_model_fit(
 
 \item{access_key}{A string specifying the Azure storage access key with write permissions.}
 
-\item{data}{The model result data object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
+\item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 
 \item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{all_mark_recap},
 \code{missing_mark_recap}, \code{no_mark_recap},  \code{no_mark_recap_no_trib}, \code{pcap_all}, \code{pcap_mainstem}, or \code{p2s}.}
 
-\item{site}{If uploading an abundance model output, you must supply the site for which you fit the model.}
+\item{site}{If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.}
 
 \item{run_year}{If uploading an abundance model output, you must supply the run_year for which you fit the model.}
 
@@ -57,7 +57,7 @@ blob_url <- store_model_fit(con,
                             storage_account = "my_storage_account",
                             container_name = "my_container",
                             access_key = "my_access_key",
-                            data = model_results,
+                            model_fit_object = model_results,
                             results_name = "model_name",
                             description = "model_description")
 
