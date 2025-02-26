@@ -51,6 +51,7 @@ P2S_results <- fit_passage_to_spawner_model(P2S_inputs)
 P2S_spawners <- extract_P2S_estimates(P2S_results)
 
 P2S_spawners |>
+  pivot_wider(names_from = "statistic", values_from = "value") |>
   filter(parameter == "predicted_spawners") |>
   ggplot(aes(x = year, y = `50`)) +
   geom_ribbon(aes(ymin = `2.5`, ymax = `97.5`), alpha = 0.2) +
