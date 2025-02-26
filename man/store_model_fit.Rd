@@ -11,23 +11,29 @@ store_model_fit(
   access_key,
   data,
   results_name,
+  site = NULL,
+  run_year = NULL,
   description,
-  mainstem = FALSE,
   ...
 )
 }
 \arguments{
 \item{con}{A connection object to the database.}
 
-\item{storage_account}{A string specifying the Azure storage account name.}
+\item{storage_account}{A string specifying the Azure storage account name, typically \code{jpemodelresults}.}
 
-\item{container_name}{A string specifying the container name in the Azure storage account.}
+\item{container_name}{A string specifying the container name in the Azure storage account, typically \code{model-results}.}
 
 \item{access_key}{A string specifying the Azure storage access key with write permissions.}
 
-\item{data}{The model result data object that needs to be stored.}
+\item{data}{The model result data object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 
-\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage.}
+\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{all_mark_recap},
+\code{missing_mark_recap}, \code{no_mark_recap},  \code{no_mark_recap_no_trib}, \code{pcap_all}, \code{pcap_mainstem}, or \code{p2s}.}
+
+\item{site}{If uploading an abundance model output, you must supply the site for which you fit the model.}
+
+\item{run_year}{If uploading an abundance model output, you must supply the run_year for which you fit the model.}
 
 \item{...}{Additional named arguments to be passed as metadata to the blob storage.}
 }
@@ -53,8 +59,7 @@ blob_url <- store_model_fit(con,
                             access_key = "my_access_key",
                             data = model_results,
                             results_name = "model_name",
-                            description = "model_description",
-                            file_name = "file_name")
+                            description = "model_description")
 
 print(blob_url)
 

@@ -3,11 +3,14 @@
 #' It uploads the model data to Azure Blob Storage and updates the database with relevant information about the model run and parameters.
 #'
 #' @param con A connection object to the database.
-#' @param storage_account A string specifying the Azure storage account name.
-#' @param container_name A string specifying the container name in the Azure storage account.
+#' @param storage_account A string specifying the Azure storage account name, typically `jpemodelresults`.
+#' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
 #' @param access_key A string specifying the Azure storage access key with write permissions.
-#' @param data The model result data object that needs to be stored.
-#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage.
+#' @param data The model result data object that needs to be stored, of class `stanfit` or `bugs`.
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `all_mark_recap`,
+#'`missing_mark_recap`, `no_mark_recap`,  `no_mark_recap_no_trib`, `pcap_all`, `pcap_mainstem`, or `p2s`.
+#' @param site If uploading an abundance model output, you must supply the site for which you fit the model.
+#' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
 #' @return A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
@@ -27,15 +30,25 @@
 #'                             access_key = "my_access_key",
 #'                             data = model_results,
 #'                             results_name = "model_name",
-#'                             description = "model_description",
-#'                             file_name = "file_name")
+#'                             description = "model_description")
 #'
 #' print(blob_url)
 #'
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, description, mainstem = FALSE, ...){
+store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, site = NULL, run_year = NULL, description, ...){
+
+  if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
+                          "pcap_all", "pcap_mainstem", "p2s")) {
+    cli::cli_abort("You must supply an approved value to the results_name argument.")
+  }
+
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    if(is.null(site) | is.null(run_year)){
+      cli::cli_abort("You must supply a site and run year if uploading an abundance model result.")
+    }
+  }
 
   model_board <- model_pin_board(storage_account, container_name)
 
@@ -46,9 +59,9 @@ store_model_fit <- function(con, storage_account, container_name, access_key, da
     ...
   )
 
-  total_run_rows <- insert_model_run(con, data, blob_url, description, mainstem)
+  total_run_rows <- insert_model_run(con, data, blob_url, description, results_name, site, run_year)
   message(glue::glue("Inserted new model run into database."))
-  total_rows <- insert_model_parameters(con, data, blob_url)
+  total_rows <- insert_model_parameters(con, data, blob_url, results_name, site, run_year)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
 
   return(blob_url)
@@ -409,8 +422,20 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description, mainstem){
-  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = mainstem))
+insert_model_run <- function(con, model, blob_url, description, results_name, site = NULL, run_year = NULL){
+
+  # call extract function based on the model name
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    model_final_results <- extract_abundance_estimates(site, run_year,
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model_object)
+  } else if(results_name == "pcap_all") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+  } else if(results_name == "pcap_mainstem") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE))
+  } else if(results_name == "p2s") {
+    model_final_results <- extract_P2S_estimates(model)
+  }
+
   # model_final_results <- model$final_results
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
@@ -445,9 +470,19 @@ insert_model_run <- function(con, model, blob_url, description, mainstem){
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url) {
+insert_model_parameters <- function(con, model, blob_url, results_name, site = NULL, run_year = NULL) {
 
-  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+  # call extract function based on the model name
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    model_final_results <- extract_abundance_estimates(site, run_year,
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model_object)
+  } else if(results_name == "pcap_all") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+  } else if(results_name == "pcap_mainstem") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE))
+  } else if(results_name == "p2s") {
+    model_final_results <- extract_P2S_estimates(model)
+  }
   # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
   # model_final_results$model_fit_filename <- file_name
   model_final_results$blob_url <- blob_url
