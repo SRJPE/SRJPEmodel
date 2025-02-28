@@ -98,8 +98,18 @@ A model outputs data frame that includes reach specific survival and detection p
 **Table**
 
 ```{r, eval = FALSE}
+# TODO confirm that this is working with Liz and then update to pull survival model fits
 # Table to show model fits
-# IN PROGRESS, creating a function to process STAN object into table of clean results
+survival_estimates <- extract_survival_estimates(survival_model_fit)
+```
+
+```{r, echo = FALSE, eval = FALSE}
+# TODO remove eval = FALSE once we save survival_estimates in vignettes/data
+write_csv(survival_estimates, "data/survival_estimates.csv")
+survival_estimates <- read_csv("data/survival_estimates.csv")
+# Print table
+kable(survival_estimates, head(10))
+
 ```
 
 **Plots**
@@ -107,6 +117,12 @@ A model outputs data frame that includes reach specific survival and detection p
 The following plots show predicted survival from release to Sacramento for each release group and year along with 95% CI.
 
 *Figure 3. Release to Sacramento survival rates for A. upper Sacramento fish and B. Butte Creek and Feather River fish, per release group. Survival rates are colored by water year type. Error bars represent the 25 and 75 percentiles.*
+
+```{r, eval = FALSE}
+# Generate survival plot
+generate_survival_rate_plot(survival_estimates)
+
+```
 
 ![]()
 
