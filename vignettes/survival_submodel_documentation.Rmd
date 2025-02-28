@@ -1,12 +1,12 @@
 ---
 title: "Survival Model"
 author: "Flora Cordoleani"
-# output:
-#   html_document: default
-#   theme: flatly
-# vignette: "%\\VignetteIndexEntry{Survival Model} %\\VignetteEngine{knitr::rmarkdown}
-#   %\\VignetteEncoding{UTF-8}\n"
-output: word_document
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Survival Model} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+#output: word_document
 ---
 
 ```{r, include = FALSE}
@@ -39,23 +39,19 @@ The purpose of the smolt survival submodel is to take in fish detection data alo
 
 The survival model is required to estimates juvenile abundance needed for the stock recruit model or a within season outmigrant forecast model. See figure 1 below to see how it fits into the full JPE model system.
 
-*Figure 1: Conceptual Diagram of SRJPE model. Survival sub-model shown in yellow.*
+*Figure 1: Conceptual Diagram of SRJPE model. Survival sub-model shown in yellow.*Submodel Architecture
 
-![](images/survival_conceptual_model.png)
+![](images/survival_doc_picture_1.png)
 
-## Submodel Architecture
+The bayesian version of a Cormak-Jolly-Seber (CJS) model uses a classic maximum likelihood (MLE) method. The Bayesian CJS model was taken from stan example at <https://mc-stan.org/docs/stan-users-guide/mark-recapture-models.html.> The model is used to estimate survival rate (ɸi) and detection probability (pi) in each reach i. We considered the initial tag location as a "mark" and subsequent detections at downstream receivers as a "recapture". For instance, ɸ1 = survival from location 1 to 2 and p2 = detection probability at location 2. Location 1 is release location. There are 4 reaches in the Sacramento River model: Release location to Woodson Bridge, Woodson Bridge to Butte Bridge, Butte Bridge to Sacramento and Sacramento to Delta exit. There are 2 reaches in the Butte Creek and Feather River models: Release locations to Sacramento and Sacramento to Delta exit. The last reach is used to further improve detection probability estimation at the Sacramento location.
 
-The bayesian version of a Cormak-Jolly-Seber (CJS) model uses a classic maximum likelihood (MLE) method that was initially developed by Cordoleani et. al. The Bayesian CJS model was taken from stan example at <https://mc-stan.org/docs/stan-users-guide/mark-recapture-models.html.> The CJS model is used to estimate survival rate (ɸi) and detection probability (pi) in each reach i. We considered the initial tag location as a "mark" and subsequent detections at downstream receivers as a "recapture". For instance, ɸ1 = survival from location 1 to 2 and p2 = detection probability at location 2. Location 1 is release location. There are 4 reaches in the Sacramento River model: Release to Woodson Bridge, Woodson Bridge to Butte Bridge, Butte Bridge to Sacramento and Sacramento to Delta exit. There are 2 reaches in the Butte Creek and Feather River models: Release to Sacramento and Sacramento to Delta exit. The last reach is used to further improve detection probability estimation at the Sacramento location.
+*Figure 2: Diagram describing survival rate and detection probability.*Model inputs
 
-*Figure 2: Diagram describing survival rate and detection probability.*
-
-![](images/survival_submodel_architecture.png)
-
-# Model inputs
+![](images/survival_doc_figure_2.png)
 
 The tagging data used for this work were obtained through the Interagency Telemetry Advisory Group (ITAG), which is an interagency coordination group formed to support the planning and implementation of a coordinated acoustic telemetry array in the Sacramento and San Joaquin Rivers, the Sacramento-San Joaquin River Delta, and San Francisco Bay. This data is processed in the SRJPEdata package to produce a `survival_model_inputs` data object.
 
-The `SRJPEdata::survival_model_inputs` data object includes the following columns: the individual fish ID, the fish's detection history ("ch") which gives a 0 when a fish is not detected at one of the location and a 1 if it is, the study ID, fish length and weight, the fish run assignment and source (for instance fall-run from Coleman), the date at release, the release location, the fish condition factor, the year at release, standardized name for release location, water year type (two categories), water year type (three categories), water year type (four categories), first capture location, standardized variables for fish conditions, last capture location, distances from release location to capture sites and standardized versions of those release locations, and a tributary index.
+The `SRJPEdata::survival_model_inputs` data object includes the following columns: the individual fish ID, the fish's detection history ("ch") which gives a 0 when a fish is not detected at one of the location and a 1 if it is, the study ID, fish length and weight, the fish run assignment and source (for instance fall-run from Coleman Hatchery), the date at release, the release location, the fish condition factor, the year at release, standardized name for release location, water year type (two categories), water year type (three categories), first capture location, standardized variables for fish size metrics, last capture location, distances from release location to capture sites and standardized versions of those distances.
 
 # Running survival submodel
 
@@ -97,7 +93,7 @@ survival_model_fit <- SRJPEmodel::fit_survival_model(survival_inputs = survival_
 
 # Model Output
 
-A model outputs data frame that includes reach specific survival and detection probability rates for each year.
+A model outputs data frame that includes reach specific survival and detection probability rates for each year and release group.
 
 **Table**
 
@@ -108,20 +104,14 @@ A model outputs data frame that includes reach specific survival and detection p
 
 **Plots**
 
-The following plots show predicted survival for reaches and years along with 95% CI. ![]()
+The following plots show predicted survival from release to Sacramento for each release group and year along with 95% CI.
 
-*Figure 3. Smolt annual survival estimates (± 95% confidence intervals), from A. Release to Woodson bridge, and B. Woodson Bridge to Sacramento, using the best CJS model: Phi = reach \* year and p = reach + year.*
+*Figure 3. Release to Sacramento survival rates for A. upper Sacramento fish and B. Butte Creek and Feather River fish, per release group. Survival rates are colored by water year type. Error bars represent the 25 and 75 percentiles.*
 
-![](images/sacramento_survival_plot.png)
+![]()
 
-*Figure 4. Feather River spring-run smolt annual survival to Sacramento (± 95% confidence intervals), estimated with the best model: Phi = reach \* year and p =1.*
+![](images/survival_plot.png)
 
-![](images/updated_feather_survival_plot.png)
-
-*Figure 5. Butte Creek smolt annual survival to Sacramento (± 95% confidence intervals), estimated with the best model: Phi = reach \* year and p = 1.*
-
-![](images/updated_butte_survival_plot.png)
-
-# Resources
+**Resources**
 
 For more in depth documentation on the Spring Run JPE Survival Model please see the full report. (TODO add link once available online)
