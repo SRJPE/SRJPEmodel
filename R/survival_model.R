@@ -415,27 +415,32 @@ extract_survival_estimates <- function(model_object) {
     mutate(indices = str_remove_all(indices, "\\]")) |>
     separate_wider_delim(indices, ",", names = c("index_1", "index_2", "index_3"),
                          too_few = "align_start") |>
-    mutate(across(index_1:index_3, as.numeric),
-           # TODO S_bCov, s_bCovT, SurvForecast, SurvRelSacSz, SurvWoodSacSz, SurfForecastSz, pred_SurvTSz
-           # year-structured parameters
-           year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
-           # reach-structured parameters
-           sac_reach_index = case_when(parameter == "P_b" ~ index_2,
-                                       parameter %in% c("muPb", "sdPb", "S_bReach") ~ index_1,
-                                       parameter %in% c("pred_surv", "pred_pcap") ~ index_2,
-                                       TRUE ~ NA),
-           # trib-structured parameters
-           trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
-                                        parameter == "pred_survT" ~ index_2, # TODO confirm this, it's hard coded as c(1, 2), it's the trib model reaches?
-                                        parameter %in% c("pred_survTSz", "TribSurvForecastSz") ~ index_3,
-                                        TRUE ~ NA),
-           # release group structured parameters
-           release_group_index_sac = ifelse(parameter %in% c("SurvRelSac","SurvWoodSac", "pred_surv",
-                                                             "S_RE"), index_1, NA),
-           release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT"), index_1, NA),
-           pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
-           size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_1, NA),
-           covariate_dimension_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_2 - 1, NA)) |>
+  mutate(across(index_1:index_3, as.numeric),
+         # year-structured parameters
+         year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
+         water_year_type = ifelse(parameter %in% c("SurvRelSacSz", "SurvWoodSacSz", "SurvForecastSz",
+                                                   "pred_SurvTSz"), index_2, NA),
+         environmental_covarariate_dimension = ifelse(parameter %in% c("S_bCov", "s_bCovT"), index_1, NA),
+         forecast_index = ifelse(parameter == "SurvForecast", index_1, NA),
+         # reach-structured parameters
+         sac_reach_index = case_when(parameter == "P_b" ~ index_2,
+                                     parameter %in% c("muPb", "sdPb", "S_bReach") ~ index_1,
+                                     parameter %in% c("pred_surv", "pred_pcap") ~ index_2,
+                                     TRUE ~ NA),
+         # trib-structured parameters
+         trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
+                                      parameter == "pred_survT" ~ index_2, # TODO confirm this, it's hard coded as c(1, 2), it's the trib model reaches?
+                                      parameter %in% c("pred_survTSz", "TribSurvForecastSz", "pred_SurvTSz") ~ index_3,
+                                      TRUE ~ NA),
+         # release group structured parameters
+         release_group_index_sac = ifelse(parameter %in% c("SurvRelSac","SurvWoodSac", "pred_surv",
+                                                           "S_RE"), index_1, NA),
+         release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT"), index_1, NA),
+         pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
+         size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz",
+                                                    "SurvRelSacSz", "SurvWoodSacSz",
+                                                    "SurvForecastSz", "pred_SurvTSz"), index_1, NA),
+         covariate_dimension_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_2 - 1, NA)) |>
     # now join in lookups
     left_join(year_lookup, by = "year_index") |>
     left_join(reach_lookup_sac, by = "sac_reach_index") |>
@@ -450,7 +455,7 @@ extract_survival_estimates <- function(model_object) {
                               parameter)) |>
     select(-c(year_index, sac_reach_index, trib_reach_index, release_group_index_sac,
               release_group_index_trib, reach_name_sac, reach_name_trib, release_group_sac,
-              release_group_trib, pred_forecast_index_trib, index_1, index_2)) |>
+              release_group_trib, pred_forecast_index_trib, index_1, index_2, index_3)) |>
     pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
