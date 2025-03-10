@@ -47,9 +47,85 @@ prepare_stock_recruit_inputs <- function(year, stream, adult_data_type,
     # TODO filter by adult data type
     glimpse()
 
-  # TODO now filter by covariate args according to josh's code
-  # TODO truncate dataset (if we want)
-  # TODO produce data and inits
+  # TODO match site to stream (if necessary)
+
+  if(missing(covariate)) {
+    cli::cli_bullets("Running a no-covariate model")
+    covariate <- "null"
+  }
+
+  data_with_selected_covar <- data |>
+    mutate(null = 0) |>
+    select(stream, brood_year, site, juv_year, adult_abundance, mean_juvenile_abundance,
+           cv_juvenile_abundance, all_of(covariate)) |>
+    filter(stream == !!stream) |>
+    drop_na(adult_abundance, mean_juvenile_abundance, cv_juvenile_abundance,
+            all_of(covariate))
+
+  # get year lookup for matching with parameter estimates
+  year_lookup <- data_with_selected_covar |>
+    mutate(year_index = row_number()) |>
+    select(brood_year, year_index)
+
+  if(nrow(data_with_selected_covar) == 0) {
+    cli::cli_abort(paste0("There is not enough data to run the model for ", stream,
+                          " and covariate type ", covariate))
+  }
+
+  n_years <- nrow(data_with_selected_covar)
+  spawners <- data_with_selected_covar$adult_abundance
+  mean_log_recruits <- log(data_with_selected_covar$mean_juvenile_abundance)
+  sd_log_recruits <- sqrt(log(data_with_selected_covar$cv_juvenile_abundance^2 + 1))
+  mean_obsv_log_recruits_per_spawner <- vector(length = n_years)
+  sd_obsv_log_recruits_per_spawner <- vector(length = n_years)
+
+  # simulate variation in log recruits and divide by spawner stock to get mean and sd of observed log recruits-per-spawner
+  for(i in 1:n_years) {
+    simulated_recruits <- exp(rnorm(n = 1000, mean = mean_log_recruits[i], sd = sd_log_recruits[i]))
+    observed_log_recruits_per_spawner <- log(simulated_recruits / spawners[i])
+    mean_obsv_log_recruits_per_spawner[i] <- mean(observed_log_recruits_per_spawner)
+    sd_obsv_log_recruits_per_spawner[i] <- sd(observed_log_recruits_per_spawner)
+  }
+
+  # data list for passing to STAN
+  data_list <- list(Nyrs = n_years,
+                    SP = spawners,
+                    mu_obslgRS = mean_obsv_log_recruits_per_spawner,
+                    sd_obslgRS = sd_obsv_log_recruits_per_spawner,
+                    X = data_with_selected_covar$covariate)
+
+  # inits
+  if(covariate == "null") {
+    reg <- lm(mean_obsv_log_recruits_per_spawner ~ spawners)
+    ini_gamma <- 0
+  } else {
+    reg <- lm(mean_obsv_log_recruits_per_spawner ~ spawners + standardized_covariate)
+    ini_gamma <- as.double(reg$coefficients[3])
+  }
+
+  ini_alpha <- as.double(reg$coefficients[1])
+  ini_beta <- as.double(reg$coefficients[2])
+
+  inits1 <- list(alpha = ini_alpha,
+                 beta = ini_beta,
+                 gamma = ini_gamma,
+                 sd_pro = 1)
+
+  inits2 <- list(alpha = ini_alpha * 1.5,
+                 beta = ini_beta * 0.75,
+                 gamma = ini_gamma * 0.8,
+                 sd_pro = 1.25)
+
+  inits3 <- list(alpha = ini_alpha * 0.75,
+                 beta = ini_beta * 1.25,
+                 gamma = ini_gamma * 1.2,
+                 sd_pro = 0.75)
+
+  inits <- list(inits1, inits2, inits3)
+
+  return(list("data" = data_list,
+              "inits" = inits,
+              "year_lookup" = year_lookup))
 
 }
 
