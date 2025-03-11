@@ -408,10 +408,12 @@ get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sy
     dplyr::pull(blob_storage_url)
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
-  container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
+  container_name <- "model-results"
+  # container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
   blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
   model_board <- model_pin_board(storage_account, container_name)
+  print(model_board)
   model_object <- pins::pin_read(model_board, blob_path)
 
   return(model_object)
@@ -513,16 +515,17 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
   model_final_results <-  model_final_results |>
     select(model_run_id, location_id, run_year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
     mutate(
-      run_year = as.integer(run_year),
+      year = as.integer(run_year),
       week_fit = as.integer(week_fit)
-      )
+      ) |>
+    select(-c(run_year))
 
 
   query <- glue::glue_sql(
     "INSERT INTO model_parameters (
           model_run_id,
           location_id,
-          run_year,
+          year,
           week_fit,
           parameter_id,
           statistic_id,
@@ -531,7 +534,7 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
         ) VALUES (
           UNNEST(ARRAY[{model_final_results$model_run_id*}]),
           UNNEST(ARRAY[{model_final_results$location_id*}]),
-          UNNEST(ARRAY[{model_final_results$run_year*}]),
+          UNNEST(ARRAY[{model_final_results$year*}]),
           UNNEST(ARRAY[{model_final_results$week_fit*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
