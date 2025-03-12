@@ -351,7 +351,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     dplyr::pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
-    filter(model_run_id == model_run_id) |>
+    filter(model_run_id == !!model_run_id) |>
     as_tibble()
 
   stat_lookup <- tbl(con, "statistic") |>
@@ -367,8 +367,8 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     rename("location_id" = "id")
 
   model_parameters <- model_parameters |> left_join(location_lookup, by = "location_id") |>
-    select(-c("location_id", "updated_at", "site", "description")) |>
-    rename("location" = "stream")
+    select(-c("location_id", "updated_at", "description")) |>
+    rename("location" = "site")
 
 
   parameter_lookup <- tbl(con, "parameter") |>
