@@ -12,9 +12,9 @@ pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
 pCap <- fit_pCap_model(pCap_inputs$inputs)
 
 # save, fit 01-09-2025
-saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
+saveRDS(pCap, "C:/Users/Liz/Downloads/pCap_model_2025-02-10.rds")
 
-pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds")
+pCap <- readRDS("C:/Users/Liz/Downloads/pCap_model_2025-02-10.rds")
 
 abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T)
 lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
@@ -32,6 +32,8 @@ saveRDS(abundance_table, "ubc_2018_abundance_fit_table.rds")
 
 # run for all SRJPE sites -------------------------------------------------
 
+# tribs
+
 sites_to_run <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   distinct(site, run_year) |>
   filter(!site %in% c("knights landing", "red bluff diversion dam",
@@ -40,7 +42,7 @@ sites_to_run <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
 
 all_JPE_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = sites_to_run, run_pCap = FALSE,
                                                mainstem = FALSE,
-                                               pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_model_2025-01-09.rds",
+                                               pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_model_2025-02-10.rds",
                                                bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                                bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
@@ -48,20 +50,45 @@ write_csv(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_jpe_sites_fit.csv")
 saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 
 # mainstem
+
 mainstem_sites <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   distinct(site, run_year) |>
   filter(site %in% c("knights landing", "red bluff diversion dam",
                       "tisdale")) |>
   arrange(site, run_year)
 
-mainstem_sites_clean <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites, run_pCap = TRUE,
-                                               mainstem = TRUE,
-                                               pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_model_mainstem_2025-01-24.rds",
-                                               bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
-                                               bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+# tisdale
+tisdale <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites |>
+                                             filter(site == "tisdale"),
+                                           run_pCap = FALSE,
+                                           pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_tisdale_fit.rds",
+                                           bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                           bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
-write_csv(mainstem_sites_clean, "C:/Users/Liz/Downloads/mainstem_jpe_sites_fit.csv")
-saveRDS(mainstem_sites_clean, "C:/Users/Liz/Downloads/mainstem_sites_fit.rds")
+write_csv(tisdale, "C:/Users/Liz/Downloads/tisdale_fits.csv")
+saveRDS(tisdale, "C:/Users/Liz/Downloads/tisdale_fits.rds")
+
+
+
+# knights landing
+knights_landing <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites |>
+                                             filter(site == "knights landing"),
+                                           run_pCap = FALSE,
+                                           pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_knights_landing_fit.rds",
+                                           bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                           bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+write_csv(knights_landing, "C:/Users/Liz/Downloads/knights_landing_fits.csv")
+saveRDS(knights_landing, "C:/Users/Liz/Downloads/knights_landing_fits.rds")
+
+# red bluff diversion dam
+rbdd <- run_bt_spas_x_JPE_sites(sites_to_run = mainstem_sites |>
+                                             filter(site == "red bluff diversion dam"),
+                                           run_pCap = FALSE,
+                                           pCap_model_object_filepath = "C:/Users/Liz/Downloads/pCap_rbdd_fit.rds",
+                                           bugs_model_file = "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+                                           bugs_directory = "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+write_csv(rbdd, "C:/Users/Liz/Downloads/rbdd_fits.csv")
+saveRDS(rbdd, "C:/Users/Liz/Downloads/rbdd_fits.rds")
 
 
 # generate data for Noble -------------------------------------------------

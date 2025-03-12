@@ -8,6 +8,6 @@ calculate_ss_tot(data)
 }
 \description{
 This function calculates the total sum of squares, which is required
-as input to the \code{data} call for \code{run_passage_to_spawner_model()}.
+as input to the \code{data} call for \code{fit_passage_to_spawner_model()}.
 }
 \keyword{internal}

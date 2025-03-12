@@ -5,10 +5,11 @@
 \title{Prepare inputs for stock-recruit model}
 \usage{
 prepare_stock_recruit_inputs(
+  year,
+  stream,
   adult_data_type,
-  site,
   covariate,
-  covariate_lifestage
+  truncate_dataset = FALSE
 )
 }
 \arguments{

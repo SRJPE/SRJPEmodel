@@ -22,5 +22,5 @@ or \code{null_covar} (no environmental covariate).}
 a list containing data elements required to run the STAN passage to spawner model
 }
 \description{
-This function prepares data for running P2S on a single stream and covariate. It is called in \code{run_passage_to_spawner_model()}.
+This function prepares data for running P2S on a single stream and covariate. It is called in \code{fit_passage_to_spawner_model()}.
 }

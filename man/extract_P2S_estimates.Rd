@@ -24,12 +24,12 @@ a table with the following variables:
 }
 }
 \description{
-This function takes in a STAN fit object produced by running \code{run_passage_to_spawner_model()} and produces a formatted
+This function takes in a STAN fit object produced by running \code{fit_passage_to_spawner_model()} and produces a formatted
 table of parameter estimates from the Passage to Spawner model.
 }
 \seealso{
 Other passage_to_spawner: 
 \code{\link{compare_P2S_model_covariates}()},
-\code{\link{run_passage_to_spawner_model}()}
+\code{\link{fit_passage_to_spawner_model}()}
 }
 \concept{passage_to_spawner}

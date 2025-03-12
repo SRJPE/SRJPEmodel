@@ -77,7 +77,7 @@ The model is run for a given stream and environmental covariate.
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
 # run the model for battle creek and water year type
 battle_inputs <- prepare_P2S_inputs("battle creek", "wy_type")
-battle_P2S_model <- run_passage_to_spawner_model(battle_inputs)
+battle_P2S_model <- fit_passage_to_spawner_model(battle_inputs)
 ```
 
 ## For all covariates within a stream
