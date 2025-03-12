@@ -185,11 +185,11 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
                  values_to = "value") |>
     mutate(model_name = "p2s",
            site = NA,
-           run_year = NA,
            week_fit = NA,
            location_fit = NA,
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
-    select(model_name, site, run_year, week_fit, location_fit, year, parameter, statistic, value, srjpedata_version)
+    select(model_name, site, year, week_fit, location_fit,
+           parameter, statistic, value, srjpedata_version)
 
   return(table_with_years_long)
 

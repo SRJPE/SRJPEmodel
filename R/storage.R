@@ -7,8 +7,8 @@
 #' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
 #' @param access_key A string specifying the Azure storage access key with write permissions.
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
-#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `all_mark_recap`,
-#'`missing_mark_recap`, `no_mark_recap`,  `no_mark_recap_no_trib`, `pcap_all`, `pcap_mainstem`, or `p2s`.
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `juvenile_abundance`,
+#' `pcap_all`, `pcap_mainstem`, or `p2s`.
 #' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
 #' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
@@ -39,7 +39,10 @@
 #' @export
 store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, site = NULL, run_year = NULL, description, ...){
 
-  # checks
+  # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
+  if(results_name == "juvenile_abundance") {
+    results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
+  }
   # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
                           "pcap_all", "pcap_mainstem", "p2s")) {
@@ -49,10 +52,9 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
   # check that the model objects align with the model type (bugs or stanfit)
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
     cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
-  } else {
-    if(class(model_fit_object) != "stanfit") {
+  }
+  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s") & class(model_fit_object) != "stanfit") {
       cli::cli_abort("For models pcap_all, pcap_mainstem, and p2s, model object must be of class 'stanfit'.")
-    }
   }
 
   # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
@@ -492,11 +494,14 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
     model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model)
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model) |>
+      rename(year = run_year)
   } else if(results_name == "pcap_all") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE)) |>
+      rename(year = run_year)
   } else if(results_name == "pcap_mainstem") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site)) |>
+      rename(year = run_year)
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
   }
@@ -513,12 +518,11 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
   model_final_results <- join_lookup(model_final_results, "trap_location", "location_fit", "site", "location_fit_id")
 
   model_final_results <-  model_final_results |>
-    select(model_run_id, location_id, run_year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
+    select(model_run_id, location_id, year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
     mutate(
-      year = as.integer(run_year),
+      year = as.integer(year),
       week_fit = as.integer(week_fit)
-      ) |>
-    select(-c(run_year))
+      )
 
 
   query <- glue::glue_sql(

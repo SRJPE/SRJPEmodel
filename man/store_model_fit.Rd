@@ -28,8 +28,8 @@ store_model_fit(
 
 \item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 
-\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{all_mark_recap},
-\code{missing_mark_recap}, \code{no_mark_recap},  \code{no_mark_recap_no_trib}, \code{pcap_all}, \code{pcap_mainstem}, or \code{p2s}.}
+\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{juvenile_abundance},
+\code{pcap_all}, \code{pcap_mainstem}, or \code{p2s}.}
 
 \item{site}{If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.}
 

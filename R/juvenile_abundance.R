@@ -91,9 +91,9 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
 
   # check data list for NaNs and Infs
-  cli::cli_process_start("Checking data inputs",
-                         msg_done = "Data checked",
-                         msg_failed = "Data check failed")
+  # cli::cli_process_start("Checking data inputs",
+  #                        msg_done = "Data checked",
+  #                        msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
     if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
@@ -128,9 +128,9 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     pro_tau.P = 1)
 
 
-  cli::cli_process_start("Checking init inputs for pCap model",
-                         msg_done = "Inits checked",
-                         msg_failed = "Init check failed")
+  # cli::cli_process_start("Checking init inputs for pCap model",
+  #                        msg_done = "Inits checked",
+  #                        msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
     if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
@@ -190,9 +190,9 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 
 
   # check data list for NaNs and Infs
-  cli::cli_process_start("Checking data inputs",
-                         msg_done = "Data checked",
-                         msg_failed = "Data check failed")
+  # cli::cli_process_start("Checking data inputs",
+  #                        msg_done = "Data checked",
+  #                        msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
     if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
@@ -215,9 +215,9 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
                     pro_tau.P = 1)
 
 
-  cli::cli_process_start("Checking init inputs for pCap model",
-                         msg_done = "Inits checked",
-                         msg_failed = "Init check failed")
+  # cli::cli_process_start("Checking init inputs for pCap model",
+  #                        msg_done = "Inits checked",
+  #                        msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
     if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
@@ -461,9 +461,9 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   # check data list for NaNs and Infs
-  cli::cli_process_start("Checking data inputs",
-                         msg_done = "Data checked",
-                         msg_failed = "Data check failed")
+  # cli::cli_process_start("Checking data inputs",
+  #                        msg_done = "Data checked",
+  #                        msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
     if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
@@ -479,9 +479,9 @@ prepare_abundance_inputs <- function(site, run_year,
                     lg_N = ini_lgN)
 
 
-  cli::cli_process_start("Checking init inputs for abundance model",
-                         msg_done = "Inits checked",
-                         msg_failed = "Init check failed")
+  # cli::cli_process_start("Checking init inputs for abundance model",
+  #                        msg_done = "Inits checked",
+  #                        msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
     if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
