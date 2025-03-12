@@ -5,6 +5,7 @@
 \title{Prepare inputs for stock-recruit model}
 \usage{
 prepare_stock_recruit_inputs(
+  con,
   year,
   stream,
   adult_data_type,
@@ -13,6 +14,8 @@ prepare_stock_recruit_inputs(
 )
 }
 \arguments{
+\item{con}{A valid connection to the model run database.}
+
 \item{adult_data_type}{the type of survey the adult data came from. Either \code{upstream_estimate},
 \code{redd_count}, \code{holding_count}, or \code{carcass_estimate}.}
 }

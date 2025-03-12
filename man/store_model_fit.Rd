@@ -35,6 +35,8 @@ store_model_fit(
 
 \item{run_year}{If uploading an abundance model output, you must supply the run_year for which you fit the model.}
 
+\item{description}{A description of the model fit you are uploading.}
+
 \item{...}{Additional named arguments to be passed as metadata to the blob storage.}
 }
 \value{

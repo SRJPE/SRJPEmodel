@@ -1,8 +1,10 @@
 #' Prepare inputs for stock-recruit model
 #' @details This function prepares data for input into a stock recruit model.
+#' @param con A valid connection to the model run database.
 #' @param adult_data_type the type of survey the adult data came from. Either `upstream_estimate`,
 #' `redd_count`, `holding_count`, or `carcass_estimate`.
 #' @site The stream for which you are fitting the model.
+#' @model_run_id The model run from which you want to pull your juvenile abundance estimates.
 #' @covariate The covariate you would like to use to fit the model. Either `gdd_spawn`,
 #' `above_13_temp_day`, `above_13_temp_week`, `weekly_max_temp_max`, `weekly_max_temp_mean`, `weekly_max_temp_median`,
 #' `mean_flow`, `max_flow`, `min_flow`, `median_flow`, or `null`
@@ -15,7 +17,7 @@
 #' * **truncated_covariate_table** table of covariates limited to only those years where all covariates are available (for covariate comparison analyses)
 #' @export
 #' @md
-prepare_stock_recruit_inputs <- function(year, stream, adult_data_type,
+prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
                                          covariate, truncate_dataset = FALSE) {
 
   years_filter <- SRJPEdata::stock_recruit_year_lookup |>
@@ -30,12 +32,34 @@ prepare_stock_recruit_inputs <- function(year, stream, adult_data_type,
     right_join(years_filter, by = c("brood_year", "stream")) |>
     glimpse()
 
-  # TODO pull from model storage
-  juv <- readRDS("~/Downloads/all_JPE_sites_clean.rds") |>
-    mutate(brood_year = run_year - 1) |>
+  # get juvenile results from database
+  # currently pulling most recent model run for the stream
+  juv_results_from_db <- tbl(con, "model_parameters") |>
+    left_join(tbl(con, "trap_location") |>
+                select(location_id = id, site, stream),
+              by = "location_id") |>
+    left_join(tbl(con, "parameter") |>
+                select(parameter_id = id, parameter = definition),
+              by = "parameter_id") |>
+    left_join(tbl(con, "statistic") |>
+                select(statistic_id = id, statistic = definition),
+              by = "statistic_id") |>
+    filter(stream == !!stream) |>
+    collect() |>
+    arrange(desc(updated_at)) |>
+    group_by(updated_at) |>
+    mutate(recent = cur_group_id()) |>
+    ungroup() |>
+    slice_max(recent) |>
+    select(-c(id, recent, location_id, parameter_id, statistic_id,
+              updated_at, model_run_id, location_fit_id)) |>
+    distinct_all()  # keep only the most recent # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+
+  juv_results <- juv_results_from_db |>
+    mutate(brood_year = year - 1) |>
+    filter(parameter == "Ntot") |>
     pivot_wider(names_from = "statistic",
                 values_from = "value") |>
-    filter(parameter == "Ntot") |>
     mutate(mean_juvenile_abundance = mean,
            cv_juvenile_abundance = sd/mean) |>
     select(brood_year, site, mean_juvenile_abundance, cv_juvenile_abundance) |>

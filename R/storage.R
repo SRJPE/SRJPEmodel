@@ -11,6 +11,7 @@
 #' `pcap_all`, `pcap_mainstem`, or `p2s`.
 #' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
 #' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
+#' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
 #' @return A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
