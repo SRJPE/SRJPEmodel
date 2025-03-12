@@ -3,11 +3,14 @@
 #' It uploads the model data to Azure Blob Storage and updates the database with relevant information about the model run and parameters.
 #'
 #' @param con A connection object to the database.
-#' @param storage_account A string specifying the Azure storage account name.
-#' @param container_name A string specifying the container name in the Azure storage account.
+#' @param storage_account A string specifying the Azure storage account name, typically `jpemodelresults`.
+#' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
 #' @param access_key A string specifying the Azure storage access key with write permissions.
-#' @param data The model result data object that needs to be stored.
-#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage.
+#' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `juvenile_abundance`,
+#' `pcap_all`, `pcap_mainstem`, or `p2s`.
+#' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
+#' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
 #' @return A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
@@ -25,30 +28,57 @@
 #'                             storage_account = "my_storage_account",
 #'                             container_name = "my_container",
 #'                             access_key = "my_access_key",
-#'                             data = model_results,
+#'                             model_fit_object = model_results,
 #'                             results_name = "model_name",
-#'                             description = "model_description",
-#'                             file_name = "file_name")
+#'                             description = "model_description")
 #'
 #' print(blob_url)
 #'
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, data, results_name, description, mainstem = FALSE, ...){
+store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, site = NULL, run_year = NULL, description, ...){
+
+  # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
+  if(results_name == "juvenile_abundance") {
+    results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
+  }
+  # check that they supply an approved results name
+  if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
+                          "pcap_all", "pcap_mainstem", "p2s")) {
+    cli::cli_abort("You must supply an approved value to the results_name argument.")
+  }
+
+  # check that the model objects align with the model type (bugs or stanfit)
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
+    cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
+  }
+  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s") & class(model_fit_object) != "stanfit") {
+      cli::cli_abort("For models pcap_all, pcap_mainstem, and p2s, model object must be of class 'stanfit'.")
+  }
+
+  # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    if(is.null(site) | is.null(run_year)){
+      cli::cli_abort("You must supply a site and run year if uploading an abundance model result.")
+    }
+  }
+  if(results_name == "pcap_mainstem" & is.null(site)) {
+    cli::cli_abort("You must supply a site (either knights landing or tisdale) if uploading a pcap_mainstem model result.")
+  }
 
   model_board <- model_pin_board(storage_account, container_name)
 
   blob_url <- pin_model_data(
     model_board,
-    data,
+    model_fit_object,
     name = results_name,
     ...
   )
 
-  total_run_rows <- insert_model_run(con, data, blob_url, description, mainstem)
+  total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
   message(glue::glue("Inserted new model run into database."))
-  total_rows <- insert_model_parameters(con, data, blob_url)
+  total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
   message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
 
   return(blob_url)
@@ -321,7 +351,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     dplyr::pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
-    filter(model_run_id == model_run_id) |>
+    filter(model_run_id == !!model_run_id) |>
     as_tibble()
 
   stat_lookup <- tbl(con, "statistic") |>
@@ -337,8 +367,8 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
     rename("location_id" = "id")
 
   model_parameters <- model_parameters |> left_join(location_lookup, by = "location_id") |>
-    select(-c("location_id", "updated_at", "site", "description")) |>
-    rename("location" = "stream")
+    select(-c("location_id", "updated_at", "description")) |>
+    rename("location" = "site")
 
 
   parameter_lookup <- tbl(con, "parameter") |>
@@ -380,10 +410,12 @@ get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sy
     dplyr::pull(blob_storage_url)
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
-  container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
+  container_name <- "model-results"
+  # container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
   blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
   model_board <- model_pin_board(storage_account, container_name)
+  print(model_board)
   model_object <- pins::pin_read(model_board, blob_path)
 
   return(model_object)
@@ -409,8 +441,20 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description, mainstem){
-  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = mainstem))
+insert_model_run <- function(con, model, blob_url, description, results_name, site = NULL, run_year = NULL){
+
+  # call extract function based on the model name
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    model_final_results <- extract_abundance_estimates(site, run_year,
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model)
+  } else if(results_name == "pcap_all") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+  } else if(results_name == "pcap_mainstem") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
+  } else if(results_name == "p2s") {
+    model_final_results <- extract_P2S_estimates(model)
+  }
+
   # model_final_results <- model$final_results
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
@@ -445,9 +489,22 @@ insert_model_run <- function(con, model, blob_url, description, mainstem){
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url) {
+insert_model_parameters <- function(con, model, blob_url, results_name, site = NULL, run_year = NULL) {
 
-  model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+  # call extract function based on the model name
+  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
+    model_final_results <- extract_abundance_estimates(site, run_year,
+                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model) |>
+      rename(year = run_year)
+  } else if(results_name == "pcap_all") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE)) |>
+      rename(year = run_year)
+  } else if(results_name == "pcap_mainstem") {
+    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site)) |>
+      rename(year = run_year)
+  } else if(results_name == "p2s") {
+    model_final_results <- extract_P2S_estimates(model)
+  }
   # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
   # model_final_results$model_fit_filename <- file_name
   model_final_results$blob_url <- blob_url
@@ -461,9 +518,9 @@ insert_model_parameters <- function(con, model, blob_url) {
   model_final_results <- join_lookup(model_final_results, "trap_location", "location_fit", "site", "location_fit_id")
 
   model_final_results <-  model_final_results |>
-    select(model_run_id, location_id, run_year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
+    select(model_run_id, location_id, year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
     mutate(
-      run_year = as.integer(run_year),
+      year = as.integer(year),
       week_fit = as.integer(week_fit)
       )
 
@@ -472,7 +529,7 @@ insert_model_parameters <- function(con, model, blob_url) {
     "INSERT INTO model_parameters (
           model_run_id,
           location_id,
-          run_year,
+          year,
           week_fit,
           parameter_id,
           statistic_id,
@@ -481,7 +538,7 @@ insert_model_parameters <- function(con, model, blob_url) {
         ) VALUES (
           UNNEST(ARRAY[{model_final_results$model_run_id*}]),
           UNNEST(ARRAY[{model_final_results$location_id*}]),
-          UNNEST(ARRAY[{model_final_results$run_year*}]),
+          UNNEST(ARRAY[{model_final_results$year*}]),
           UNNEST(ARRAY[{model_final_results$week_fit*}]),
           UNNEST(ARRAY[{model_final_results$parameter_id*}]),
           UNNEST(ARRAY[{model_final_results$statistic_id*}]),
