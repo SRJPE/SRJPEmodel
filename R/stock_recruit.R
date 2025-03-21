@@ -34,6 +34,7 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
 
   # get juvenile results from database
   # currently pulling most recent model run for the stream
+  # TODO we are going to have to also make sure we're pulling all years? so do we want to filter here?
   juv_results_from_db <- tbl(con, "model_parameters") |>
     left_join(tbl(con, "trap_location") |>
                 select(location_id = id, site, stream),
@@ -44,20 +45,29 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
     left_join(tbl(con, "statistic") |>
                 select(statistic_id = id, statistic = definition),
               by = "statistic_id") |>
-    filter(stream == !!stream) |>
+    filter(stream == !!stream,
+           parameter == "Ntot",
+           statistic %in% c("mean", "sd")) |>
     collect() |>
-    arrange(desc(updated_at)) |>
-    group_by(updated_at) |>
+    group_by(updated_at, year) |>
     mutate(recent = cur_group_id()) |>
     ungroup() |>
-    slice_max(recent) |>
-    select(-c(id, recent, location_id, parameter_id, statistic_id,
-              updated_at, model_run_id, location_fit_id)) |>
-    distinct_all()  # keep only the most recent # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+    group_by(year) |>
+    mutate(most_recent_by_year = max(recent)) |>
+    ungroup() |>
+    # filter to only keep the most recent run for each year
+    filter(recent == most_recent_by_year) |>
+    select(-c(id, location_id, parameter_id, statistic_id,
+              updated_at, model_run_id, location_fit_id,
+              recent, most_recent_by_year, week_fit)) |>
+    distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+
+  if(nrow(juv_results_from_db == 0)) {
+    cli::cli_abort(paste("There are no model results in the database for", stream))
+  }
 
   juv_results <- juv_results_from_db |>
     mutate(brood_year = year - 1) |>
-    filter(parameter == "Ntot") |>
     pivot_wider(names_from = "statistic",
                 values_from = "value") |>
     mutate(mean_juvenile_abundance = mean,
@@ -70,8 +80,6 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
     mutate(null_covar = 0) |>
     # TODO filter by adult data type
     glimpse()
-
-  # TODO match site to stream (if necessary)
 
   if(missing(covariate)) {
     cli::cli_bullets("Running a no-covariate model")
@@ -152,5 +160,78 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
               "year_lookup" = year_lookup))
 
 }
+
+#' Fit stock-recruit model in STAN
+#' @details This function runs the STAN stock-recruit model.
+#' @param stock_recruit_inputs the object produced by `prepare_stock_recruit_inputs()`
+#' @returns a STAN object.
+#' @export
+#' @md
+fit_stock_recruit_model <- function(stock_recruit_inputs) {
+
+  cli::cli_process_start("Fitting stock-recruit model")
+  stock_recruit_fit <- rstan::stan(model_code = SRJPEmodel::stock_recruit_model_code,# eval(parse(text = "SRJPEmodel::stock_recruit_model_code"))
+                                   data = stock_recruit_inputs$data,
+                                   init = stock_recruit_inputs$inits,
+                                   chains = 3,
+                                   iter = 1000,
+                                   seed = 84735,  # TODO confirm setting seed
+                                   include = T)
+
+  cli::cli_process_done("stock-recruit fitting complete")
+
+  return(stock_recruit_fit)
+}
+
+#' Extract stock-recruit parameter estimates
+#' @details This function extracts parameter estimates from the stock recruit model object.
+#' @description This function takes in a STAN fit object produced by running `fit_stock_recruit_model()` and produces a formatted
+#' table of parameter estimates.
+#' @param stock_recruit_inputs a named list produced by running `prepare_stock_recruit_inputs()`
+#' @param stock_recruit_model_object a STANfit object produced by running `fit_stock_recruit_model()`
+#' @returns a table with the following variables:
+#' * **parameter** Parameter name
+#' * **mean** Mean of the posterior distribution for a parameter
+#' * **se_mean** Monte Carlo standard error for summary of all chains merged (see [details](https://mc-stan.org/rstan/reference/stanfit-method-summary.html))
+#' * **sd** Standard deviation of the posterior distribution for a parameter
+#' * **`2.5`** 2.5% quantile of posterior distribution for a parameter.
+#' * **`25`** 25% quantile of posterior distribution for a parameter.
+#' * **`50`** 50% quantile of posterior distribution for a parameter.
+#' * **`7%`** 75% quantile of posterior distribution for a parameter.
+#' * **`97.5`** 97.5% quantile of posterior distribution for a parameter.
+#' * **n_eff** Effective sample size for a parameter
+#' * **Rhat** Split Rhats for a parameter
+#' * **year** Year observed data came from
+#' @export
+#' @md
+extract_stock_recruit_estimates <- function(stock_recruit_inputs,
+                                            stock_recruit_model_object) {
+
+  summary_table <- rstan::summary(stock_recruit_model_object)$summary |>
+    data.frame() |>
+    tibble::rownames_to_column("parameter") |>
+    mutate(year_index = suppressWarnings(readr::parse_number(parameter)),
+           parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
+    left_join(stock_recruit_inputs$year_lookup, by = "year_index") |>
+    rename(`2.5%` = X2.5.,
+           `25%` = X25.,
+           `50%` = X50.,
+           `75%` = X75.,
+           `97.5%` = X97.5.) |>
+    select(-year_index)
+
+  if(any(summary_table$Rhat > 1.05)) {
+    cli::cli_alert_warning("One or more parameters has an Rhat value over 1.05 :(")
+  } else {
+    cli::cli_bullets("No parameters have an Rhat value exceeding 1.05 :)")
+  }
+
+  summary_table_long <- summary_table |>
+    pivot_longer(mean:Rhat, names_to = "statistic",
+                 values_to = "value")
+
+  return(summary_table_long)
+}
+
 
 
