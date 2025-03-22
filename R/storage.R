@@ -77,10 +77,16 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
     ...
   )
 
-  total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
-  message(glue::glue("Inserted new model run into database."))
-  total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
-  message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+  tryCatch({
+    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
+    message(glue::glue("Inserted new model run into database."))
+
+    total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
+    message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+  }, error = function(e) {
+    message(glue::glue("Error during model run insertion: {e$message}"))
+    stop(e)
+  })
 
   return(blob_url)
 }
