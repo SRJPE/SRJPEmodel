@@ -512,7 +512,8 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
 
 
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
-  model_final_results <- join_lookup(model_final_results, "trap_location", "site", "site", "location_id")
+  model_final_results <- join_lookup(model_final_results, "trap_location", "site", "site", "location_id") # TODO add distinct stream/site, and pull min id
+  # TODO if joining on stream only (i.e. p2s, stock-recruit, get the trap_location$id value that aligns with stream but site == NA)
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
