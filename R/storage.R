@@ -465,6 +465,7 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
   }
+  # TODO check that model names match user input model names
   model_final_results$model_name <- tolower(model_final_results$model_name)
   # model_final_results <- model$final_results
   try({
