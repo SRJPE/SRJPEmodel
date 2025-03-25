@@ -14,16 +14,18 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
 
 storage_account = "jpemodelresults"
 container_name = "model-results"
-model_fits <- readRDS("data/example_american_river_2020.rds")
+model <- readRDS("data/pCap_model_2025-02-10.rds")
+results_name <- "pcap_mainstem"
+site <- "knights landing"
+description <- "test upload pcap knights landing model"
 blob_url <- SRJPEmodel::store_model_fit(con,
                             storage_account = "jpemodelresults",
                             container_name = "model-results",
                             access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
                             model_fit_object = model_fits,
-                            results_name = "juvenile_abundance",
-                            site = "lcc",
-                            run_year = 2020,
-                            description = "american river 2020 bugs model fit")
+                            results_name = "pcap_mainstem",
+                            site = "knights landing",
+                            description = "test upload pcap knights landing model")
 
 model_run <- search_model_run(con, keyword=NULL, model_run_id=NULL, view_all=TRUE)
 model_object <- SRJPEmodel::get_model_object(con, keyword = NULL, model_run_id = 10)
