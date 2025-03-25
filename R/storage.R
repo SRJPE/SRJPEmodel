@@ -39,7 +39,6 @@
 #'}
 #' @export
 store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, site = NULL, run_year = NULL, description, ...){
-
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
   if(results_name == "juvenile_abundance") {
     results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
@@ -79,12 +78,17 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
 
   tryCatch({
     total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
-    message(glue::glue("Inserted new model run into database."))
 
-    total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
-    message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+    if (!is.null(total_run_rows) && total_run_rows == 1) {
+      message(glue::glue("Inserted new model run into database."))
+
+      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
+      message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+    } else {
+      message(glue::glue("⚠️ No new model run inserted into database. Skipping parameter insert."))
+    }
   }, error = function(e) {
-    message(glue::glue("Error during model run insertion: {e$message}"))
+    message(glue::glue("❌ Error during model run insertion: {e$message}"))
     stop(e)
   })
 
@@ -229,8 +233,8 @@ pin_model_data <- function(board, data, name, title = NULL, description = NULL, 
                                description = description,
                                metadata = pin_metadata, type = "rds"
   )
-
-  latest_version_df <- board |> pins::pin_versions(data_name)
+  latest_version_df <- board |> pins::pin_versions(data_name) |>
+    arrange(desc(created))
   latest_version <- latest_version_df$version[1]
 
   data_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{data_name}/{latest_version}/{data_name}.rds")
@@ -490,8 +494,8 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
         );",
       .con = con
     )
-    res <- DBI::dbExecute(con, query)
-    return(res)
+    result <- DBI::dbExecute(con, query)
+    return(result)
   })
 }
 
