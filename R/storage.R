@@ -465,7 +465,7 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
   }
-
+  model_final_results$model_name <- tolower(model_final_results$model_name)
   # model_final_results <- model$final_results
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
