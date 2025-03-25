@@ -6,7 +6,6 @@
 \usage{
 prepare_stock_recruit_inputs(
   con,
-  year,
   stream,
   adult_data_type,
   covariate,
@@ -16,8 +15,19 @@ prepare_stock_recruit_inputs(
 \arguments{
 \item{con}{A valid connection to the model run database.}
 
-\item{adult_data_type}{the type of survey the adult data came from. Either \code{upstream_estimate},
-\code{redd_count}, \code{holding_count}, or \code{carcass_estimate}.}
+\item{stream}{The stream for which you want to fit the model.}
+
+\item{adult_data_type}{the type of survey the adult data came from. Either \code{passage},
+\code{redd}, \code{holding}, or \code{carcass}.}
+
+\item{covariate}{The covariate you would like to use to fit the model. One of \code{rearing_max_flow}, \code{rearing_mean_flow},
+\code{rearing_median_flow}, \code{rearing_min_flow}, \code{spawning_max_flow}, \code{spawning_mean_flow}, \code{spawning_median_flow}, \code{spawning_min_flow},
+\code{spawning_above_13_temp_day}, \code{spawning_above_13_temp_week}, \code{spawning_gdd_spawn}, \code{spawning_weekly_max_temp_max},
+\code{spawning_weekly_max_temp_mean}, \code{spawning_weekly_max_temp_median}, or \code{null}.}
+
+\item{truncate_dataset}{either \code{TRUE} or \code{FALSE}. If \code{TRUE}, will filter the dataset to only include years where
+there are data for ALL covariates. If \code{FALSE}, will filter the dataset to include years where there are data
+for YOUR SELECTED covariate.}
 }
 \value{
 a list of tables:

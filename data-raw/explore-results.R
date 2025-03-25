@@ -3,6 +3,8 @@ library(SRJPEdata)
 library(rstan)
 library(R2WinBUGS)
 library(scales)
+library(DBI) # for stock-recruit
+library(RPostgres) # for stock-recruit
 
 # bt-spas-x ---------------------------------------------------------------
 # example for upper battle creek (ubc) 2018 (trib)
@@ -57,6 +59,25 @@ P2S_spawners |>
   geom_ribbon(aes(ymin = `2.5`, ymax = `97.5`), alpha = 0.2) +
   geom_line() +
   theme_minimal()
+
+
+# stock-recruit model -----------------------------------------------------
+
+# get connection
+cfg <- config::get()
+
+con <- DBI::dbConnect(RPostgres::Postgres(),
+                      dbname = cfg$db_name,
+                      host = cfg$db_host,
+                      port = cfg$db_port,
+                      user = cfg$db_user,
+                      password = cfg$db_password)
+
+sr_inputs <- prepare_stock_recruit_inputs(con, stream = "battle creek", adult_data_type = "redd",
+                                          covariate = "rearing_max_flow")
+battle_sr <- fit_stock_recruit_model(sr_inputs)
+battle_sr_params <- extract_stock_recruit_estimates(sr_inputs, battle_sr) |>
+  glimpse()
 
 
 # survival model ----------------------------------------------------------

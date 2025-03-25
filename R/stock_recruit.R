@@ -1,14 +1,14 @@
 #' Prepare inputs for stock-recruit model
 #' @details This function prepares data for input into a stock recruit model.
 #' @param con A valid connection to the model run database.
-#' @param adult_data_type the type of survey the adult data came from. Either `upstream_estimate`,
-#' `redd_count`, `holding_count`, or `carcass_estimate`.
-#' @site The stream for which you are fitting the model.
-#' @model_run_id The model run from which you want to pull your juvenile abundance estimates.
-#' @covariate The covariate you would like to use to fit the model. Either `gdd_spawn`,
-#' `above_13_temp_day`, `above_13_temp_week`, `weekly_max_temp_max`, `weekly_max_temp_mean`, `weekly_max_temp_median`,
-#' `mean_flow`, `max_flow`, `min_flow`, `median_flow`, or `null`
-#' @truncate_dataset either `TRUE` or `FALSE`. If `TRUE`, will filter the dataset to only include years where
+#' @param stream The stream for which you want to fit the model.
+#' @param adult_data_type the type of survey the adult data came from. Either `passage`,
+#' `redd`, `holding`, or `carcass`.
+#' @param covariate The covariate you would like to use to fit the model. One of `rearing_max_flow`, `rearing_mean_flow`,
+#' `rearing_median_flow`, `rearing_min_flow`, `spawning_max_flow`, `spawning_mean_flow`, `spawning_median_flow`, `spawning_min_flow`,
+#' `spawning_above_13_temp_day`, `spawning_above_13_temp_week`, `spawning_gdd_spawn`, `spawning_weekly_max_temp_max`,
+#' `spawning_weekly_max_temp_mean`, `spawning_weekly_max_temp_median`, or `null`.
+#' @param truncate_dataset either `TRUE` or `FALSE`. If `TRUE`, will filter the dataset to only include years where
 #' there are data for ALL covariates. If `FALSE`, will filter the dataset to include years where there are data
 #' for YOUR SELECTED covariate.
 #' @returns a list of tables:
@@ -17,8 +17,25 @@
 #' * **truncated_covariate_table** table of covariates limited to only those years where all covariates are available (for covariate comparison analyses)
 #' @export
 #' @md
-prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
+prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
                                          covariate, truncate_dataset = FALSE) {
+
+  if(!DBI::dbIsValid(con)) {
+    cli::cli_abort("Connection argument does not have a valid connection to the database. Please try reconnecting to the database using DBI::dbConnect")
+  }
+
+  if(!adult_data_type %in% c("redd", "holding", "passage", "carcass")) {
+    cli::cli_abort("Please supply an approved adult data type value: either redd, carcass, holding, or passage.")
+  }
+
+  if(!covariate %in% c("rearing_max_flow", "rearing_mean_flow",
+                       "rearing_median_flow", "rearing_min_flow", "spawning_max_flow",
+                       "spawning_mean_flow", "spawning_median_flow", "spawning_min_flow",
+                       "spawning_above_13_temp_day", "spawning_above_13_temp_week",
+                       "spawning_gdd_spawn", "spawning_weekly_max_temp_max", "spawning_weekly_max_temp_mean",
+                       "spawning_weekly_max_temp_median", "null")) {
+    cli::cli_abort("Please supply an approved covariate value. See ?prepare_stock_recruit_inputs() for approved values.")
+  }
 
   years_filter <- SRJPEdata::stock_recruit_year_lookup |>
     mutate(have_both_data = ifelse(adult & rst, TRUE, FALSE)) |>
@@ -29,12 +46,10 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
   adult_data_and_covariates <- SRJPEdata::stock_recruit_model_inputs |>
     ungroup() |>
     rename(brood_year = year) |>
-    right_join(years_filter, by = c("brood_year", "stream")) |>
-    glimpse()
+    right_join(years_filter, by = c("brood_year", "stream"))
 
   # get juvenile results from database
   # currently pulling most recent model run for the stream
-  # TODO we are going to have to also make sure we're pulling all years? so do we want to filter here?
   juv_results_from_db <- tbl(con, "model_parameters") |>
     left_join(tbl(con, "trap_location") |>
                 select(location_id = id, site, stream),
@@ -62,7 +77,7 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
               recent, most_recent_by_year, week_fit)) |>
     distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
 
-  if(nrow(juv_results_from_db == 0)) {
+  if(nrow(juv_results_from_db) == 0) {
     cli::cli_abort(paste("There are no model results in the database for", stream))
   }
 
@@ -73,43 +88,50 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
     mutate(mean_juvenile_abundance = mean,
            cv_juvenile_abundance = sd/mean) |>
     select(brood_year, site, mean_juvenile_abundance, cv_juvenile_abundance) |>
-    right_join(years_filter, by = c("brood_year", "site")) |>
-    glimpse()
+    right_join(years_filter, by = c("brood_year", "site"))
 
-  data_with_adult_juv_and_covars <- full_join(adult_data_and_covariates, juv) |>
-    mutate(null_covar = 0) |>
-    # TODO filter by adult data type
-    glimpse()
+  data_with_adult_juv_and_covars <- full_join(adult_data_and_covariates, juv_results,
+                                              by = c("brood_year", "stream", "run_year", "site")) |>
+    mutate(null_covar = 0,
+           adult_abundance = case_when(adult_data_type == "redd" ~ redd,
+                                       adult_data_type == "holding" ~ holding,
+                                       adult_data_type == "carcass" ~ carcass,
+                                       adult_data_type == "passage" ~ passage)) |>
+    filter(!is.na(adult_abundance))
 
   if(missing(covariate)) {
     cli::cli_bullets("Running a no-covariate model")
     covariate <- "null"
   }
 
-  data_with_selected_covar <- data |>
+  data_with_selected_covar_adult_data <- data_with_adult_juv_and_covars |>
     mutate(null = 0) |>
-    select(stream, brood_year, site, juv_year, adult_abundance, mean_juvenile_abundance,
+    select(stream, brood_year, site, run_year, adult_abundance, mean_juvenile_abundance,
            cv_juvenile_abundance, all_of(covariate)) |>
     filter(stream == !!stream) |>
     drop_na(adult_abundance, mean_juvenile_abundance, cv_juvenile_abundance,
             all_of(covariate))
 
   # get year lookup for matching with parameter estimates
-  year_lookup <- data_with_selected_covar |>
+  year_lookup <- data_with_selected_covar_adult_data |>
     mutate(year_index = row_number()) |>
     select(brood_year, year_index)
 
-  if(nrow(data_with_selected_covar) == 0) {
+  if(nrow(data_with_selected_covar_adult_data) == 0) {
     cli::cli_abort(paste0("There is not enough data to run the model for ", stream,
                           " and covariate type ", covariate))
   }
 
-  n_years <- nrow(data_with_selected_covar)
-  spawners <- data_with_selected_covar$adult_abundance
-  mean_log_recruits <- log(data_with_selected_covar$mean_juvenile_abundance)
-  sd_log_recruits <- sqrt(log(data_with_selected_covar$cv_juvenile_abundance^2 + 1))
+  n_years <- nrow(data_with_selected_covar_adult_data)
+  spawners <- data_with_selected_covar_adult_data$adult_abundance
+  mean_log_recruits <- log(data_with_selected_covar_adult_data$mean_juvenile_abundance)
+  sd_log_recruits <- sqrt(log(data_with_selected_covar_adult_data$cv_juvenile_abundance^2 + 1))
   mean_obsv_log_recruits_per_spawner <- vector(length = n_years)
   sd_obsv_log_recruits_per_spawner <- vector(length = n_years)
+
+  # covariate
+  covariate_data <- data_with_selected_covar_adult_data |>
+    pull(all_of(covariate))
 
   # simulate variation in log recruits and divide by spawner stock to get mean and sd of observed log recruits-per-spawner
   for(i in 1:n_years) {
@@ -124,14 +146,14 @@ prepare_stock_recruit_inputs <- function(con, year, stream, adult_data_type,
                     SP = spawners,
                     mu_obslgRS = mean_obsv_log_recruits_per_spawner,
                     sd_obslgRS = sd_obsv_log_recruits_per_spawner,
-                    X = data_with_selected_covar$covariate)
+                    X = covariate_data)
 
   # inits
   if(covariate == "null") {
     reg <- lm(mean_obsv_log_recruits_per_spawner ~ spawners)
     ini_gamma <- 0
   } else {
-    reg <- lm(mean_obsv_log_recruits_per_spawner ~ spawners + standardized_covariate)
+    reg <- lm(mean_obsv_log_recruits_per_spawner ~ spawners + covariate_data)
     ini_gamma <- as.double(reg$coefficients[3])
   }
 
