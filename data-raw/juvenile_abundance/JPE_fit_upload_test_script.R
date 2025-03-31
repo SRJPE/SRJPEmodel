@@ -27,6 +27,7 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
 # TODO issues with mill creek 2021
 JPE_sites_trib <- JPE_sites |>
   filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam"))
+
 for(i in 1:nrow(JPE_sites_trib)) {
 
   print(paste("Prepping inputs for", JPE_sites_trib$site[i], JPE_sites_trib$run_year[i]))
@@ -50,6 +51,8 @@ for(i in 1:nrow(JPE_sites_trib)) {
                   description = paste(JPE_sites_trib$site[i], JPE_sites_trib$run_year[i], "model fit object from auto-run tests"))
 
 }
+
+saveRDS(trib, "C:/Users/Liz/Downloads/jpe_fit_objects_03-31-2025.rds")
 
 # knights landing
 kdl_pcap_inputs <- prepare_pCap_inputs(mainstem = TRUE, mainstem_site = "knights landing")
@@ -113,6 +116,7 @@ for(i in tis_years) {
   abundance <- fit_abundance_model_BUGS(inputs, lt_pcap_us,
                                         "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                         "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
+
   store_model_fit(con,
                   storage_account = "jpemodelresults",
                   container_name = "model-results",
@@ -121,9 +125,8 @@ for(i in tis_years) {
                   results_name = "juvenile_abundance",
                   site = "tisdale",
                   run_year = i,
-                  description = paste("knights landing", i))
+                  description = paste("tisdale", i))
 
 }
-
 
 
