@@ -46,6 +46,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   adult_data_and_covariates <- SRJPEdata::stock_recruit_model_inputs |>
     ungroup() |>
     rename(brood_year = year) |>
+    # this filters to the appropriate stream via the right join
     right_join(years_filter, by = c("brood_year", "stream"))
 
   # get juvenile results from database
@@ -108,7 +109,9 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
     mutate(null = 0) |>
     select(stream, brood_year, site, run_year, adult_abundance, mean_juvenile_abundance,
            cv_juvenile_abundance, all_of(covariate)) |>
-    filter(stream == !!stream) |>
+    filter(stream == !!stream,
+           # filter out selected adult data type values of 0
+           adult_abundance > 0) |>
     drop_na(adult_abundance, mean_juvenile_abundance, cv_juvenile_abundance,
             all_of(covariate))
 
@@ -124,6 +127,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   n_years <- nrow(data_with_selected_covar_adult_data)
   spawners <- data_with_selected_covar_adult_data$adult_abundance
+  observed_recruits <- data_with_selected_covar_adult_data$mean_juvenile_abundance
   mean_log_recruits <- log(data_with_selected_covar_adult_data$mean_juvenile_abundance)
   sd_log_recruits <- sqrt(log(data_with_selected_covar_adult_data$cv_juvenile_abundance^2 + 1))
   mean_obsv_log_recruits_per_spawner <- vector(length = n_years)
@@ -144,6 +148,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   # data list for passing to STAN
   data_list <- list(Nyrs = n_years,
                     SP = spawners,
+                    R = observed_recruits,
                     mu_obslgRS = mean_obsv_log_recruits_per_spawner,
                     sd_obslgRS = sd_obsv_log_recruits_per_spawner,
                     X = covariate_data)
@@ -253,6 +258,96 @@ extract_stock_recruit_estimates <- function(stock_recruit_inputs,
                  values_to = "value")
 
   return(summary_table_long)
+}
+
+#' Stock-recruit diagnostic plots
+#' @details This function produces a plot with observed spawner and estimated recruitment data,
+#' alongside predicted recruitment across a range of spawning stock sizes produced using
+#' posterior estimates from the model fit. It is meant to compare predicted and observed
+#' recruitment as a function of spawning stock.
+#' @param sr_inputs inputs for the fit model, created by running `prepare_stock_recruit_inputs()`
+#' @param sr_fit the model fit object, created by running `fit_stock_recruit_model()`
+#' @returns A plot.
+#' @export
+#' @md
+generate_diagnostic_plot_sr <- function(sr_inputs, sr_fit) {
+  # Load posteriors and calculate predicted recruitment across a range of
+  # spawning stock sizes (rather than just observed ones as model does)
+  spawner_vector <- seq(0, max(sr_inputs$data$SP) * 1.05, length.out = 50)
+  posteriors <- as.data.frame(battle_sr, pars = c("alpha", "beta", "gamma", "sd_pro"))
+  pred_recruitment_matrix <- matrix(nrow = 50, ncol = 3)
+
+  for(i in 1:50) {
+    pred_recruitment <- spawner_vector[i] * exp(posteriors$alpha + posteriors$beta * spawner_vector[i]) * 0.001 # scale
+    pred_recruitment_matrix[i, ] <- quantile(pred_recruitment, probs = c(0.025, 0.5, 0.975))
+    pred_recruitment_matrix[i, 2] <- mean(pred_recruitment) # replace median with mean
+  }
+
+  # create observed data frame that also includes effect of covariate size
+  # estimated using the posteriors
+  obsv_data <- tibble("obsv_spawners" = sr_inputs$data$SP,
+                      "obsv_recruits" = sr_inputs$data$R * 0.001,
+                      "obsv_covar" = sr_inputs$data$X,
+                      "brood_year" = paste0("\'", substr(sr_inputs$year_lookup$brood_year, 3, 4)))
+
+  # calculate covariate effects
+  # TODO can we add this code into the mutate?
+  pred_covar <- c()
+  pred_covar_w_gamma <- c()
+  for(i in 1:sr_inputs$data$Nyrs) {
+    pred_covar[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i])) * 0.001
+    pred_covar_w_gamma[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i] +
+                                                                     posteriors$gamma * obsv_data$obsv_covar[i])) * 0.001
+  }
+
+  obsv_data <- obsv_data |>
+    mutate(pred_covar = pred_covar,
+           pred_covar_w_gamma = pred_covar_w_gamma,
+           covar_effect_color = ifelse(pred_covar_w_gamma > pred_covar & (obsv_recruits > pred_covar) | pred_covar_w_gamma < pred_covar & (obsv_recruits < pred_covar),
+                                       "covariate effect (consistent)",
+                                       "covariate effect (inconsistent)"))
+
+  # create data frame with a range of spawning stock sizes and
+  # associated predicted recruitment across that range
+  pred_data <- tibble("pred_spawners" = spawner_vector,
+                      "pred_recruit_025" = pred_recruitment_matrix[, 1],
+                      "pred_recruit_mean" = pred_recruitment_matrix[, 2],
+                      "pred_recruit_975" = pred_recruitment_matrix[, 3]) |>
+    mutate(color = "@ average cov value")
+
+
+  plot <- ggplot() +
+    # range of stock sizes
+    geom_ribbon(data = pred_data,
+                aes(spawner_vector, ymin = pred_recruit_025, ymax = pred_recruit_975),
+                alpha = 0.6, fill = "grey") +
+    geom_line(data = pred_data,
+              aes(x = spawner_vector, y = pred_recruit_mean,
+                  color = color)) +
+    # observed data
+    geom_errorbar(data = obsv_data,
+                  aes(x = obsv_spawners,
+                      ymin = pred_covar,
+                      ymax = pred_covar_w_gamma,
+                      color = covar_effect_color),
+                  width = 0) +
+    geom_point(data = obsv_data,
+               aes(x = obsv_spawners, y = obsv_recruits)) +
+    geom_text(data = obsv_data,
+              aes(x = obsv_spawners + 5, y = obsv_recruits + 3,
+                  label = brood_year),
+              size = 3) +
+    labs(x = "Spawner abundance",
+         y = "Outmigrant abundance ('000s)") +
+    theme_minimal() +
+    scale_color_manual(name = "",
+                       breaks = c("@ average cov value", "covariate effect (consistent)", "covariate effect (inconsistent)"),
+                       values = c("@ average cov value" = "black",
+                                  "covariate effect (consistent)" = "blue",
+                                  "covariate effect (inconsistent)" = "red")) +
+    theme(legend.position = "bottom")
+
+  return(plot)
 }
 
 

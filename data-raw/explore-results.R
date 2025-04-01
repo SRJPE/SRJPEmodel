@@ -74,10 +74,11 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
                       password = cfg$db_password)
 
 sr_inputs <- prepare_stock_recruit_inputs(con, stream = "battle creek", adult_data_type = "redd",
-                                          covariate = "rearing_max_flow")
+                                          covariate = "spawning_above_13_temp_week")
 battle_sr <- fit_stock_recruit_model(sr_inputs)
 battle_sr_params <- extract_stock_recruit_estimates(sr_inputs, battle_sr) |>
   glimpse()
+generate_diagnostic_plot_sr(sr_inputs, battle_sr)
 
 
 # survival model ----------------------------------------------------------
