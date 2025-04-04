@@ -184,7 +184,9 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   return(list("data" = data_list,
               "inits" = inits,
-              "year_lookup" = year_lookup))
+              "year_lookup" = year_lookup,
+              "stream" = stream,
+              "covariate_name" = covariate))
 
 }
 
@@ -274,7 +276,7 @@ generate_diagnostic_plot_sr <- function(sr_inputs, sr_fit) {
   # Load posteriors and calculate predicted recruitment across a range of
   # spawning stock sizes (rather than just observed ones as model does)
   spawner_vector <- seq(0, max(sr_inputs$data$SP) * 1.05, length.out = 50)
-  posteriors <- as.data.frame(battle_sr, pars = c("alpha", "beta", "gamma", "sd_pro"))
+  posteriors <- as.data.frame(sr_fit, pars = c("alpha", "beta", "gamma", "sd_pro"))
   pred_recruitment_matrix <- matrix(nrow = 50, ncol = 3)
 
   for(i in 1:50) {
@@ -345,6 +347,110 @@ generate_diagnostic_plot_sr <- function(sr_inputs, sr_fit) {
                        values = c("@ average cov value" = "black",
                                   "covariate effect (consistent)" = "blue",
                                   "covariate effect (inconsistent)" = "red")) +
+    theme(legend.position = "bottom")
+
+  return(plot)
+}
+
+
+#' Stock-recruit diagnostic plots
+#' @details This function produces a plot with observed spawner and estimated recruitment data,
+#' alongside predicted recruitment across a range of covariate values produced using
+#' posterior estimates from the model fit. It is meant to compare predicted and observed
+#' recruitment as a function of spawner effect on covariate.
+#' @param sr_inputs inputs for the fit model, created by running `prepare_stock_recruit_inputs()`
+#' @param sr_fit the model fit object, created by running `fit_stock_recruit_model()`
+#' @returns A plot.
+#' @export
+#' @md
+generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
+  # Load posteriors and calculate predicted recruitment across a range of
+  # covariate sizes (rather than just observed ones as model does)
+  # TODO confirm we will still have these data, being updated?
+  raw_covar <- SRJPEdata::stock_recruit_covariates |>
+    ungroup() |>
+    mutate(covar_nm = ifelse(lifestage == "spawning and incubation",
+                             paste0("spawning_", covariate_structure),
+                             paste0(lifestage, "_", covariate_structure))) |>
+    filter(covar_nm == sr_inputs$covariate_name,
+           stream == sr_inputs$stream,
+           year %in% sr_inputs$year_lookup$brood_year) |>
+    pull(value)
+
+  # create covariate vector across range of values
+  covar_vector <- seq(min(raw_covar), max(raw_covar), length.out = 50)
+  std_covar_vector <- (covar_vector - mean(covar_vector)) / sd(covar_vector)
+  posteriors <- as.data.frame(sr_fit, pars = c("alpha", "beta", "gamma", "sd_pro"))
+  pred_recruitment_matrix <- matrix(nrow = 50, ncol = 3)
+  mean_spawners <- mean(sr_inputs$data$SP)
+
+  for(i in 1:50) {
+    pred_recruitment <- mean_spawners * exp(posteriors$alpha + posteriors$beta * mean_spawners +
+                                              posteriors$gamma * std_covar_vector[i]) * 0.001 # scale
+    pred_recruitment_matrix[i, ] <- quantile(pred_recruitment, probs = c(0.025, 0.5, 0.975))
+    pred_recruitment_matrix[i, 2] <- mean(pred_recruitment) # replace median with mean
+  }
+
+  # create observed data frame that also includes effect of covariate size
+  # estimated using the posteriors
+  obsv_data <- tibble("obsv_spawners" = sr_inputs$data$SP,
+                      "obsv_recruits" = sr_inputs$data$R * 0.001,
+                      "obsv_raw_covar" = raw_covar,
+                      "obsv_covar" = sr_inputs$data$X,
+                      "brood_year" = paste0("\'", substr(sr_inputs$year_lookup$brood_year, 3, 4)))
+
+  # calculate covariate effects
+  pred_covar_1 <- c()
+  pred_covar_2 <- c()
+  for(i in 1:sr_inputs$data$Nyrs) {
+    pred_covar_1[i] <- mean(mean_spawners * exp(posteriors$alpha + posteriors$beta *
+                                                  mean_spawners + posteriors$gamma * obsv_data$obsv_covar[i])) * 0.001
+    pred_covar_2[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i] +
+                                                               posteriors$gamma * obsv_data$obsv_covar[i])) * 0.001
+  }
+
+  obsv_data <- obsv_data |>
+    mutate(pred_covar_1 = pred_covar_1,
+           pred_covar_2 = pred_covar_2)
+
+
+
+  # create data frame with a range of spawning stock sizes and
+  # associated predicted recruitment across that range
+  pred_data <- tibble("covar_vector" = covar_vector,
+                      "pred_recruit_025" = pred_recruitment_matrix[, 1],
+                      "pred_recruit_mean" = pred_recruitment_matrix[, 2],
+                      "pred_recruit_975" = pred_recruitment_matrix[, 3]) |>
+    mutate(color = "@ average cov value")
+
+  plot <- ggplot() +
+    # range of covar values
+    geom_ribbon(data = pred_data,
+                aes(x = covar_vector, ymin = pred_recruit_025, ymax = pred_recruit_975),
+                alpha = 0.6, fill = "grey") +
+    geom_line(data = pred_data,
+              aes(x = covar_vector, y = pred_recruit_mean,
+                  color = "@ average cov value")) +
+    # observed data
+    geom_errorbar(data = obsv_data,
+                  aes(x = obsv_raw_covar,
+                      ymin = pred_covar_1,
+                      ymax = pred_covar_2,
+                      color = "with spawner effect"),
+                  width = 0) +
+    geom_point(data = obsv_data,
+               aes(x = obsv_raw_covar, y = obsv_recruits))  +
+    geom_text(data = obsv_data,
+              aes(x = obsv_raw_covar + 0.5, y = obsv_recruits + 0.5, # TODO this "jigger" will be different for different covariates
+                  label = brood_year),
+              size = 3) +
+    labs(x = sr_inputs$covariate_name,
+         y = "Outmigrant abundance ('000s)") +
+    theme_minimal() +
+    scale_color_manual(name = "",
+                       breaks = c("@ average cov value", "with spawner effect"),
+                       values = c("@ average cov value" = "black",
+                                  "with spawner effect" = "red")) +
     theme(legend.position = "bottom")
 
   return(plot)
