@@ -3,33 +3,30 @@ library(SRJPEdata)
 
 # helper function for manually predicting out of sample
 predict_out_of_sample <- function(fit, obsv_spawners, obsv_passage, obsv_env, year) {
-  log_redds_per_spawner <- rstan::summary(fit, pars = c("log_mean_redds_per_spawner"))$summary |>
-    as.data.frame() |>
-    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean)
-  b1_survival <- rstan::summary(fit, pars = c("b1_survival"))$summary |>
-    as.data.frame() |>
-    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean)
 
-  conversion_rate_median <- exp(log_redds_per_spawner$median + b1_survival$median * obsv_env)
-  conversion_rate_mean <- exp(log_redds_per_spawner$mean + b1_survival$mean * obsv_env)
-  conversion_rate_low <- exp(log_redds_per_spawner$low + b1_survival$low * obsv_env)
-  conversion_rate_high <- exp(log_redds_per_spawner$high + b1_survival$high * obsv_env)
+  # check for fit
+  error <- ifelse(sum(rstan::summary(fit)$summary[,"Rhat"] > 1.05, na.rm = T) > 0,
+                  TRUE, FALSE)
 
-  pred_spawners_median <- obsv_passage * conversion_rate_median
-  pred_spawners_mean <- obsv_passage * conversion_rate_mean
-  pred_spawners_low <- obsv_passage * conversion_rate_low
-  pred_spawners_high <- obsv_passage * conversion_rate_high
+  posteriors <- as.data.frame(fit, pars = c("log_mean_redds_per_spawner", "b1_survival"))
 
-  diff_median <- obsv_spawners - pred_spawners_median
-  diff_mean <- obsv_spawners - pred_spawners_median
+  conversion_rate <- exp(posteriors$log_mean_redds_per_spawner + posteriors$b1_survival * obsv_env)
+  conversion_rate_low <- quantile(conversion_rate, 0.025)
+  conversion_rate_high <- quantile(conversion_rate, 0.975)
 
-  results <- tibble(pred_spawners_median = pred_spawners_median,
-                    pred_spawners_mean = pred_spawners_mean,
+  pred_spawners <- obsv_passage * conversion_rate
+  pred_spawners_low <- quantile(pred_spawners, 0.025)
+  pred_spawners_median <- quantile(pred_spawners, 0.5)
+  pred_spawners_high <- quantile(pred_spawners, 0.975)
+
+  mean_absolute_difference <- mean(abs(pred_spawners) - obsv_spawners)
+
+  results <- tibble(mean_absolute_difference = mean_absolute_difference,
+                    pred_spawners_median = pred_spawners_median,
                     pred_spawners_low = pred_spawners_low,
                     pred_spawners_high = pred_spawners_high,
-                    diff_median = diff_median,
-                    diff_mean = diff_median,
-                    year = year)
+                    year = year,
+                    rhat_error = error)
 
   return(results)
 }
@@ -72,22 +69,10 @@ manual_LOO <- function(stream, covariate) {
   return(final_results)
 }
 
-test <- manual_LOO("battle creek", "wy_type")
-saveRDS(test, "~/Downloads/battle_wy_type_manual_loo_results_04-05-2025.rds")
-
-test |>
-  mutate(observed_spawners = inputs$observed_spawners) |>
-  ggplot() +
-  geom_point(aes(x = year, y = pred_spawners_median), color = "red") +
-  geom_errorbar(aes(x = year, ymin = pred_spawners_low,
-                    ymax = pred_spawners_high),
-                color = "red", width = 0.3) +
-  geom_point(aes(x = year, y = observed_spawners))
-
 # now run for all
-to_run <- expand.grid(stream = c("battle creek", "clear creek"),
-                      covar = c("wy_type", "max_flow_std", "gdd_std", "passage_index",
-                                "median_passage_timing_std", "null_covar"))
+to_run <- expand.grid(covar = c("wy_type", "max_flow_std", "gdd_std", "passage_index",
+                                "median_passage_timing_std", "null_covar"),
+                      stream = c("battle creek", "clear creek"))
 
 all_results <- purrr::pmap(list(to_run$stream,
                                 to_run$covar),
@@ -152,6 +137,55 @@ all_results |>
                                 "Observed spawners" = "red")) +
   theme(legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.4, hjust = 1))
+
+all_results <- all_results |>
+  mutate(mean_absolute_difference = abs)
+
+
+
+# old prediction function -------------------------------------------------
+
+predict_out_of_sample <- function(fit, obsv_spawners, obsv_passage, obsv_env, year) {
+
+  # check for fit
+  error <- ifelse(sum(rstan::summary(fit)$summary[,"Rhat"] > 1.05),
+                  TRUE, FALSE)
+
+  posteriors <- as.data.frame(fit, pars = c("log_mean_redds_per_spawner", "b1_survival"))
+
+  log_redds_per_spawner <- rstan::summary(fit, pars = c("log_mean_redds_per_spawner"))$summary |>
+    as.data.frame() |>
+    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean, Rhat)
+  b1_survival <- rstan::summary(fit, pars = c("b1_survival"))$summary |>
+    as.data.frame() |>
+    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean, Rhat)
+
+  conversion_rate_median <- exp(log_redds_per_spawner$median + b1_survival$median * obsv_env)
+  conversion_rate_mean <- exp(log_redds_per_spawner$mean + b1_survival$mean * obsv_env)
+  conversion_rate_low <- exp(log_redds_per_spawner$low + b1_survival$low * obsv_env)
+  conversion_rate_high <- exp(log_redds_per_spawner$high + b1_survival$high * obsv_env)
+
+  pred_spawners_median <- obsv_passage * conversion_rate_median
+  pred_spawners_mean <- obsv_passage * conversion_rate_mean
+  pred_spawners_low <- obsv_passage * conversion_rate_low
+  pred_spawners_high <- obsv_passage * conversion_rate_high
+
+  diff_median <- pred_spawners_median - obsv_spawners
+  diff_mean <- pred_spawners_mean - obsv_spawners
+
+  results <- tibble(pred_spawners_median = pred_spawners_median,
+                    pred_spawners_mean = pred_spawners_mean,
+                    pred_spawners_low = pred_spawners_low,
+                    pred_spawners_high = pred_spawners_high,
+                    diff_median = diff_median,
+                    diff_mean = diff_median,
+                    year = year,
+                    rhat_error = ifelse(sum(log_redds_per_spawner$Rhat > 1.05,
+                                            b1_survival$Rhat > 1.05) > 0,
+                                        TRUE, FALSE))
+
+  return(results)
+}
 
 
 
