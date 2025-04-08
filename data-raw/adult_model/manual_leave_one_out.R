@@ -95,7 +95,7 @@ all_results <- purrr::pmap(list(to_run$stream,
                            .progress = TRUE) |>
   bind_rows()
 
-saveRDS(all_results, "~/Downloads/all_p2s_manual_loo_results_04-08-2025.rds")
+saveRDS(all_results, here::here("data-raw", "adult_model", "all_p2s_manual_loo_results_04-08-2025.rds"))
 
 all_results |>
   mutate(covariate = case_when(covariate == "wy_type" ~ "Water year type",
