@@ -48,6 +48,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
                                          stream == "butte creek" ~ carcass_estimate,
                                          TRUE ~ redd_count)) |>
     filter(upstream_estimate > 0,
+           observed_spawners > 0,
            stream == !!stream) |>
     # null covariate
     mutate(null_covar = 0)
