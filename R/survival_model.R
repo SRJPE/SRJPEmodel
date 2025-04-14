@@ -433,9 +433,9 @@ extract_survival_estimates <- function(model_object) {
                                       parameter %in% c("pred_survTSz", "TribSurvForecastSz", "pred_SurvTSz") ~ index_3,
                                       TRUE ~ NA),
          # release group structured parameters
-         release_group_index_sac = ifelse(parameter %in% c("SurvRelSac","SurvWoodSac", "pred_surv",
+         release_group_index_sac = ifelse(parameter %in% c("SurvRelSac", "pred_surv",
                                                            "S_RE"), index_1, NA),
-         release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT"), index_1, NA),
+         release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT", "SurvWoodSac"), index_1, NA),
          pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
          size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz",
                                                     "SurvRelSacSz", "SurvWoodSacSz",
@@ -484,7 +484,7 @@ generate_survival_rate_plot <- function(survival_estimates) {
     geom_errorbar(aes(x = release_group, ymin = `2.5%`, ymax = `97.5%`),
                   color = "blue", width = 0.2) +
     geom_point(aes(x = release_group, y = `50%`), size = 2) +
-    facet_wrap(~Reach) +
+    facet_wrap(~Reach, scales = "free_x") +
     labs(x = "Release Group",
          y = "Median Survival Rate") +
     theme_bw() +
