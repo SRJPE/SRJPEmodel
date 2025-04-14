@@ -79,6 +79,7 @@ battle_sr <- fit_stock_recruit_model(sr_inputs)
 battle_sr_params <- extract_stock_recruit_estimates(sr_inputs, battle_sr) |>
   glimpse()
 generate_diagnostic_plot_sr(sr_inputs, battle_sr)
+generate_results_plot_sr(sr_inputs, battle_sr)
 
 
 # survival model ----------------------------------------------------------
