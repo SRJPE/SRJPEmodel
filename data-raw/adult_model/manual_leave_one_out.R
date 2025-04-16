@@ -19,9 +19,11 @@ predict_out_of_sample <- function(fit, obsv_spawners, obsv_passage, obsv_env, ye
   pred_spawners_median <- quantile(pred_spawners, 0.5)
   pred_spawners_high <- quantile(pred_spawners, 0.975)
 
-  mean_absolute_difference <- mean(abs(pred_spawners) - obsv_spawners)
+  mean_absolute_difference <- mean(abs(pred_spawners - obsv_spawners))
+  mean_absolute_difference_rel <- mean(abs(pred_spawners - obsv_spawners) / obsv_spawners)
 
   results <- tibble(mean_absolute_difference = mean_absolute_difference,
+                    mean_absolute_difference_rel = mean_absolute_difference_rel,
                     pred_spawners_median = pred_spawners_median,
                     pred_spawners_low = pred_spawners_low,
                     pred_spawners_high = pred_spawners_high,
@@ -82,6 +84,19 @@ all_results <- purrr::pmap(list(to_run$stream,
 
 saveRDS(all_results, here::here("data-raw", "adult_model", "all_p2s_manual_loo_results_04-08-2025.rds"))
 
+
+# process results ---------------------------------------------------------
+
+all_results <- readRDS(here::here("data-raw", "adult_model", "all_p2s_manual_loo_results_04-08-2025.rds"))
+
+all_results |>
+  group_by(stream, covariate) |>
+  summarise(MAE = median(mean_absolute_difference)) |>
+  ungroup() |>
+  mutate(MAE = abs(round(MAE, 4))) |>
+  arrange(stream, MAE) |>
+  View()
+
 all_results |>
   mutate(covariate = case_when(covariate == "wy_type" ~ "Water year type",
                                covariate == "max_flow_std" ~ "Maximum flow",
@@ -102,7 +117,7 @@ all_results |>
   geom_point(aes(x = year, y = observed_spawners,
                  color = "Observed spawners"),
              shape = 1) +
-  facet_wrap(~covariate + stream, nrow = 2 ,scales = "free") +
+  facet_wrap(~covariate + stream, nrow = 2 ,scales = "free_y") +
   theme_minimal() +
   labs(x = "Spawner count",
        y = "Year") +
@@ -140,55 +155,4 @@ all_results |>
 
 all_results <- all_results |>
   mutate(mean_absolute_difference = abs)
-
-
-
-# old prediction function -------------------------------------------------
-
-predict_out_of_sample <- function(fit, obsv_spawners, obsv_passage, obsv_env, year) {
-
-  # check for fit
-  error <- ifelse(sum(rstan::summary(fit)$summary[,"Rhat"] > 1.05),
-                  TRUE, FALSE)
-
-  posteriors <- as.data.frame(fit, pars = c("log_mean_redds_per_spawner", "b1_survival"))
-
-  log_redds_per_spawner <- rstan::summary(fit, pars = c("log_mean_redds_per_spawner"))$summary |>
-    as.data.frame() |>
-    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean, Rhat)
-  b1_survival <- rstan::summary(fit, pars = c("b1_survival"))$summary |>
-    as.data.frame() |>
-    select(low = `2.5%`, median = `50%`, high = `97.5%`, mean, Rhat)
-
-  conversion_rate_median <- exp(log_redds_per_spawner$median + b1_survival$median * obsv_env)
-  conversion_rate_mean <- exp(log_redds_per_spawner$mean + b1_survival$mean * obsv_env)
-  conversion_rate_low <- exp(log_redds_per_spawner$low + b1_survival$low * obsv_env)
-  conversion_rate_high <- exp(log_redds_per_spawner$high + b1_survival$high * obsv_env)
-
-  pred_spawners_median <- obsv_passage * conversion_rate_median
-  pred_spawners_mean <- obsv_passage * conversion_rate_mean
-  pred_spawners_low <- obsv_passage * conversion_rate_low
-  pred_spawners_high <- obsv_passage * conversion_rate_high
-
-  diff_median <- pred_spawners_median - obsv_spawners
-  diff_mean <- pred_spawners_mean - obsv_spawners
-
-  results <- tibble(pred_spawners_median = pred_spawners_median,
-                    pred_spawners_mean = pred_spawners_mean,
-                    pred_spawners_low = pred_spawners_low,
-                    pred_spawners_high = pred_spawners_high,
-                    diff_median = diff_median,
-                    diff_mean = diff_median,
-                    year = year,
-                    rhat_error = ifelse(sum(log_redds_per_spawner$Rhat > 1.05,
-                                            b1_survival$Rhat > 1.05) > 0,
-                                        TRUE, FALSE))
-
-  return(results)
-}
-
-
-
-
-
 
