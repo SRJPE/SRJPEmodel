@@ -17,7 +17,6 @@ observed_adult_input <- SRJPEdata::observed_adult_input
 adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 
 observed_adult_input_wide <- observed_adult_input |>
-  select(-reach) |> # empty
   group_by(year, stream, data_type) |>
   summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
   ungroup() |>
