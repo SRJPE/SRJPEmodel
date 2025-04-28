@@ -8,9 +8,13 @@
 #' @param access_key A string specifying the Azure storage access key with write permissions.
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `juvenile_abundance`,
-#' `pcap_all`, `pcap_mainstem`, or `p2s`.
+#' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`.
+#' @param stream If uploading a stock-recruit model output, you must supply the stream for which you fit the model.
 #' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
 #' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
+#' @param adult_data_type If uploading a stock-recruit model input, you must specify the adult data type.
+#' @param covariate If uploading a stock-recruit model input, you must supply the selected covariate type.
+#' @param truncate_dataset If uploading a stock-recruit model input, you must supply whether or not the dataset was truncated when fit.
 #' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
@@ -38,14 +42,15 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, site = NULL, run_year = NULL, description, ...){
+store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, stream = NULL, site = NULL, run_year = NULL,
+                            adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL, description, ...){
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
   if(results_name == "juvenile_abundance") {
     results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
   }
   # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
-                          "pcap_all", "pcap_mainstem", "p2s")) {
+                          "pcap_all", "pcap_mainstem", "p2s", "stock_recruit")) {
     cli::cli_abort("You must supply an approved value to the results_name argument.")
   }
 
@@ -53,8 +58,8 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
     cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
   }
-  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s") & class(model_fit_object) != "stanfit") {
-      cli::cli_abort("For models pcap_all, pcap_mainstem, and p2s, model object must be of class 'stanfit'.")
+  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit") & class(model_fit_object) != "stanfit") {
+      cli::cli_abort("For models pcap_all, pcap_mainstem, p2s, and stock_recruit, model object must be of class 'stanfit'.")
   }
 
   # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
@@ -65,6 +70,12 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
   }
   if(results_name == "pcap_mainstem" & is.null(site)) {
     cli::cli_abort("You must supply a site (either knights landing or tisdale) if uploading a pcap_mainstem model result.")
+  }
+  # check that they supply all the stock-recruit arguments
+  if(results_name == "stock_recruit") {
+    if(is.null(stream) | is.null(adult_data_type) | is.null(covariate) | is.null(truncate_dataset)) {
+      cli::cli_abort("You must supply a stream, adult data type, covariate, and truncate_dataset if processing stock-recruit results.")
+    }
   }
 
   model_board <- model_pin_board(storage_account, container_name)
@@ -77,12 +88,14 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
   )
 
   tryCatch({
-    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, site, run_year)
+    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, stream, site, run_year,
+                                       adult_data_type, covariate, truncate_dataset)
 
     if (!is.null(total_run_rows) && total_run_rows == 1) {
       message(glue::glue("Inserted new model run into database."))
 
-      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, site, run_year)
+      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, stream, site, run_year,
+                                            adult_data_type, covariate, truncate_dataset)
       message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
     } else {
       message(glue::glue("⚠️ No new model run inserted into database. Skipping parameter insert."))
@@ -452,7 +465,8 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description, results_name, site = NULL, run_year = NULL){
+insert_model_run <- function(con, model, blob_url, description, results_name, stream = NULL, site = NULL, run_year = NULL,
+                             adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL){
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
@@ -464,6 +478,10 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
     model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
+  } else if(results_name == "stock_recruit") {
+    model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
+                                                                                        covariate, truncate_dataset),
+                                                           model)
   }
   # TODO check that model names match user input model names
   model_final_results$model_name <- tolower(model_final_results$model_name)
@@ -501,7 +519,8 @@ insert_model_run <- function(con, model, blob_url, description, results_name, si
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url, results_name, site = NULL, run_year = NULL) {
+insert_model_parameters <- function(con, model, blob_url, results_name, stream = NULL, site = NULL, run_year = NULL,
+                                    adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL) {
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
@@ -516,6 +535,10 @@ insert_model_parameters <- function(con, model, blob_url, results_name, site = N
       rename(year = run_year)
   } else if(results_name == "p2s") {
     model_final_results <- extract_P2S_estimates(model)
+  } else if(results_name == "stock_recruit") {
+    model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
+                                                                                        covariate, truncate_dataset),
+                                                           model)
   }
   # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
   # model_final_results$model_fit_filename <- file_name
