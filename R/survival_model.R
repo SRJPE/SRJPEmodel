@@ -27,10 +27,11 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     cli::cli_bullets("No biological effect was supplied, running the no biological effect model")
   }
 
-  # TODO replace with updated SRJPEdata
-  # TODO ensure these are sorted, standardized, etc. per PrepData_flora.R
-  sac_data <- read.csv(here("data-raw", "survival_model", "Sac_data.csv"),  stringsAsFactors = F)
-  fb_data <-  read.csv(here("data-raw", "survival_model", "FeaBut_data.csv"),  stringsAsFactors = F)
+  sac_data <- SRJPEdata::survival_model_inputs |>
+    filter(is.na(trib_ind))
+
+  fb_data <- SRJPEdata::survival_model_inputs |>
+    filter(!is.na(trib_ind))
 
   sac_data_list <- get_survival_data_list("sacramento", sac_data, fb_data)
   fb_data_list <- get_survival_data_list("feather_butte", sac_data, fb_data)
@@ -222,7 +223,8 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
     n_detection_locations = 5
 
     Rmult <- data |>
-      select(dist_rlwoodson.z, dist_woodsonbutte.z, dist_buttesac.z, dist_sacdelta.z) |>
+      select(dist_rlwoodson_standardized, dist_woodsonbutte_standardized,
+             dist_buttesac_standardized, dist_sacdelta_standardized) |>
       as.matrix() |>
       unname()
 
@@ -250,7 +252,7 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
     n_detection_locations <- 3
     trib_ind <- data$trib_ind
 
-    Rmult <- data$dist_rlsac.z
+    Rmult <- data$dist_rlsac_standardized
 
     capture_history <- data |>
       separate_wider_position(ch, widths = c("1" = 1, "2" = 1, "3" = 1)) |>
@@ -261,7 +263,7 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 
     trib_index_for_release_groups <- data |>
       arrange(year) |>
-      distinct(StudyID, trib_ind) |>
+      distinct(study_id, trib_ind) |>
       pull(trib_ind)
   }
 
@@ -271,22 +273,22 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 
   release_group_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
+    group_by(study_id) |>
     mutate(index = cur_group_id()) |>
     ungroup() |>
     pull(index)
 
   release_group_water_year_3_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
-    summarise(ind = unique(WY3)) |>
+    group_by(study_id) |>
+    summarise(ind = unique(wy_three_categories)) |>
     ungroup() |>
     pull(ind)
 
   release_group_water_year_2_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
-    summarise(ind = unique(WY2)) |>
+    group_by(study_id) |>
+    summarise(ind = unique(wy_two_categories)) |>
     ungroup() |>
     pull(ind)
 
@@ -301,12 +303,12 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
                     n_detection_locations = n_detection_locations,
                     n_size_classes = 25, # of size classes to plot size effect over
                     n_years = nrow(all_study_years), # all sac and tribs years combined
-                    release_group = unique(data$StudyID),
-                    n_release_groups = length(unique(data$StudyID)),
-                    first_capture = data$firstCap,
-                    last_capture = data$lastCap,
-                    water_year_2 = data$WY2,
-                    water_year_3 = data$WY3,
+                    release_group = unique(data$study_id),
+                    n_release_groups = length(unique(data$study_id)),
+                    first_capture = data$first_capture,
+                    last_capture = data$last_capture,
+                    water_year_2 = data$wy_two_categories,
+                    water_year_3 = data$wy_three_categories,
                     capture_history = capture_history,
                     Rmult = Rmult, # reach distances standardized per 100km
                     year_index = year_index,
