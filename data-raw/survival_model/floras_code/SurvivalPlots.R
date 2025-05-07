@@ -15,7 +15,7 @@ posterior_draws_NoCov <- rstan::extract(fit)
 posterior.df_NoCov <-as.data.frame(posterior_draws_NoCov)
 names(posterior.df_NoCov)
 
-fit_summary_NoCov <- summary(fit,probs=c(0.025,0.975))# shows only 10% and 90% quantiles
+fit_summary_NoCov <- rstan::summary(fit,probs=c(0.025,0.975))# shows only 10% and 90% quantiles
 data_summary_NoCov <- as.data.frame(fit_summary_NoCov$summary)
 print(fit_summary_NoCov$summary)
 
@@ -42,7 +42,7 @@ data_pcap_NoCov <- data.frame(rbind(data_pcap_NoCov,data_temp))
 
 
 (pcap_nocov_fig <- ggplot(data_pcap_NoCov)+
-    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc), 
+    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc),
                   width=0.2, size=1)+
     geom_point(aes(x=loc,y=mean, color=loc),size=3)+
     theme_bw()+
@@ -66,15 +66,15 @@ data_surv_relsac_novcov <- data.frame(matrix(NA, nrow = dim(rgwy2.df)[1] , ncol 
 for(i in 1: dim(rgwy2.df)[1]){
   data_surv_relsac_novcov [i,] <- data.frame(cbind(rgwy2.df$StudyID[i],
                                                     data_summary_NoCov[paste0('SurvRelSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_relsac_novcov ) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_relsac_novcov$studyid <- factor(data_surv_relsac_novcov$studyid, 
+data_surv_relsac_novcov$studyid <- factor(data_surv_relsac_novcov$studyid,
                                            levels = unique(data_surv_relsac_novcov$studyid))
 
 (surv_relsac_nocov_Fig <- ggplot(data_surv_relsac_novcov)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=studyid,y=mean),size=3)+
     theme_bw()+
@@ -93,15 +93,15 @@ data_surv_tribsac_novcov <- data.frame(matrix(NA, nrow = dim(rgwy2_T.df)[1] , nc
 for(i in 1: dim(rgwy2_T.df)[1]){
   data_surv_tribsac_novcov[i,] <- data.frame(cbind(rgwy2_T.df$StudyID[i],
                                                    data_summary[paste0('pred_survT[',i,",1]"),]))
-  
+
 }
 
 colnames(data_surv_tribsac_novcov) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_tribsac_novcov$studyid <- factor(data_surv_tribsac_novcov$studyid, 
+data_surv_tribsac_novcov$studyid <- factor(data_surv_tribsac_novcov$studyid,
                                            levels = unique(data_surv_tribsac_novcov$studyid))
 
 (surv_tribsac_nocov_Fig <- ggplot(data_surv_tribsac_novcov)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5),
                   width=0.2, size=1, color="blue")+
     geom_point(aes(x=studyid,y=mean),size=3)+
     theme_bw()+
@@ -131,21 +131,21 @@ data_surv_relsac_wy2 <- data.frame(matrix(NA, nrow = dim(rgwy2.df)[1] , ncol = 8
 
 for(i in 1: dim(rgwy2.df)[1]){
   data_surv_relsac_wy2[i,] <- data.frame(cbind(rgwy2.df$StudyID[i],data_summary_CovWY2[paste0('SurvRelSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_relsac_wy2) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_relsac_wy2$studyid <- factor(data_surv_relsac_wy2$studyid, 
+data_surv_relsac_wy2$studyid <- factor(data_surv_relsac_wy2$studyid,
                                        levels = unique(data_surv_relsac_wy2$studyid))
 
 data_surv_relsac_wy2$wytype <- c('C/D/BN','C/D/BN','C/D/BN','C/D/BN','AN/W','AN/W','AN/W','C/D/BN','C/D/BN',
                                  'AN/W','C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN',
                                  'AN/W','AN/W')
-data_surv_relsac_wy2$wytype <- factor(data_surv_relsac_wy2$wytype, 
+data_surv_relsac_wy2$wytype <- factor(data_surv_relsac_wy2$wytype,
                                       levels = unique(data_surv_relsac_wy2$wytype))
 
 (surv_relsac_wy2_Fig <- ggplot(data= data_surv_relsac_wy2)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean,color=wytype),size=3)+
     theme_bw()+
@@ -164,21 +164,21 @@ data_surv_woodsac_wy2 <- data.frame(matrix(NA, nrow = dim(rgwy2.df)[1] , ncol = 
 
 for(i in 1: dim(rgwy2.df)[1]){
   data_surv_woodsac_wy2[i,] <- data.frame(cbind(rgwy2.df$StudyID[i],data_summary_CovWY2[paste0('SurvWoodSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_woodsac_wy2) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_woodsac_wy2$studyid <- factor(data_surv_woodsac_wy2$studyid, 
+data_surv_woodsac_wy2$studyid <- factor(data_surv_woodsac_wy2$studyid,
                                         levels = unique(data_surv_woodsac_wy2$studyid))
 
 data_surv_woodsac_wy2$wytype <- c('C/D/BN','C/D/BN','C/D/BN','C/D/BN','AN/W','AN/W','AN/W','C/D/BN','C/D/BN',
                                  'AN/W','C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN',
                                  'AN/W','AN/W')
-data_surv_woodsac_wy2$wytype <- factor(data_surv_woodsac_wy2$wytype, 
+data_surv_woodsac_wy2$wytype <- factor(data_surv_woodsac_wy2$wytype,
                                        levels = unique(data_surv_woodsac_wy2$wytype))
 
 (surv_woodsac_wy2_Fig <- ggplot(data= data_surv_woodsac_wy2)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean,color=wytype),size=3)+
     theme_bw()+
@@ -198,21 +198,21 @@ data_surv_tribsac_wy2 <- data.frame(matrix(NA, nrow = dim(rgwy2_T.df)[1] , ncol 
 for(i in 1: dim(rgwy2_T.df)[1]){
   data_surv_tribsac_wy2[i,] <- data.frame(cbind(rgwy2_T.df$StudyID[i],
                                                 data_summary[paste0('pred_survT[',i,",1]"),]))
-  
+
 }
 
 colnames(data_surv_tribsac_wy2) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_tribsac_wy2$studyid <- factor(data_surv_tribsac_wy2$studyid, 
+data_surv_tribsac_wy2$studyid <- factor(data_surv_tribsac_wy2$studyid,
                                         levels = unique(data_surv_tribsac_wy2$studyid))
 
 data_surv_tribsac_wy2$wytype <- c('C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN','AN/W','C/D/BN','AN/W',
                                   'AN/W','AN/W','C/D/BN','C/D/BN','C/D/BN','C/D/BN','C/D/BN','AN/W','AN/W',
                                   'AN/W')
-data_surv_tribsac_wy2$wytype <- factor(data_surv_tribsac_wy2$wytype, 
+data_surv_tribsac_wy2$wytype <- factor(data_surv_tribsac_wy2$wytype,
                                        levels = unique(data_surv_tribsac_wy2$wytype))
 
 (surv_tribsac_wy2_Fig <- ggplot(data_surv_tribsac_wy2)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -250,7 +250,7 @@ data_survforecast_wy2$wytype <- factor(data_survforecast_wy2$wytype,
                                        levels = unique(data_survforecast_wy2$wytype))
 
 (survforecast_wy2_Fig <- ggplot(data_survforecast_wy2)+
-    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=wytype,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -281,25 +281,25 @@ print(fit_summary_CovWY3$summary)
 data_surv_relsac_wy3 <- data.frame(matrix(NA, nrow = dim(rgwy3.df)[1] , ncol = 8))
 for(i in 1: dim(rgwy3.df)[1]){
   data_surv_relsac_wy3[i,] <- data.frame(cbind(rgwy3.df$StudyID[i],data_summary_CovWY3[paste0('SurvRelSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_relsac_wy3) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_relsac_wy3$studyid <- factor(data_surv_relsac_wy3$studyid, 
+data_surv_relsac_wy3$studyid <- factor(data_surv_relsac_wy3$studyid,
                                         levels = unique(data_surv_relsac_wy3$studyid))
 # Add water year type info
 data_surv_relsac_wy3$wytype <- c('D/BN/AN','D/BN/AN','Critical','D/BN/AN','Wet','Wet','Wet','D/BN/AN','D/BN/AN',
                                   'Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Critical',
                                   'Wet','Wet')
-data_surv_relsac_wy3$wytype <- factor(data_surv_relsac_wy3$wytype, 
+data_surv_relsac_wy3$wytype <- factor(data_surv_relsac_wy3$wytype,
                                        levels = unique(data_surv_relsac_wy3$wytype))
 
 # Add fish size and detection info
-data_surv_relsac_wy3 <- data_surv_relsac_wy3 %>% 
+data_surv_relsac_wy3 <- data_surv_relsac_wy3 %>%
                         left_join(d_Sac_summary, by='studyid')
 
 (surv_relsac_wy3_Fig <- ggplot(data= data_surv_relsac_wy3)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean,color=wytype),size=3)+
     theme_bw()+
@@ -319,24 +319,24 @@ data_surv_tribsac_wy3 <- data.frame(matrix(NA, nrow = dim(rgwy3_T.df)[1] , ncol 
 for(i in 1: dim(rgwy3_T.df)[1]){
   data_surv_tribsac_wy3[i,] <- data.frame(cbind(rgwy3_T.df$StudyID[i],
                                                    data_summary_CovWY3[paste0('pred_survT[',i,",1]"),]))
-  
+
 }
 
 colnames(data_surv_tribsac_wy3) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_tribsac_wy3$studyid <- factor(data_surv_tribsac_wy3$studyid, 
+data_surv_tribsac_wy3$studyid <- factor(data_surv_tribsac_wy3$studyid,
                                            levels = unique(data_surv_tribsac_wy3$studyid))
 
 data_surv_tribsac_wy3$wytype <- c('D/BN/AN','Critical','Critical','Critical','D/BN/AN','Wet','D/BN/AN','Wet',
                                   'Wet','Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Wet','Wet',
                                   'Wet')
-data_surv_tribsac_wy3$wytype <- factor(data_surv_tribsac_wy3$wytype, 
+data_surv_tribsac_wy3$wytype <- factor(data_surv_tribsac_wy3$wytype,
                                        levels = unique(data_surv_tribsac_wy3$wytype))
 
-data_surv_tribsac_wy3 <- data_surv_tribsac_wy3 %>% 
+data_surv_tribsac_wy3 <- data_surv_tribsac_wy3 %>%
                         left_join(d_FeaBut_summary, by='studyid')
 
 (surv_tribsac_wy3_Fig <- ggplot(data_surv_tribsac_wy3)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -408,7 +408,7 @@ data_survforecast_wy3$wytype <- factor(data_survforecast_wy3$wytype,
                                        levels = unique(data_survforecast_wy3$wytype))
 
 (survforecast_wy3_Fig <- ggplot(data_survforecast_wy3)+
-    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=wytype,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -477,17 +477,17 @@ colnames(data_pcap_CovWY3_FL) <- c('loc','year','mean','se_mean','sd','q2.5','q9
 for(i in 2:length(Year_all)){
   pars <- c(paste0("pred_pcap[",i,",1]"),paste0("pred_pcap[",i,",2]"),
             paste0("pred_pcap[",i,",3]"),paste0("pred_pcap[",i,",4]"))
-  
+
   data_temp <- data.frame(cbind(loc,Year_all[i],data_summary_CovWY3_FL[pars,]))
   names(data_temp) <- names(data_pcap_CovWY3_FL) # to be able to bind data_temp and data make sure the column names at the same
-  
+
   data_pcap_CovWY3_FL <- data.frame(rbind(data_pcap_CovWY3_FL,data_temp))
-  
+
 }
 
 
 (pcap_CovWY3_FL_fig <- ggplot(data_pcap_CovWY3_FL)+
-    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc), 
+    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc),
                   width=0.2, size=1)+
     geom_point(aes(x=loc,y=mean, color=loc),size=3)+
     theme_bw()+
@@ -510,21 +510,21 @@ data_surv_relsac_CovWY3_FL <- data.frame(matrix(NA, nrow = dim(rgwy3.df)[1] , nc
 for(i in 1: dim(rgwy3.df)[1]){
   data_surv_relsac_CovWY3_FL[i,] <- data.frame(cbind(rgwy3.df$StudyID[i],
                                                       data_summary_CovWY3_FL[paste0('SurvRelSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_relsac_CovWY3_FL) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_relsac_CovWY3_FL$studyid <- factor(data_surv_relsac_CovWY3_FL$studyid, 
+data_surv_relsac_CovWY3_FL$studyid <- factor(data_surv_relsac_CovWY3_FL$studyid,
                                               levels = unique(data_surv_relsac_CovWY3_FL$studyid))
 
 data_surv_relsac_CovWY3_FL$wytype <- c('D/BN/AN','D/BN/AN','Critical','D/BN/AN','Wet','Wet','Wet','D/BN/AN','D/BN/AN',
                                         'Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Critical',
                                         'Wet','Wet')
-data_surv_relsac_CovWY3_FL$wytype <- factor(data_surv_relsac_CovWY3_FL$wytype, 
+data_surv_relsac_CovWY3_FL$wytype <- factor(data_surv_relsac_CovWY3_FL$wytype,
                                              levels = unique(data_surv_relsac_CovWY3_FL$wytype))
 
 (surv_relsac_CovWY3_FL_fig <- ggplot(data= data_surv_relsac_CovWY3_FL)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean,color=wytype),size=3)+
     theme_bw()+
@@ -544,21 +544,21 @@ data_surv_tribsac_CovWY3_FL <- data.frame(matrix(NA, nrow = dim(rgwy3_T.df)[1] ,
 for(i in 1: dim(rgwy3_T.df)[1]){
   data_surv_tribsac_CovWY3_FL[i,] <- data.frame(cbind(rgwy3_T.df$StudyID[i],
                                                        data_summary_CovWY3_FL[paste0('pred_survT[',i,",1]"),]))
-  
+
 }
 
 colnames(data_surv_tribsac_CovWY3_FL) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_tribsac_CovWY3_FL$studyid <- factor(data_surv_tribsac_CovWY3_FL$studyid, 
+data_surv_tribsac_CovWY3_FL$studyid <- factor(data_surv_tribsac_CovWY3_FL$studyid,
                                                levels = unique(data_surv_tribsac_CovWY3_FL$studyid))
 
 data_surv_tribsac_CovWY3_FL$wytype <- c('D/BN/AN','Critical','Critical','Critical','D/BN/AN','Wet','D/BN/AN','Wet',
                                          'Wet','Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Wet','Wet',
                                          'Wet')
-data_surv_tribsac_CovWY3_FL$wytype <- factor(data_surv_tribsac_CovWY3_FL$wytype, 
+data_surv_tribsac_CovWY3_FL$wytype <- factor(data_surv_tribsac_CovWY3_FL$wytype,
                                               levels = unique(data_surv_tribsac_CovWY3_FL$wytype))
 
 (surv_tribsac_CovWY3_FL_fig <- ggplot(data_surv_tribsac_CovWY3_FL)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -605,7 +605,7 @@ data_survforecast_wy3_FL$wytype <- factor(data_survforecast_wy3_FL$wytype,
                                        levels = unique(data_survforecast_wy3_FL$wytype))
 
 (survforecast_wy3_FL_Fig <- ggplot(data_survforecast_wy3_FL)+
-    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=wytype,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -630,7 +630,7 @@ data_survforecast_CovWY3_FL_Trib <- array(data = NA, dim = c(2,Nsz,3,7),
                                            dimnames =list(Trib = c('Butte','Feather'),Size = FL_vec, WY = c('C','D/BN/AN','W'),var= c('mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')))
 
 for(i in 1:Nsz){ # number of class size
-  for (j in 1:3){ # Number of water year type 
+  for (j in 1:3){ # Number of water year type
     for (k in 1:7){ # number of variables saved in data frame
       data_survforecast_CovWY3_FL_Sac[i,j,k] <- data_summary_CovWY3_FL[paste0('SurvForecastSz[',i,",",j,"]"),k]
       for (l in 1:2){ # tributary index: 1 = Buttte, 2 = Feather
@@ -648,7 +648,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
      scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('upper Sac - C Year')
@@ -661,7 +661,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("")+
     ggtitle('upper Sac - D/BN/AN Year')
@@ -674,7 +674,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
      scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("")+
     ggtitle('upper Sac - W Year')
@@ -696,7 +696,7 @@ ggsave(plot=survforecast_CovWY3_FL_Sac_fig, "figures/SurvForecast_CovWY3_FL_Sac.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - C Year')
@@ -708,7 +708,7 @@ ggsave(plot=survforecast_CovWY3_FL_Sac_fig, "figures/SurvForecast_CovWY3_FL_Sac.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - D/BN/AN Year')
@@ -720,7 +720,7 @@ ggsave(plot=survforecast_CovWY3_FL_Sac_fig, "figures/SurvForecast_CovWY3_FL_Sac.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - W Year')
@@ -742,7 +742,7 @@ ggsave(plot=survforecast_CovWY3_FL_But_fig, "figures/SurvForecast_CovWY3_FL_But.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - C Year')
@@ -754,7 +754,7 @@ ggsave(plot=survforecast_CovWY3_FL_But_fig, "figures/SurvForecast_CovWY3_FL_But.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - D/BN/AN Year')
@@ -766,7 +766,7 @@ ggsave(plot=survforecast_CovWY3_FL_But_fig, "figures/SurvForecast_CovWY3_FL_But.
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("FL (mm)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - W Year')
@@ -785,12 +785,12 @@ ggsave(plot=survforecast_CovWY3_FL_Fea_fig, "figures/SurvForecast_CovWY3_FL_Fea.
 (survforecast_CovWY3_FL_SacButFea_fig <- ggarrange(survforecast_CovWY3_FL_Sac_fig,
                                                    survforecast_CovWY3_FL_But_fig,
                                                     survforecast_CovWY3_FL_Fea_fig,
-                                             nrow=3, 
+                                             nrow=3,
                                              labels=c('A','B','C'),
                                              align="h")
 )
 
-ggsave(plot=survforecast_CovWY3_FL_SacButFea_fig, "figures/SurvForecast_CovWY3_FL_SacButFea.png", 
+ggsave(plot=survforecast_CovWY3_FL_SacButFea_fig, "figures/SurvForecast_CovWY3_FL_SacButFea.png",
        width =14, height =11)
 
 # Figures for WY3 + Wgt model --------------------------------------------
@@ -800,7 +800,7 @@ posterior.df_CovWY3_Wgt <-as.data.frame(posterior_draws_CovWY3_Wgt)
 names(posterior.df_CovWY3_Wgt)
 
 parlist <- c("S_bTrib","S_bCovT","RE_sdT","S_bCov","S_bSz","S_bReach","RE_sd")
-print(summary(fit,pars=parlist)$summary) 
+print(summary(fit,pars=parlist)$summary)
 
 fit_summary_CovWY3_Wgt <- summary(fit,probs=c(0.025,0.975))# shows only 2.5% and 97.5% quantiles
 data_summary_CovWY3_Wgt <- as.data.frame(fit_summary_CovWY3_Wgt$summary)
@@ -819,17 +819,17 @@ colnames(data_pcap_CovWY3_Wgt) <- c('loc','year','mean','se_mean','sd','q2.5','q
 for(i in 2:length(Year_all)){
   pars <- c(paste0("pred_pcap[",i,",1]"),paste0("pred_pcap[",i,",2]"),
             paste0("pred_pcap[",i,",3]"),paste0("pred_pcap[",i,",4]"))
-  
+
   data_temp <- data.frame(cbind(loc,Year_all[i],data_summary_CovWY3_Wgt[pars,]))
   names(data_temp) <- names(data_pcap_CovWY3_Wgt) # to be able to bind data_temp and data make sure the column names at the same
-  
+
   data_pcap_CovWY3_Wgt <- data.frame(rbind(data_pcap_CovWY3_Wgt,data_temp))
-  
+
 }
 
 
 (pcap_CovWY3_Wgt_fig <- ggplot(data_pcap_CovWY3_Wgt)+
-    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc), 
+    geom_errorbar(aes(x=loc, ymin=q2.5, ymax=q97.5, color=loc),
                   width=0.2, size=1)+
     geom_point(aes(x=loc,y=mean, color=loc),size=3)+
     theme_bw()+
@@ -852,21 +852,21 @@ data_surv_relsac_CovWY3_Wgt <- data.frame(matrix(NA, nrow = dim(rgwy3.df)[1] , n
 for(i in 1: dim(rgwy3.df)[1]){
   data_surv_relsac_CovWY3_Wgt[i,] <- data.frame(cbind(rgwy3.df$StudyID[i],
                                                       data_summary_CovWY3_Wgt[paste0('SurvRelSac[',i,"]"),]))
-  
+
 }
 
 colnames(data_surv_relsac_CovWY3_Wgt) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_relsac_CovWY3_Wgt$studyid <- factor(data_surv_relsac_CovWY3_Wgt$studyid, 
+data_surv_relsac_CovWY3_Wgt$studyid <- factor(data_surv_relsac_CovWY3_Wgt$studyid,
                                        levels = unique(data_surv_relsac_CovWY3_Wgt$studyid))
 
 data_surv_relsac_CovWY3_Wgt$wytype <- c('D/BN/AN','D/BN/AN','Critical','D/BN/AN','Wet','Wet','Wet','D/BN/AN','D/BN/AN',
                                  'Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Critical',
                                  'Wet','Wet')
-data_surv_relsac_CovWY3_Wgt$wytype <- factor(data_surv_relsac_CovWY3_Wgt$wytype, 
+data_surv_relsac_CovWY3_Wgt$wytype <- factor(data_surv_relsac_CovWY3_Wgt$wytype,
                                       levels = unique(data_surv_relsac_CovWY3_Wgt$wytype))
 
 (surv_relsac_CovWY3_Wgt_fig <- ggplot(data= data_surv_relsac_CovWY3_Wgt)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean,color=wytype),size=3)+
     theme_bw()+
@@ -886,21 +886,21 @@ data_surv_tribsac_CovWY3_Wgt <- data.frame(matrix(NA, nrow = dim(rgwy3_T.df)[1] 
 for(i in 1: dim(rgwy3_T.df)[1]){
   data_surv_tribsac_CovWY3_Wgt[i,] <- data.frame(cbind(rgwy3_T.df$StudyID[i],
                                                 data_summary_CovWY3_Wgt[paste0('pred_survT[',i,",1]"),]))
-  
+
 }
 
 colnames(data_surv_tribsac_CovWY3_Wgt) <- c('studyid','mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')
-data_surv_tribsac_CovWY3_Wgt$studyid <- factor(data_surv_tribsac_CovWY3_Wgt$studyid, 
+data_surv_tribsac_CovWY3_Wgt$studyid <- factor(data_surv_tribsac_CovWY3_Wgt$studyid,
                                         levels = unique(data_surv_tribsac_CovWY3_Wgt$studyid))
 
 data_surv_tribsac_CovWY3_Wgt$wytype <- c('D/BN/AN','Critical','Critical','Critical','D/BN/AN','Wet','D/BN/AN','Wet',
                                   'Wet','Wet','D/BN/AN','D/BN/AN','Critical','Critical','Critical','Wet','Wet',
                                   'Wet')
-data_surv_tribsac_CovWY3_Wgt$wytype <- factor(data_surv_tribsac_CovWY3_Wgt$wytype, 
+data_surv_tribsac_CovWY3_Wgt$wytype <- factor(data_surv_tribsac_CovWY3_Wgt$wytype,
                                        levels = unique(data_surv_tribsac_CovWY3_Wgt$wytype))
 
 (surv_tribsac_CovWY3_Wgt_fig <- ggplot(data_surv_tribsac_CovWY3_Wgt)+
-    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=studyid, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=studyid,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -947,7 +947,7 @@ data_survforecast_wy3$wytype <- factor(data_survforecast_wy3$wytype,
                                        levels = unique(data_survforecast_wy3$wytype))
 
 (survforecast_wy3_Fig <- ggplot(data_survforecast_wy3)+
-    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype), 
+    geom_errorbar(aes(x=wytype, ymin=q2.5, ymax=q97.5, color= wytype),
                   width=0.2, size=1)+
     geom_point(aes(x=wytype,y=mean, color= wytype),size=3)+
     theme_bw()+
@@ -972,7 +972,7 @@ data_survforecast_CovWY3_Wgt_Trib <- array(data = NA, dim = c(2,Nsz,3,7),
                                       dimnames =list(Trib = c('Butte','Feather'),Size = Wgt_vec, WY = c('C','D/BN/AN','W'),var= c('mean','se_mean','sd','q2.5','q97.5','n_eff','rhat')))
 
 for(i in 1:Nsz){ # number of class size
-  for (j in 1:3){ # Number of water year type 
+  for (j in 1:3){ # Number of water year type
     for (k in 1:7){ # number of variables saved in data frame
     data_survforecast_CovWY3_Wgt_Sac[i,j,k] <- data_summary_CovWY3_Wgt[paste0('SurvForecastSz[',i,",",j,"]"),k]
       for (l in 1:2){ # tributary index: 1 = Buttte, 2 = Feather
@@ -990,7 +990,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('upper Sac - C Year')
@@ -1003,7 +1003,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("")+
     ggtitle('upper Sac - D/BN/AN Year')
@@ -1016,7 +1016,7 @@ for(i in 1:Nsz){ # number of class size
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
    scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("")+
     ggtitle('upper Sac - W Year')
@@ -1038,7 +1038,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_Sac_fig, "figures/SurvForecast_CovWY3_Wgt_Sa
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
    scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - C Year')
@@ -1050,7 +1050,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_Sac_fig, "figures/SurvForecast_CovWY3_Wgt_Sa
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
    scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - D/BN/AN Year')
@@ -1062,7 +1062,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_Sac_fig, "figures/SurvForecast_CovWY3_Wgt_Sa
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Butte Creek - W Year')
@@ -1084,7 +1084,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_But_fig, "figures/SurvForecast_CovWY3_Wgt_Bu
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - C Year')
@@ -1096,7 +1096,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_But_fig, "figures/SurvForecast_CovWY3_Wgt_Bu
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - D/BN/AN Year')
@@ -1108,7 +1108,7 @@ ggsave(plot=survforecast_CovWY3_Wgt_But_fig, "figures/SurvForecast_CovWY3_Wgt_Bu
     theme_bw()+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"),
-          text = element_text(size=18))+        
+          text = element_text(size=18))+
     scale_y_continuous(limits=c(0,0.95), breaks=seq(0,0.95,0.1))+
     xlab("Weight (g)")+ylab("Rel - Sac survival rate")+
     ggtitle('Feather River - W Year')
@@ -1127,12 +1127,12 @@ ggsave(plot=survforecast_CovWY3_Wgt_Fea_fig, "figures/SurvForecast_CovWY3_Wgt_Fe
 (survforecast_CovWY3_Wgt_SacButFea_fig <- ggarrange(survforecast_CovWY3_Wgt_Sac_fig,
                                                    survforecast_CovWY3_Wgt_But_fig,
                                                    survforecast_CovWY3_Wgt_Fea_fig,
-                                                   nrow=3, 
+                                                   nrow=3,
                                                    labels=c('A','B','C'),
                                                    align="h")
 )
 
-ggsave(plot=survforecast_CovWY3_Wgt_SacButFea_fig, "figures/SurvForecast_CovWY3_Wgt_SacButFea.png", 
+ggsave(plot=survforecast_CovWY3_Wgt_SacButFea_fig, "figures/SurvForecast_CovWY3_Wgt_SacButFea.png",
        width =14, height =11)
 
 # Figures for WY3 + CF model --------------------------------------------
