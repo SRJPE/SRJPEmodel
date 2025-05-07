@@ -11,8 +11,12 @@ store_model_fit(
   access_key,
   model_fit_object,
   results_name,
+  stream = NULL,
   site = NULL,
   run_year = NULL,
+  adult_data_type = NULL,
+  covariate = NULL,
+  truncate_dataset = NULL,
   description,
   ...
 )
@@ -29,11 +33,19 @@ store_model_fit(
 \item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 
 \item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{juvenile_abundance},
-\code{pcap_all}, \code{pcap_mainstem}, or \code{p2s}.}
+\code{pcap_all}, \code{pcap_mainstem}, \code{p2s}, \code{stock_recruit}.}
+
+\item{stream}{If uploading a stock-recruit model output, you must supply the stream for which you fit the model.}
 
 \item{site}{If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.}
 
 \item{run_year}{If uploading an abundance model output, you must supply the run_year for which you fit the model.}
+
+\item{adult_data_type}{If uploading a stock-recruit model input, you must specify the adult data type.}
+
+\item{covariate}{If uploading a stock-recruit model input, you must supply the selected covariate type.}
+
+\item{truncate_dataset}{If uploading a stock-recruit model input, you must supply whether or not the dataset was truncated when fit.}
 
 \item{description}{A description of the model fit you are uploading.}
 
