@@ -7,7 +7,6 @@ Authors@R: c(person("Ashley", "Vizek", , "avizek@flowwest.com", role = c("aut", 
 Description: This package contains functions to run submodels of the Spring Run Juvenile Production Estimate (SRJPE) forecast. 
 License: GPL-3
 Imports: 
-Suggests: 
     rstanarm,
     here,
     scales,
@@ -17,7 +16,8 @@ Suggests:
     splines2,
     gtools,
     readr,
-    R2WinBUGS,
+    R2WinBUGS
+Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Encoding: UTF-8
