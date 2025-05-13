@@ -4,7 +4,7 @@
 \alias{extract_P2S_estimates}
 \title{Extract parameter estimates from P2S}
 \usage{
-extract_P2S_estimates(passage_to_spawner_model_object)
+extract_P2S_estimates(p2s_inputs, passage_to_spawner_model_object)
 }
 \value{
 a table with the following variables:

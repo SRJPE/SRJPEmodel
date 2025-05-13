@@ -77,6 +77,10 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
       cli::cli_abort("You must supply a stream, adult data type, covariate, and truncate_dataset if processing stock-recruit results.")
     }
   }
+  # p2s args
+  if(results_name == "p2s" & is.null(covariate)) {
+    cli::cli_abort("You must supply a covariate when uploading a p2s model")
+  }
 
   model_board <- model_pin_board(storage_account, container_name)
 
@@ -477,7 +481,8 @@ insert_model_run <- function(con, model, blob_url, description, results_name, st
   } else if(results_name == "pcap_mainstem") {
     model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
   } else if(results_name == "p2s") {
-    model_final_results <- extract_P2S_estimates(model)
+    model_final_results <- extract_P2S_estimates(prepare_P2S_inputs(stream, covariate),
+                                                 model)
   } else if(results_name == "stock_recruit") {
     model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
                                                                                         covariate, truncate_dataset),
@@ -534,7 +539,8 @@ insert_model_parameters <- function(con, model, blob_url, results_name, stream =
     model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site)) |>
       rename(year = run_year)
   } else if(results_name == "p2s") {
-    model_final_results <- extract_P2S_estimates(model)
+    model_final_results <- extract_P2S_estimates(prepare_P2S_inputs(stream, covariate),
+                                                 model)
   } else if(results_name == "stock_recruit") {
     model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
                                                                                         covariate, truncate_dataset),

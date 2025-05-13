@@ -93,7 +93,8 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
                            "percent_female" = percent_female,
                            "environmental_covar" = covar,
                            "ss_total" = calculate_ss_tot(truncated_data),
-                           "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE))
+                           "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE),
+                           "stream" = stream)
 
   return(stream_data_list)
 }
@@ -150,7 +151,8 @@ fit_passage_to_spawner_model <- function(data_inputs) {
 #' @export
 #' @family passage_to_spawner
 #' @md
-extract_P2S_estimates <- function(passage_to_spawner_model_object){
+extract_P2S_estimates <- function(p2s_inputs,
+                                  passage_to_spawner_model_object){
 
   # get parameter estimates
   summary_table <- rstan::summary(passage_to_spawner_model_object)$summary |>
@@ -187,7 +189,7 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
     mutate(model_name = "p2s",
            site = NA,
            week_fit = NA,
-           location_fit = NA,
+           location_fit = p2s_inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     select(model_name, site, year, week_fit, location_fit,
            parameter, statistic, value, srjpedata_version)
@@ -246,3 +248,38 @@ compare_P2S_model_covariates <- function(stream) {
 
 }
 
+#' P2S results plots
+#' @details This function produces a plot with predicted spawners with uncertainty.
+#' for simple comparison.
+#' @param p2s_inputs inputs for the fit model, created by running `prepare_P2S_inputs()`
+#' @param con a connection to the database.
+#' @returns A plot showing observed and predicted spawners by year.
+#' @export
+#' @md
+generate_results_plot_p2s <- function(p2s_inputs, con) {
+
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  params <- get_most_recent_model_output(con) |>
+    filter(model_name == "p2s",
+           stream == p2s_inputs$stream)
+
+  obsv_spawners <- tibble("year" = p2s_inputs$input_years,
+                          "obsv_spawners" = p2s_inputs$observed_spawners)
+
+  plot <- params |>
+    pivot_wider(names_from = "statistic", values_from = "value") |>
+    filter(parameter == "predicted_spawners") |>
+    left_join(obsv_spawners, by = "year") |>
+    mutate(year = factor(year)) |>
+    ggplot() +
+    geom_ribbon(aes(x = year, ymin = `2.5`, ymax = `97.5`, group = 1), alpha = 0.4, fill = dark_JPE[5]) +
+    geom_line(aes(x = year, y = `50`, group = 1)) +
+    geom_point(aes(x = year, y = obsv_spawners), size = 2, color = dark_JPE[2]) +
+    theme_minimal() +
+    labs(x = "Year",
+         y = "Predicted spawners",
+         title = paste0(str_to_title(p2s_inputs$stream)))
+
+  return(plot)
+}
