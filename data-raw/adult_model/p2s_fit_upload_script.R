@@ -35,7 +35,8 @@ test <- SRJPEmodel::get_most_recent_model_output(con)
 # plot
 for(i in c("battle creek", "clear creek")) {
   inputs <- prepare_P2S_inputs(i, "wy_type")
-  generate_results_plot_p2s()
+  generate_results_plot_p2s(inputs, con)
+  ggsave(here::here("data-raw", "adult_model", "figures", paste0(i, "_p2s_results.png")))
 }
 # sql code used in process, not relevant anymore ----------------------------------------------
 
