@@ -4,12 +4,12 @@
 \alias{generate_results_plot_sr}
 \title{Stock-recruit results plots}
 \usage{
-generate_results_plot_sr(sr_inputs, sr_fit)
+generate_results_plot_sr(sr_inputs, con)
 }
 \arguments{
 \item{sr_inputs}{inputs for the fit model, created by running \code{prepare_stock_recruit_inputs()}}
 
-\item{sr_fit}{the model fit object, created by running \code{fit_stock_recruit_model()}}
+\item{con}{a connection to the database.}
 }
 \value{
 A plot.

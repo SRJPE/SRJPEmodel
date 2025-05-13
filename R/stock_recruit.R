@@ -50,33 +50,11 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
     right_join(years_filter, by = c("brood_year", "stream"))
 
   # get juvenile results from database
-  # currently pulling most recent model run for the stream
-  juv_results_from_db <- tbl(con, "model_parameters") |>
-    left_join(tbl(con, "trap_location") |>
-                select(location_id = id, site, stream),
-              by = "location_id") |>
-    left_join(tbl(con, "parameter") |>
-                select(parameter_id = id, parameter = definition),
-              by = "parameter_id") |>
-    left_join(tbl(con, "statistic") |>
-                select(statistic_id = id, statistic = definition),
-              by = "statistic_id") |>
-    filter(stream == !!stream,
+  juv_results_from_db <- SRJPEmodel::get_most_recent_model_output(con) |>
+    filter(model_name == "bt_spas_x",
+           stream == !!stream,
            parameter == "Ntot",
-           statistic %in% c("mean", "sd")) |>
-    collect() |>
-    group_by(updated_at, year) |>
-    mutate(recent = cur_group_id()) |>
-    ungroup() |>
-    group_by(year) |>
-    mutate(most_recent_by_year = max(recent)) |>
-    ungroup() |>
-    # filter to only keep the most recent run for each year
-    filter(recent == most_recent_by_year) |>
-    select(-c(id, location_id, parameter_id, statistic_id,
-              updated_at, model_run_id, location_fit_id,
-              recent, most_recent_by_year, week_fit)) |>
-    distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+           statistic %in% c("mean", "sd"))
 
   if(nrow(juv_results_from_db) == 0) {
     cli::cli_abort(paste("There are no model results in the database for", stream))
@@ -244,11 +222,11 @@ extract_stock_recruit_estimates <- function(stock_recruit_inputs,
     mutate(year_index = suppressWarnings(readr::parse_number(parameter)),
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter)) |>
     left_join(stock_recruit_inputs$year_lookup, by = "year_index") |>
-    rename(`2.5%` = X2.5.,
-           `25%` = X25.,
-           `50%` = X50.,
-           `75%` = X75.,
-           `97.5%` = X97.5.) |>
+    rename(`2.5` = X2.5.,
+           `25` = X25.,
+           `50` = X50.,
+           `75` = X75.,
+           `97.5` = X97.5.) |>
     select(-year_index)
 
   if(any(summary_table$Rhat > 1.05)) {
@@ -468,29 +446,33 @@ generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
 #' @details This function produces a plot with observed and predicted recruits
 #' for simple comparison.
 #' @param sr_inputs inputs for the fit model, created by running `prepare_stock_recruit_inputs()`
-#' @param sr_fit the model fit object, created by running `fit_stock_recruit_model()`
+#' @param con a connection to the database.
 #' @returns A plot.
 #' @export
 #' @md
-generate_results_plot_sr <- function(sr_inputs, sr_fit) {
+generate_results_plot_sr <- function(sr_inputs, con) {
 
   dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
 
   obsv_R <- sr_inputs$year_lookup |>
     mutate(obsv_recruits = sr_inputs$data$R)
 
+  params <- get_most_recent_model_output(con) |>
+    filter(model_name == "stock_recruit",
+           stream == sr_inputs$stream) |>
+    rename(brood_year = year)
+
   errors <- params |>
     filter(parameter == "pred_R",
-           statistic %in% c("2.5%", "97.5%")) |>
+           statistic %in% c("2.5", "97.5")) |>
     select(-parameter) |>
     pivot_wider(names_from = "statistic",
                 values_from = "value") |>
     mutate(type = "predicted")
 
-  plot_data <- extract_stock_recruit_estimates(sr_inputs,
-                                               ex_fit) |>
+  plot_data <- params |>
     filter(parameter == "pred_R",
-           statistic == "50%") |>
+           statistic == "50") |>
     left_join(obsv_R, by = "brood_year") |>
     select(-c(statistic, year_index, parameter)) |>
     pivot_longer(c(value, obsv_recruits),
@@ -499,13 +481,14 @@ generate_results_plot_sr <- function(sr_inputs, sr_fit) {
     mutate(type = ifelse(type == "value", "predicted", "observed")) |>
     left_join(errors, by = c("brood_year", "type")) |>
     mutate(brood_year = factor(brood_year),
-           `2.5%`  = `2.5%` * 0.001,
-           `97.5%` = `97.5%` * 0.001,
+           `2.5`  = `2.5` * 0.001,
+           `97.5` = `97.5` * 0.001,
            recruits = recruits * 0.001)
+
   plot <- plot_data |>
     ggplot(aes(x = brood_year, y = recruits, fill = type)) +
     geom_col(position = "dodge") +
-    geom_errorbar(aes(x = brood_year, ymin = `2.5%`, ymax = `97.5%`),
+    geom_errorbar(aes(x = brood_year, ymin = `2.5`, ymax = `97.5`),
                   position = position_dodge(1),
                   width = 0.2) +
     scale_fill_manual(values = dark_JPE) +

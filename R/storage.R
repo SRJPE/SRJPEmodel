@@ -546,12 +546,20 @@ insert_model_parameters <- function(con, model, blob_url, results_name, stream =
 
 
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
-  model_final_results <- join_lookup(model_final_results, "trap_location", "site", "site", "location_id") # TODO add distinct stream/site, and pull min id
-  # TODO if joining on stream only (i.e. p2s, stock-recruit, get the trap_location$id value that aligns with stream but site == NA)
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
-  model_final_results <- join_lookup(model_final_results, "trap_location", "location_fit", "site", "location_fit_id")
+
+  # location_fit_id is site, location_id is stream
+  model_final_results <- model_final_results |>
+    rename(stream = location_fit) |>
+    left_join(tbl(con, "trap_location") |>
+                collect() |>
+                distinct(id, site, stream) |>
+                rename(location_id = id) |>
+                mutate(location_fit_id = location_id), # TODO check this assumption
+              by = c("stream", "site")) # this will match on trap_location where site == NA
+
 
   model_final_results <-  model_final_results |>
     select(model_run_id, location_id, year, week_fit, parameter_id, statistic_id, value, location_fit_id) |>
@@ -586,4 +594,75 @@ insert_model_parameters <- function(con, model, blob_url, results_name, stream =
   res <- DBI::dbExecute(con, query)
 
   return(res)
+}
+
+
+#' @title Get Most Recent Model Results
+#' @description This function retrieves the most recent model results for each model name, site, year, stream, etc.
+#' @param con A connection object to the database.
+#' @return A tibble containing model parameters.
+#'
+#' @examples
+#' \dontrun{
+#' con <- dbConnect(RPostgres::Postgres(),
+#'                  dbname = "your_db_name",
+#'                  host = "your_host",
+#'                  port = 5432,
+#'                  user = "your_username",
+#'                  password = "your_password")
+#'
+#' Example: get model parameters from Azure JPE Data Storage
+#' model_results <- get_model_results_parameters(con)
+#'
+#' dbDisconnect(con)
+#' }
+#' @export
+get_most_recent_model_output <- function(con) {
+
+  results <- tbl(con, "model_parameters") |>
+    # get stream (location id)
+    left_join(tbl(con, "trap_location") |>
+                distinct(id, site, stream) |>
+                select(location_id = id, stream),
+              by = "location_id") |>
+    # get site (location_fit_id
+    # TODO should be location_fit_id for all bt spas x uploads in the future, need to fix that
+    # left_join(tbl(con, "trap_location") |>
+    #             distinct(id, site, stream) |>
+    #             select(location_fit_id = id, site),
+    #           by = "location_fit_id") |>
+    left_join(tbl(con, "trap_location") |>
+                distinct(id, site, stream) |>
+                select(location_id = id, site),
+              by = "location_id") |>
+    left_join(tbl(con, "parameter") |>
+                select(parameter_id = id, parameter = definition),
+              by = "parameter_id") |>
+    left_join(tbl(con, "statistic") |>
+                select(statistic_id = id, statistic = definition),
+              by = "statistic_id") |>
+    left_join(tbl(con, "model_run") |>
+                select(model_run_id = id, model_name_id),
+              by = "model_run_id") |>
+    left_join(tbl(con, "model_name") |>
+                select(model_name = name, model_name_id = id),
+              by = "model_name_id") |>
+    # TODO join any other lookups needed for other model types (i.e. survival)
+    collect() |>
+    mutate(model_name = ifelse(model_name %in% c("no_mark_recap", "no_mark_recap_no_trib",
+                                                 "missing_mark_recap", "all_mark_recap"), "bt_spas_x", model_name)) |>
+    group_by(model_name, stream, site, year, updated_at) |>
+    mutate(recent = cur_group_id()) |>
+    ungroup() |>
+    group_by(model_name, stream, site, year) |>
+    mutate(most_recent_by_year = max(recent)) |>
+    ungroup() |>
+    # filter to only keep the most recent run for each year
+    filter(recent == most_recent_by_year) |>
+    select(-c(id, location_id, parameter_id, statistic_id,
+              updated_at, model_run_id, location_fit_id,
+              model_name_id, recent, most_recent_by_year, week_fit)) |>
+    distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+
+  return(results)
 }
