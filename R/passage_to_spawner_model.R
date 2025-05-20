@@ -124,7 +124,7 @@ fit_passage_to_spawner_model <- function(data_inputs) {
   cli::cli_process_start("Fitting P2S STAN model")
   p2s_model <- rstan::stan(model_code = p2s_model,
                            data = data_inputs,
-                           chains = 3, iter = 20000*2, seed = 84735)
+                           chains = 3, iter = 2000, seed = 84735)
 
   cli::cli_process_done("P2S STAN model fitting complete")
 
