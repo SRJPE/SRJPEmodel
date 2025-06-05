@@ -667,7 +667,7 @@ get_most_recent_model_output <- function(con) {
     filter(recent == most_recent_by_year) |>
     select(-c(id, location_id, parameter_id, statistic_id,
               updated_at, model_run_id, location_fit_id,
-              model_name_id, recent, most_recent_by_year, week_fit)) |>
+              model_name_id, recent, most_recent_by_year)) |>
     distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
 
   return(results)
