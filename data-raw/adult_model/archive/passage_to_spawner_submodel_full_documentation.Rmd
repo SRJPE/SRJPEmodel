@@ -31,7 +31,7 @@ library(SRJPEmodel)
 ```
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
-observed_adult_input <- SRJPEdata::observed_adult_input
+observed_adult_input <- SRJPEdata::annual_adult
 adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 
 observed_adult_input_wide <- observed_adult_input |> 
@@ -214,7 +214,7 @@ The STAN model is a mixed-effects model and as such is expected to produce predi
 
 To run the model, load the necessary data from `SRJPEdata`:
 ```{r, message = FALSE, warning = FALSE, eval = FALSE}
-observed_adult_input <- SRJPEdata::observed_adult_input
+observed_adult_input <- SRJPEdata::annual_adult
 adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 ```
 

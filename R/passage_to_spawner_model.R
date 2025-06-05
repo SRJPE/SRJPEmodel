@@ -33,7 +33,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   stream <- tolower(stream)
 
   # combine observed counts and covariates and pivot wider
-  data <- SRJPEdata::observed_adult_input |>
+  data <- SRJPEdata::annual_adult |>
     group_by(year, stream, data_type) |>
     summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
     ungroup() |>

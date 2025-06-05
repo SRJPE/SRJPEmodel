@@ -9,7 +9,7 @@ library(SRJPEdata)
 
 
 # join observed adult input and covariates --------------------------------
-full_data_for_input <- SRJPEdata::observed_adult_input |>
+full_data_for_input <- SRJPEdata::annual_adult |>
   select(-reach) |> # empty
   group_by(year, stream, data_type, ) |>
   summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
@@ -319,13 +319,13 @@ ggsave(filename = here::here("data-raw", "adult_model",
 
 # forecasts ---------------------------------------------------------------
 
-yuba_data <- SRJPEdata::observed_adult_input |>
+yuba_data <- SRJPEdata::annual_adult |>
   filter(stream == "yuba river")
 
-butte_data <- SRJPEdata::observed_adult_input |>
+butte_data <- SRJPEdata::annual_adult |>
   filter(stream == "butte creek")
 
-feather_data <- SRJPEdata::observed_adult_input |>
+feather_data <- SRJPEdata::annual_adult |>
   filter(stream == "feather river")
 
 all_streams <- SRJPEmodel::P2S_comparison_results |>

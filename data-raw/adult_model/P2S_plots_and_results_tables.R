@@ -13,7 +13,7 @@ library(here)
 streams_to_use <- c("battle creek", "clear creek")
 
 # prep data ------------------------------------------------------------
-observed_adult_input <- SRJPEdata::observed_adult_input
+observed_adult_input <- SRJPEdata::annual_adult
 adult_model_covariates <- SRJPEdata::p2s_model_covariates_standard
 
 observed_adult_input_wide <- observed_adult_input |>

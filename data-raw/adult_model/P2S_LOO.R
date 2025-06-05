@@ -7,7 +7,7 @@ library(ggrepel)
 
 
 # prep data
-data <- SRJPEdata::observed_adult_input |>
+data <- SRJPEdata::annual_adult |>
   filter(stream %in% c("battle creek", "clear creek")) |>
   select(-reach) |> # empty
   group_by(year, stream, data_type, ) |>
@@ -29,7 +29,7 @@ data |>
   tally()
 
 # get sample sizes of data availability for environmental covariates
-SRJPEdata::observed_adult_input |>
+SRJPEdata::annual_adult |>
   filter(stream %in% c("battle creek", "clear creek")) |>
   select(-reach) |> # empty
   group_by(year, stream, data_type, ) |>
@@ -147,7 +147,7 @@ clear_pointwise <- tibble("year" = clear_data$year,
 
 run_loo <- function(stream_arg) {
 
-  data <- SRJPEdata::observed_adult_input |>
+  data <- SRJPEdata::annual_adult |>
     filter(stream == stream_arg) |>
     select(-reach) |> # empty
     group_by(year, stream, data_type, ) |>
