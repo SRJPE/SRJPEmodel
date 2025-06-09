@@ -291,7 +291,7 @@ generate_results_plot_p2s <- function(p2s_inputs, con) {
 #' @returns Saves two plots to your local filepath.
 #' @export
 #' @md
-store_diagnostic_plot_p2s <- function(inputs, fit, local_folder, stream) {
+generate_diagnostic_plot_p2s <- function(inputs, fit, local_folder, stream) {
 
   dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
 

@@ -42,9 +42,12 @@
 #' dbDisconnect(con)
 #'}
 #' @export
+# store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object,
+#                             results_name, stream = NULL, site = NULL, run_year = NULL,
+#                             adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL, description, ...){
+
 store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object,
-                            results_name, stream = NULL, site = NULL, run_year = NULL,
-                            adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL, description, ...){
+                            results_name, inputs, description, ...){
 
   # TODO modify this function so that it takes in con, inputs. the function will then get all the args of
   # stream, site, run_year, adult_data_type, covariate, truncate_dataset from the inputs object
@@ -53,7 +56,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
 
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
   if(results_name == "juvenile_abundance") {
-    results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
+    results_name <- inputs$model_name
   }
   # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
@@ -69,26 +72,12 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
       cli::cli_abort("For models pcap_all, pcap_mainstem, p2s, and stock_recruit, model object must be of class 'stanfit'.")
   }
 
-  # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
-  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
-    if(is.null(site) | is.null(run_year)){
-      cli::cli_abort("You must supply a site and run year if uploading an abundance model result.")
-    }
-  }
-  if(results_name == "pcap_mainstem" & is.null(site)) {
-    cli::cli_abort("You must supply a site (either knights landing or tisdale) if uploading a pcap_mainstem model result.")
-  }
-  # check that they supply all the stock-recruit arguments
-  if(results_name == "stock_recruit") {
-    if(is.null(stream) | is.null(adult_data_type) | is.null(covariate) | is.null(truncate_dataset)) {
-      cli::cli_abort("You must supply a stream, adult data type, covariate, and truncate_dataset if processing stock-recruit results.")
-    }
-  }
-  # p2s args
-  if(results_name == "p2s" & is.null(covariate)) {
-    cli::cli_abort("You must supply a covariate when uploading a p2s model")
-  }
+  # generate diagnostic plot
+  # TODO liz - define this function
+  model_plot <- generate_diagnostic_plots(results_name, model_fit_object, inputs)
 
+
+  # storage workflow
   model_board <- model_pin_board(storage_account, container_name)
 
   blob_url <- pin_model_data(
@@ -97,6 +86,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
     name = results_name,
     ...
   )
+  # TODO ensure that this blob url can store the inputs and .pngs - Inigo
 
   tryCatch({
     total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name,
@@ -106,8 +96,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
     if (!is.null(total_run_rows) && total_run_rows == 1) {
       message(glue::glue("Inserted new model run into database."))
 
-      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, stream, site, run_year,
-                                            adult_data_type, covariate, truncate_dataset)
+      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, inputs)
       message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
     } else {
       message(glue::glue("⚠️ No new model run inserted into database. Skipping parameter insert."))
