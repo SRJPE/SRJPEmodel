@@ -22,7 +22,6 @@ calculate_ss_tot <- function(data) {
 #' `battle creek`, `clear creek`, `deer creek`, `mill creek`, or (draft form) `butte creek`.
 #' @param selected_covariate: The environmental covariate you'd like to run the model for. Can be
 #' either `wy_type` (water year type), `max_flow_std` (maximum flow), `gdd_std` (growing degree days),
-#' `passage_index` (total upstream passage), `median_passage_timing_std` (median passage timing),
 #' or `null_covar` (no environmental covariate).
 #' @param truncate_dataset a TRUE/FALSE value. If TRUE, will truncate the dataset so that only years where all covariate values are
 #' present are used.
@@ -40,13 +39,13 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
     full_join(SRJPEdata::p2s_model_covariates_standard,
               by = c("year", "stream")) |>
     filter(!is.na(data_type)) |>
-    pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
-                            median_passage_timing_std, passage_index),
+    pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std),
                 names_from = data_type,
                 values_from = count) |>
-    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding_count,
+    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding,
                                          stream == "butte creek" ~ carcass_estimate,
-                                         TRUE ~ redd_count)) |>
+                                         stream == "feather river" ~ broodstock_tag,
+                                         TRUE ~ redd)) |>
     filter(upstream_estimate > 0,
            observed_spawners > 0,
            stream == !!stream) |>
@@ -66,7 +65,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
       cli::cli_bullet("Butte Creek Passage to Spawner model is still in development and these results have not been tested or verified and should not be used for further analysis.")
     }
   }
-  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "passage_index", "median_passage_timing_std", "null_covar")){
+  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "null_covar")){
     cli::cli_abort("Incorrect/Unavailable environmental covariate. Please pass an approved covariate name.")
   }
 
@@ -76,7 +75,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   if(truncate_dataset) {
     truncated_data <- stream_data |>
       # truncate dataset for all
-      drop_na(wy_type, max_flow_std, gdd_std, passage_index, median_passage_timing_std, observed_spawners, upstream_estimate)
+      drop_na(wy_type, max_flow_std, gdd_std, observed_spawners, upstream_estimate)
   } else {
     # just drop the NAs for the selected covariate
     truncated_data <- stream_data  |>
@@ -224,8 +223,7 @@ compare_P2S_model_covariates <- function(stream) {
 
   cli::cli_alert(paste0("Fitting Passage to Spawner (P2S) model to all covariates for", stream))
 
-  approved_covariates <- c("wy_type", "max_flow_std", "gdd_std",
-                           "median_passage_timing_std", "passage_index")
+  approved_covariates <- c("wy_type", "max_flow_std", "gdd_std")
 
   inputs <- purrr::pmap(list(stream,
                              approved_covariates,
@@ -283,3 +281,63 @@ generate_results_plot_p2s <- function(p2s_inputs, con) {
 
   return(plot)
 }
+
+#' P2S diagnostic plots
+#' @details This function prodces two basic diagnostic plots and saves them
+#' to a local filepath.
+#' @param inputs inputs for the fit model, created by running `prepare_P2S_inputs()`
+#' @param fit the model fit
+#' @param local_folder the filepath to the local folder where you want to store the figures.
+#' @returns Saves two plots to your local filepath.
+#' @export
+#' @md
+store_diagnostic_plot_p2s <- function(inputs, fit, local_folder, stream) {
+
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  # Extract posterior samples for predicted values
+  extract_preds <- rstan::extract(fit)$predicted_spawners
+  n_posterior_samples <- 100
+  y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), ]
+  observed_data <- inputs$observed_spawners
+
+  #key_params <- c("b_survival", "conversion_rate")
+
+  # Basic posterior predictive check
+  ppc_plot <- bayesplot::ppc_dens_overlay(observed_data, y_rep) +
+    theme_minimal() +
+    labs(
+      title = "Posterior Predictive Check",
+      subtitle = "Distribution of observed data vs. posterior predictions",
+      x = pred_variable,
+      y = "Density"
+    )
+
+  # 2. Observed vs Predicted Plot
+  # -----------------------------
+  # Get the mean prediction for each observation
+  pred_mean <- colMeans(extract_preds)
+
+  # Create dataframe for prediction vs observed plot
+  obs_pred_df <- data.frame(
+    Observed = observed_data,
+    Predicted = pred_mean
+  )
+
+  # Plot observed vs predicted with 1:1 line
+  obs_pred_plot <- ggplot(obs_pred_df, aes(x = Observed, y = Predicted)) +
+    geom_point(alpha = 0.7) +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+    theme_minimal() +
+    labs(
+      title = "Observed vs. Predicted",
+      subtitle = "Points closer to the line indicate better fit",
+      x = "Observed Spawners",
+      y = "Predicted Spawners"
+    )
+
+  gridExtra::grid.arrange(ppc_plot, obs_pred_plot)
+  ggsave(plot = ppc_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_ppc_plot.png"), width = 10, height = 8)
+  ggsave(plot = obs_pred_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_pred_plot.png"), width = 10, height = 8)
+}
+

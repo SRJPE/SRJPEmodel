@@ -15,7 +15,6 @@ present are used.}
 
 \item{selected_covariate:}{The environmental covariate you'd like to run the model for. Can be
 either \code{wy_type} (water year type), \code{max_flow_std} (maximum flow), \code{gdd_std} (growing degree days),
-\code{passage_index} (total upstream passage), \code{median_passage_timing_std} (median passage timing),
 or \code{null_covar} (no environmental covariate).}
 }
 \value{
