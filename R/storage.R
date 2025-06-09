@@ -42,8 +42,15 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, stream = NULL, site = NULL, run_year = NULL,
+store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object,
+                            results_name, stream = NULL, site = NULL, run_year = NULL,
                             adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL, description, ...){
+
+  # TODO modify this function so that it takes in con, inputs. the function will then get all the args of
+  # stream, site, run_year, adult_data_type, covariate, truncate_dataset from the inputs object
+  # it will then also generate the plot and insert model params, model fit, model inputs, and plots
+
+
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
   if(results_name == "juvenile_abundance") {
     results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
@@ -92,7 +99,8 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
   )
 
   tryCatch({
-    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, stream, site, run_year,
+    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name,
+                                       stream, site, run_year,
                                        adult_data_type, covariate, truncate_dataset)
 
     if (!is.null(total_run_rows) && total_run_rows == 1) {
