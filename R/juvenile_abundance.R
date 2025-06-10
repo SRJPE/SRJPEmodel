@@ -1036,8 +1036,7 @@ run_abundance_workflow <- function(site,
     abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
                                           bugs_model_file,
                                           bugs_directory)
-    clean_table <- extract_abundance_estimates(site, run_year,
-                                               abundance_inputs, abundance)
+    clean_table <- extract_abundance_estimates(abundance_inputs, abundance)
     return(clean_table)
 
   },

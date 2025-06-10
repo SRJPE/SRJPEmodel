@@ -8,7 +8,7 @@
 #' @param access_key A string specifying the Azure storage access key with write permissions.
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param model_inputs The inputs used to fit the `model_fit_object`.
-#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `juvenile_abundance`,
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `bt_spas_x`,
 #' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`.
 #' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
@@ -46,7 +46,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
 
 
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
-  if(results_name == "juvenile_abundance") {
+  if(results_name == "bt_spas_x") {
     results_name <- model_inputs$model_name
   }
   # check that they supply an approved results name
