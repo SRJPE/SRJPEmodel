@@ -14,8 +14,7 @@ get_most_recent_model_objects(
 \item{con}{A connection object to the database.}
 
 \item{model_name_filter}{An optional argument specifying which kind of model you want to pull. This can be either
-\code{no_mark_recap}, \code{missing_mark_recap}, \code{all_mark_recap}, \code{no_mark_recap_no_trib},
-\code{pcap_mainstem}, \code{pcap_all}, \code{p2s}, or \code{stock_recruit})}
+\code{bt_spas_x}, \code{pcap_mainstem}, \code{pcap_all}, \code{p2s}, or \code{stock_recruit})}
 }
 \value{
 A list of model objects.
