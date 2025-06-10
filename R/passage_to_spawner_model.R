@@ -85,15 +85,18 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   covar <- truncated_data |>
     pull(all_of(selected_covariate))
 
-  stream_data_list <- list("N" = length(unique(truncated_data$year)),
-                           "input_years" = unique(truncated_data$year),
-                           "observed_passage" = truncated_data$upstream_estimate,
-                           "observed_spawners" = truncated_data$observed_spawners,
-                           "percent_female" = percent_female,
-                           "environmental_covar" = covar,
-                           "ss_total" = calculate_ss_tot(truncated_data),
-                           "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE),
-                           "stream" = stream)
+  data <- list("N" = length(unique(truncated_data$year)),
+               "input_years" = unique(truncated_data$year),
+               "observed_passage" = truncated_data$upstream_estimate,
+               "observed_spawners" = truncated_data$observed_spawners,
+               "percent_female" = percent_female,
+               "environmental_covar" = covar,
+               "ss_total" = calculate_ss_tot(truncated_data),
+               "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE))
+
+  stream_data_list <- list("inputs" = list("data" = data),
+                           "stream" = stream,
+                           "model_name" = "p2s")
 
   return(stream_data_list)
 }
@@ -122,7 +125,7 @@ fit_passage_to_spawner_model <- function(data_inputs) {
 
   cli::cli_process_start("Fitting P2S STAN model")
   p2s_model <- rstan::stan(model_code = p2s_model,
-                           data = data_inputs,
+                           data = data_inputs$inputs$data,
                            chains = 3, iter = 2000, seed = 84735)
 
   cli::cli_process_done("P2S STAN model fitting complete")
@@ -281,63 +284,3 @@ generate_results_plot_p2s <- function(p2s_inputs, con) {
 
   return(plot)
 }
-
-#' P2S diagnostic plots
-#' @details This function prodces two basic diagnostic plots and saves them
-#' to a local filepath.
-#' @param inputs inputs for the fit model, created by running `prepare_P2S_inputs()`
-#' @param fit the model fit
-#' @param local_folder the filepath to the local folder where you want to store the figures.
-#' @returns Saves two plots to your local filepath.
-#' @export
-#' @md
-generate_diagnostic_plot_p2s <- function(inputs, fit, local_folder, stream) {
-
-  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
-
-  # Extract posterior samples for predicted values
-  extract_preds <- rstan::extract(fit)$predicted_spawners
-  n_posterior_samples <- 100
-  y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), ]
-  observed_data <- inputs$observed_spawners
-
-  #key_params <- c("b_survival", "conversion_rate")
-
-  # Basic posterior predictive check
-  ppc_plot <- bayesplot::ppc_dens_overlay(observed_data, y_rep) +
-    theme_minimal() +
-    labs(
-      title = "Posterior Predictive Check",
-      subtitle = "Distribution of observed data vs. posterior predictions",
-      x = pred_variable,
-      y = "Density"
-    )
-
-  # 2. Observed vs Predicted Plot
-  # -----------------------------
-  # Get the mean prediction for each observation
-  pred_mean <- colMeans(extract_preds)
-
-  # Create dataframe for prediction vs observed plot
-  obs_pred_df <- data.frame(
-    Observed = observed_data,
-    Predicted = pred_mean
-  )
-
-  # Plot observed vs predicted with 1:1 line
-  obs_pred_plot <- ggplot(obs_pred_df, aes(x = Observed, y = Predicted)) +
-    geom_point(alpha = 0.7) +
-    geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
-    theme_minimal() +
-    labs(
-      title = "Observed vs. Predicted",
-      subtitle = "Points closer to the line indicate better fit",
-      x = "Observed Spawners",
-      y = "Predicted Spawners"
-    )
-
-  gridExtra::grid.arrange(ppc_plot, obs_pred_plot)
-  ggsave(plot = ppc_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_ppc_plot.png"), width = 10, height = 8)
-  ggsave(plot = obs_pred_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_pred_plot.png"), width = 10, height = 8)
-}
-

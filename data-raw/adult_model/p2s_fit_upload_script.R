@@ -23,9 +23,8 @@ for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
                   container_name = "model-results",
                   access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
                   model_fit_object = fit,
+                  inputs = P2S_inputs,
                   results_name = "p2s",
-                  stream = i,
-                  covariate = "wy_type",
                   description = paste(i, "model fit object from auto-run tests using wy_type"))
 
 }

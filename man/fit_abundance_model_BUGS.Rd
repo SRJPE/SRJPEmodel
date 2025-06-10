@@ -4,18 +4,10 @@
 \alias{fit_abundance_model_BUGS}
 \title{Fit abundance model in BUGS.}
 \usage{
-fit_abundance_model_BUGS(
-  abundance_inputs,
-  lt_pCap_Us,
-  bugs_model_file,
-  bugs_directory
-)
+fit_abundance_model_BUGS(abundance_inputs, bugs_model_file, bugs_directory)
 }
 \arguments{
 \item{abundance_inputs}{the object produced by \code{prepare_abundance_inputs()}}
-
-\item{lt_pCap_Us}{the object produced by \code{generate_lt_pCap_Us()} containing values of
-length \code{Nstrata} for \code{lt_pCap_mu} and \code{lt_pCap_sd}.}
 
 \item{bugs_model_file}{the filepath pointing to where your BUGS abundance model file is}
 

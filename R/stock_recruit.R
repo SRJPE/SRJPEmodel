@@ -63,7 +63,8 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   juv_results <- juv_results_from_db |>
     mutate(brood_year = year - 1) |>
     pivot_wider(names_from = "statistic",
-                values_from = "value") |>
+                values_from = "value",
+                id_cols = c(brood_year, stream, site)) |>
     mutate(mean_juvenile_abundance = mean,
            cv_juvenile_abundance = sd/mean) |>
     select(brood_year, site, mean_juvenile_abundance, cv_juvenile_abundance) |>
@@ -160,13 +161,14 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   inits <- list(inits1, inits2, inits3)
 
-  return(list("data" = data_list,
-              "inits" = inits,
+  return(list(inputs = list("data" = data_list,
+                            "inits" = inits),
               "year_lookup" = year_lookup,
               "stream" = stream,
               "data_type" = adult_data_type,
               "truncate_dataset" = truncate_dataset,
-              "covariate_name" = covariate))
+              "covariate_name" = covariate,
+              "model_name" = "stock_recruit"))
 
 }
 
@@ -180,8 +182,8 @@ fit_stock_recruit_model <- function(stock_recruit_inputs) {
 
   cli::cli_process_start("Fitting stock-recruit model")
   stock_recruit_fit <- rstan::stan(model_code = SRJPEmodel::stock_recruit_model_code,# eval(parse(text = "SRJPEmodel::stock_recruit_model_code"))
-                                   data = stock_recruit_inputs$data,
-                                   init = stock_recruit_inputs$inits,
+                                   data = stock_recruit_inputs$inputs$data,
+                                   init = stock_recruit_inputs$inputs$inits,
                                    chains = 3,
                                    iter = 1000,
                                    seed = 84735,  # TODO confirm setting seed
