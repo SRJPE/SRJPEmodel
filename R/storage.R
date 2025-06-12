@@ -65,27 +65,29 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
 
   # generate diagnostic plot
   model_plot <- generate_diagnostic_plot(model_inputs, model_fit_object)
-
+  # print(model_plot)
   # storage workflow
-  model_board <- model_pin_board(storage_account, container_name)
+  model_board <- model_pin_board(storage_account, container_name, results_name)
 
-  blob_url <- pin_model_data(
+  blob_url_list <- pin_model_data(
     model_board,
     model_fit_object,
+    model_inputs,
+    model_plot,
     name = results_name,
     ...
   )
   # TODO ensure that this blob url stores the model_inputs and .pngs, output of model_plot - Inigo
 
   tryCatch({
-    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name,
+    total_run_rows <- insert_model_run(con, model_fit_object, blob_url_list, description, results_name,
                                        model_inputs)
 
     if (!is.null(total_run_rows) && total_run_rows == 1) {
       message(glue::glue("Inserted new model run into database."))
 
-      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, model_inputs)
-      message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+      total_rows <- insert_model_parameters(con, model_fit_object, blob_url_list, results_name, model_inputs)
+      message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url_list$model_fit}."))
     } else {
       message(glue::glue("⚠️ No new model run inserted into database. Skipping parameter insert."))
     }
@@ -94,7 +96,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
     stop(e)
   })
 
-  return(blob_url)
+  return(blob_url_list)
 }
 
 #' @title Azure Blob Setup
@@ -136,7 +138,7 @@ setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_
 #' \code{\link[AzureStor]{blob_container}}
 #' \code{\link[pins]{board_azure}}
 #' @keywords internal
-model_pin_board <- function(storage_account, container, ...) {
+model_pin_board <- function(storage_account, container, model_name, ...) {
   storage_client <- setup_azure_blob_backend(storage_account, ...)
 
   all_containers <- AzureStor::list_blob_containers(storage_client)
@@ -147,7 +149,7 @@ model_pin_board <- function(storage_account, container, ...) {
   }
 
   blob_client <- AzureStor::blob_container(storage_client, container)
-  blob_board <- pins::board_azure(container = blob_client, "model-fits/")
+  blob_board <- pins::board_azure(container = blob_client, paste0("model-fits/", model_name))
 
   return(blob_board)
 }
@@ -226,23 +228,57 @@ model_pin_board <- function(storage_account, container, ...) {
 #'
 #' @export
 #' @md
-pin_model_data <- function(board, data, name, title = NULL, description = NULL, ...) {
+pin_model_data <- function(board, data, model_input, model_plot, name, title = NULL, description = NULL, ...) {
   pin_metadata <- list(...)
-  data_name <- pins::pin_write(board,
+  model_data_name <- pins::pin_write(board,
                                data,
-                               name = name,
+                               name = paste0(name, "_fit"),
                                title = title,
                                description = description,
                                metadata = pin_metadata, type = "rds"
   )
-  latest_version_df <- board |> pins::pin_versions(data_name) |>
+  model_input_name <- pins::pin_write(board,
+                                      model_input,
+                                      name = paste0(name, "_input"),
+                                     # title = title,
+                                     # description = description,
+                                     metadata = pin_metadata, type = "rds"
+  )
+  model_plot_name <- pins::pin_write(board,
+                                     model_plot,
+                                     name = paste0(name, "_plot"),
+                                     # title = title,
+                                     # description = description,
+                                     metadata = pin_metadata, type = "rds"
+  )
+
+  fit_latest_version_df <- board |> pins::pin_versions(model_data_name) |>
     arrange(desc(created))
-  latest_version <- latest_version_df$version[1]
+  fit_latest_version <- fit_latest_version_df$version[1]
+  print(paste0("model fit version:", fit_latest_version))
 
-  data_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{data_name}/{latest_version}/{data_name}.rds")
+  input_latest_version_df <- board |> pins::pin_versions(model_input_name) |>
+    arrange(desc(created))
+  input_latest_version <- input_latest_version_df$version[1]
+  print(paste0("model input version:", input_latest_version))
 
-  return(data_url)
+  plot_latest_version_df <- board |> pins::pin_versions(model_plot_name) |>
+    arrange(desc(created))
+  plot_latest_version <- plot_latest_version_df$version[1]
+  print(paste0("model plot version:", plot_latest_version))
+
+  model_fit_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{fit_latest_version}/{model_data_name}.rds")
+  model_input_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{input_latest_version}/{model_input_name}.rds")
+  model_plot_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{plot_latest_version}/{model_plot_name}.rds")
+
+  url_list <- list(
+    "model_fit_url"=model_fit_url,
+    "model_input_url"=model_input_url,
+    "model_plot_url"=model_plot_url
+  )
+  return(url_list)
 }
+
 
 #' @title Search Model Run
 #' @description This function searches for model runs in the JPE database using criteria, such as keywords, model run IDs, or an option to view all model runs.
@@ -454,7 +490,7 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description, results_name, inputs){
+insert_model_run <- function(con, model, blob_url_list, description, results_name, inputs){
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
@@ -477,7 +513,9 @@ insert_model_run <- function(con, model, blob_url, description, results_name, in
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
       select(model_name_id) |> unique()
-    blob_storage_url <- blob_url
+    blob_fit_storage_url <- blob_url_list$model_fit_url
+    blob_input_storage_url <- blob_url_list$model_input_url
+    blob_plot_storage_url <- blob_url_list$model_plot_url
     srjpedata_version <- model_final_results$srjpedata_version |> unique()
     model_run_description <- description
 
@@ -489,12 +527,16 @@ insert_model_run <- function(con, model, blob_url, description, results_name, in
     }
     query <- glue::glue_sql(
       "INSERT INTO model_run (
-          blob_storage_url,
+          blob_fit_storage_url,
+          blob_input_storage_url,
+          blob_plot_storage_url,
           model_name_id,
           srjpedata_version,
           description
         ) VALUES (
-          UNNEST(ARRAY[{blob_storage_url*}]),
+          UNNEST(ARRAY[{blob_fit_storage_url*}]),
+          UNNEST(ARRAY[{blob_input_storage_url*}]),
+          UNNEST(ARRAY[{blob_plot_storage_url*}]),
           UNNEST(ARRAY[{model_name_id*}]),
           UNNEST(ARRAY[{srjpedata_version*}]),
           UNNEST(ARRAY[{model_run_description*}])
@@ -507,7 +549,7 @@ insert_model_run <- function(con, model, blob_url, description, results_name, in
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url, results_name, inputs) {
+insert_model_parameters <- function(con, model, blob_url_list, results_name, inputs) {
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
@@ -528,10 +570,8 @@ insert_model_parameters <- function(con, model, blob_url, results_name, inputs) 
   }
   # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
   # model_final_results$model_fit_filename <- file_name
-  model_final_results$blob_url <- blob_url
-
-
-  model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
+  model_final_results$blob_url <- blob_url_list$model_fit_url
+  model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_fit_storage_url", "model_run_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
@@ -656,19 +696,29 @@ get_most_recent_model_results <- function(con) {
 #' @title Get Most Recent Model Run Objects
 #' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
 #' @param con A connection object to the database.
+#' @param model_component A choice of model_fit, model_input or model_plot to pull.
 #' @param model_name_filter An optional argument specifying which kind of model you want to pull. This can be either
 #' `bt_spas_x`, `pcap_mainstem`, `pcap_all`, `p2s`, or `stock_recruit`)
 #' @return A list of model objects.
 #' @export
-get_most_recent_model_objects <- function(con, model_name_filter = NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+get_most_recent_model_objects <- function(con, model_component="model_fit", model_name_filter = NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
   model_ids <- get_most_recent_model_output(con) |>
     distinct(model_run_id) |>
     pull(model_run_id)
-
-  model_urls <- tbl(con, "model_run") |>
-    filter(id %in% model_ids) |>
-    pull(blob_storage_url)
+  if (model_component == "model_fit"){
+    model_urls <- tbl(con, "model_run") |>
+      filter(id %in% model_ids) |>
+      pull(blob_fit_storage_url)
+  }else if (model_component == "model_input"){
+    model_urls <- tbl(con, "model_run") |>
+      filter(id %in% model_ids) |>
+      pull(blob_input_storage_url)
+  } else {
+    model_urls <- tbl(con, "model_run") |>
+      filter(id %in% model_ids) |>
+      pull(blob_plot_storage_url)
+  }
 
   if(!is.null(model_name_filter)) {
     if(model_name_filter == "bt_spas_x") {
@@ -711,6 +761,7 @@ generate_diagnostic_plot <- function(inputs, fit) {
   dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
 
   model_results_name = inputs$model_name
+  print(model_results_name)
 
   # observed variable is more complicated, need some basic calcs
   if(model_results_name %in% c("pcap_mainstem", "pcap_all")) {

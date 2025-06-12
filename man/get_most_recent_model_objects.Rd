@@ -6,12 +6,15 @@
 \usage{
 get_most_recent_model_objects(
   con,
+  model_component = "model_fit",
   model_name_filter = NULL,
   access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
 )
 }
 \arguments{
 \item{con}{A connection object to the database.}
+
+\item{model_component}{A choice of model_fit, model_input or model_plot to pull.}
 
 \item{model_name_filter}{An optional argument specifying which kind of model you want to pull. This can be either
 \code{bt_spas_x}, \code{pcap_mainstem}, \code{pcap_all}, \code{p2s}, or \code{stock_recruit})}
