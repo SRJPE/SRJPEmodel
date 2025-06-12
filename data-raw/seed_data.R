@@ -30,8 +30,9 @@ blob_url <- SRJPEmodel::store_model_fit(con,
                             description = description)
 
 model_run <- SRJPEmodel::search_model_run(con, keyword=NULL, model_run_id=NULL, view_all=TRUE)
-model_object <- get_most_recent_model_objects(con, model_component = "model_input")
+model_plot_object <- SRJPEmodel::get_model_object(con, model_component = "model_plot", model_run_id = 319)
 model_results <- SRJPEmodel::get_model_results_parameters(con, keyword = NULL, model_run_id=28)
+most_recent_model_input <- SRJPEmodel::get_most_recent_model_objects(con, model_component = "model_input")
 # x <- load_model_fit(con, "missing_mark_recap.bug")
 # new_model_fits <- readRDS("data/pCap_model_2025-01-09.rds")
 # abundance_fit <- readRDS("data/abundance_model_inputs.rds")

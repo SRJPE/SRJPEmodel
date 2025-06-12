@@ -699,15 +699,20 @@ get_most_recent_model_results <- function(con) {
   return(results)
 }
 
-#' #' @title Get Most Recent Model Run Objects
-#' #' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
-#' #' @param con A connection object to the database.
-#' #' @param model_component A choice of model_fit, model_input or model_plot to pull.
-#' #' @param model_name_filter An optional argument specifying which kind of model you want to pull. This can be either
-#' #' `bt_spas_x`, `pcap_mainstem`, `pcap_all`, `p2s`, or `stock_recruit`)
-#' #' @return A list of model objects.
-#' #' @export
-#' get_most_recent_model_objects <- function(con, model_component="model_fit", model_name_filter, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+#' @title Get Most Recent Model Run Objects
+#' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
+#' @param con A connection object to the database.
+#' @param model_component A choice of model_fit, model_input or model_plot to pull.
+#' @return A the most recent model objects.
+#' @export
+get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+  most_recent_id <- SRJPEmodel::get_most_recent_model_results(con) |>
+    distinct(model_run_id) |>
+    pull(model_run_id) |>
+    max()
+  most_recent_model_object <- get_model_object(con, model_component, model_run_id = most_recent_id)
+  return(most_recent_model_object)
+  }
 #'
 #'   model_ids <- get_most_recent_model_results(con) |>
 #'     distinct(model_run_id) |>
