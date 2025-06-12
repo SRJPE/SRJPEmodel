@@ -503,8 +503,7 @@ insert_model_run <- function(con, model, blob_url_list, description, results_nam
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
-    model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       inputs, model)
+    model_final_results <- extract_abundance_estimates(inputs, model)
   } else if(results_name == "pcap_all") {
     model_final_results <- extract_pCap_estimates(model, inputs)
   } else if(results_name == "pcap_mainstem") {

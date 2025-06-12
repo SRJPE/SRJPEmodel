@@ -1033,7 +1033,7 @@ run_abundance_workflow <- function(site,
 
     lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
 
-    abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+    abundance <- fit_abundance_model_BUGS(abundance_inputs,
                                           bugs_model_file,
                                           bugs_directory)
     clean_table <- extract_abundance_estimates(abundance_inputs, abundance)
