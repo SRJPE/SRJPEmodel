@@ -14,7 +14,7 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
 
 storage_account = "jpemodelresults"
 container_name = "model-results"
-model_fits <- readRDS("data/example_model_fit_06-09-2025.rds")
+model_fits <- readRDS("data/example_model_fit_06-12-2025.rds")
 model_inputs <- readRDS("data/example_model_inputs_06-11-2025.rds")
 results_name <- "p2s"
 site <- "battle creek"
@@ -29,9 +29,9 @@ blob_url <- SRJPEmodel::store_model_fit(con,
                             site = site,
                             description = description)
 
-model_run <- search_model_run(con, keyword=NULL, model_run_id=NULL, view_all=TRUE)
-model_object <- SRJPEmodel::get_model_object(con, keyword = NULL, model_run_id = 10)
-model_results <- get_model_results_parameters(con, keyword = NULL, model_run_id=28)
+model_run <- SRJPEmodel::search_model_run(con, keyword=NULL, model_run_id=NULL, view_all=TRUE)
+model_object <- get_most_recent_model_objects(con, model_component = "model_input")
+model_results <- SRJPEmodel::get_model_results_parameters(con, keyword = NULL, model_run_id=28)
 # x <- load_model_fit(con, "missing_mark_recap.bug")
 # new_model_fits <- readRDS("data/pCap_model_2025-01-09.rds")
 # abundance_fit <- readRDS("data/abundance_model_inputs.rds")

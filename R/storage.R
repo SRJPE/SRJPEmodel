@@ -267,9 +267,9 @@ pin_model_data <- function(board, data, model_input, model_plot, name, title = N
   plot_latest_version <- plot_latest_version_df$version[1]
   print(paste0("model plot version:", plot_latest_version))
 
-  model_fit_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{fit_latest_version}/{model_data_name}.rds")
-  model_input_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{input_latest_version}/{model_input_name}.rds")
-  model_plot_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{name}/{plot_latest_version}/{model_plot_name}.rds")
+  model_fit_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_data_name}/{fit_latest_version}/{model_data_name}.rds")
+  model_input_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_input_name}/{input_latest_version}/{model_input_name}.rds")
+  model_plot_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_plot_name}/{plot_latest_version}/{model_plot_name}.rds")
 
   url_list <- list(
     "model_fit_url"=model_fit_url,
@@ -436,6 +436,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #'
 #' @param con A connection object to the database.
 #' @param access_key A string specifying the Azure storage access key with read permissions. By default, it retrieves from the environment variable `AZ_CONTAINER_ACCESS_KEY`.
+#' @param model_component Select one of fit, input or plot object to pull.
 #' @param keyword An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.
 #' @param model_run_id An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither `keyword` nor `model_run_id` is provided, the latest model run is used.
 #'
@@ -443,29 +444,37 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #' #' @examples
 #' \dontrun{
 # Example: Get a model object from Azure Blob Storage using a keyword
-#' model_object <- get_model_object(con = db_connection, keyword = "model description")
+#' model_plot_object <- get_model_object(con = db_connection, model_component = "plot", keyword = "model description")
 #'
 #' # Example: Get a model object from Azure Blob Storage using a model run ID
-#' model_object <- get_model_object(con = db_connection, model_run_id = 12)
+#' model_input_object <- get_model_object(con = db_connection, model_component = "input", model_run_id = 12)
 #'
 #' print(model_object$model.file)
 #' }
 #' @export
-get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
+get_model_object <- function(con, model_component="fit", keyword=NULL, model_run_id=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
-  model_run_url <- search_model_run(con, keyword, model_run_id) |>
-    dplyr::pull(blob_storage_url)
+  if (model_component == "model_fit"){
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      pull(blob_fit_storage_url)
+  }else if (model_component == "model_input"){
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      pull(blob_input_storage_url)
+  } else {
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      pull(blob_plot_storage_url)
+  }
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
   container_name <- "model-results"
-  # container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
-  blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
+  model_id <- sub("^.*/model-fits/([^/]+)/.*$", "\\1", model_run_url)
+  model_name <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
-  model_board <- model_pin_board(storage_account, container_name)
-  print(model_board)
-  model_object <- pins::pin_read(model_board, blob_path)
+  model_board <- model_pin_board(storage_account, container_name, model_id)
+  version <- sub("^.*/([^/]+)/[^/]+$", "\\1", model_run_url)
+  model_object <- pins::pin_read(model_board, model_name, version = version)
 
   return(model_object)
 }
@@ -568,12 +577,9 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
     model_final_results <- extract_stock_recruit_estimates(inputs,
                                                            model)
   }
-  # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
-  # model_final_results$model_fit_filename <- file_name
   model_final_results$blob_url <- blob_url_list$model_fit_url
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_fit_storage_url", "model_run_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
-  # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
 
   # location_fit_id is site, location_id is stream
@@ -693,58 +699,58 @@ get_most_recent_model_results <- function(con) {
   return(results)
 }
 
-#' @title Get Most Recent Model Run Objects
-#' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
-#' @param con A connection object to the database.
-#' @param model_component A choice of model_fit, model_input or model_plot to pull.
-#' @param model_name_filter An optional argument specifying which kind of model you want to pull. This can be either
-#' `bt_spas_x`, `pcap_mainstem`, `pcap_all`, `p2s`, or `stock_recruit`)
-#' @return A list of model objects.
-#' @export
-get_most_recent_model_objects <- function(con, model_component="model_fit", model_name_filter = NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
-
-  model_ids <- get_most_recent_model_output(con) |>
-    distinct(model_run_id) |>
-    pull(model_run_id)
-  if (model_component == "model_fit"){
-    model_urls <- tbl(con, "model_run") |>
-      filter(id %in% model_ids) |>
-      pull(blob_fit_storage_url)
-  }else if (model_component == "model_input"){
-    model_urls <- tbl(con, "model_run") |>
-      filter(id %in% model_ids) |>
-      pull(blob_input_storage_url)
-  } else {
-    model_urls <- tbl(con, "model_run") |>
-      filter(id %in% model_ids) |>
-      pull(blob_plot_storage_url)
-  }
-
-  if(!is.null(model_name_filter)) {
-    if(model_name_filter == "bt_spas_x") {
-      model_name_filter <- "no_mark_recap|missing_mark_recap|all_mark_recap|no_mark_recap_no_trib"
-    }
-    model_urls <- model_urls[str_detect(model_urls, model_name_filter)]
-  }
-
-  if (access_key == "") {
-    stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
-  }
-
-  container_name <- "model-results"
-
-  model_object_list <- lapply(model_urls, function(x) {
-    blob_path <- tools::file_path_sans_ext(sub("^.*/", "", x))
-    storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", x)
-    model_board <- model_pin_board(storage_account, container_name)
-    model_object <- pins::pin_read(model_board, blob_path)
-  })
-
-  names(model_object_list) <- model_urls
-
-  return(model_object_list)
-
-}
+#' #' @title Get Most Recent Model Run Objects
+#' #' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
+#' #' @param con A connection object to the database.
+#' #' @param model_component A choice of model_fit, model_input or model_plot to pull.
+#' #' @param model_name_filter An optional argument specifying which kind of model you want to pull. This can be either
+#' #' `bt_spas_x`, `pcap_mainstem`, `pcap_all`, `p2s`, or `stock_recruit`)
+#' #' @return A list of model objects.
+#' #' @export
+#' get_most_recent_model_objects <- function(con, model_component="model_fit", model_name_filter, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+#'
+#'   model_ids <- get_most_recent_model_results(con) |>
+#'     distinct(model_run_id) |>
+#'     pull(model_run_id)
+#'   if (model_component == "model_fit"){
+#'     model_urls <- tbl(con, "model_run") |>
+#'       filter(id %in% model_ids) |>
+#'       pull(blob_fit_storage_url)
+#'   }else if (model_component == "model_input"){
+#'     model_urls <- tbl(con, "model_run") |>
+#'       filter(id %in% model_ids) |>
+#'       pull(blob_input_storage_url)
+#'   } else {
+#'     model_urls <- tbl(con, "model_run") |>
+#'       filter(id %in% model_ids) |>
+#'       pull(blob_plot_storage_url)
+#'   }
+#'
+#'
+#'   if(model_name_filter == "bt_spas_x") {
+#'       model_name_filter <- "no_mark_recap|missing_mark_recap|all_mark_recap|no_mark_recap_no_trib"
+#'     }
+#'     model_urls <- model_urls[str_detect(model_urls, model_name_filter)]
+#'   }
+#'
+#'   if (access_key == "") {
+#'     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
+#'   }
+#'
+#'   container_name <- "model-results"
+#'
+#'   model_object_list <- lapply(model_urls, function(x) {
+#'     blob_path <- tools::file_path_sans_ext(sub("^.*/", "", x))
+#'     storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", x)
+#'     model_board <- model_pin_board(storage_account, container_name, model_name_filter)
+#'     model_object <- pins::pin_read(model_board, blob_path, )
+#'   })
+#'
+#'   names(model_object_list) <- model_urls
+#'
+#'   return(model_object_list)
+#'
+#' }
 
 #' Diagnostic plots
 #' @details This function produces a posterior predictive check plot.
