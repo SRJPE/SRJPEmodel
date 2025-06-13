@@ -261,7 +261,7 @@ generate_results_plot_p2s <- function(p2s_inputs, con) {
 
   dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
 
-  params <- get_most_recent_model_output(con) |>
+  params <- get_most_recent_model_results(con) |>
     filter(model_name == "p2s",
            stream == p2s_inputs$stream)
 

@@ -2,7 +2,22 @@
 % Please edit documentation in R/storage.R
 \name{generate_diagnostic_plot}
 \alias{generate_diagnostic_plot}
-\title{Diagnostic plots}
+\title{model_ids <- get_most_recent_model_results(con) |>
+distinct(model_run_id) |>
+pull(model_run_id)
+if (model_component == "model_fit"){
+model_urls <- tbl(con, "model_run") |>
+filter(id \%in\% model_ids) |>
+pull(blob_fit_storage_url)
+}else if (model_component == "model_input"){
+model_urls <- tbl(con, "model_run") |>
+filter(id \%in\% model_ids) |>
+pull(blob_input_storage_url)
+} else {
+model_urls <- tbl(con, "model_run") |>
+filter(id \%in\% model_ids) |>
+pull(blob_plot_storage_url)
+}}
 \usage{
 generate_diagnostic_plot(inputs, fit)
 }
@@ -19,8 +34,8 @@ generate_diagnostic_plot(inputs, fit)
 Generates a diagnostic posterior predictive plot for a model fit.
 }
 \description{
-Diagnostic plots
+
 }
 \details{
-This function produces a posterior predictive check plot.
+
 }

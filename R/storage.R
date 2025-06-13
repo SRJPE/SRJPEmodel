@@ -38,11 +38,8 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-# store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object,
-#                             model_inputs, results_name, description, ...){
-
-store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object,
-                            model_inputs, results_name, description, ...){
+store_model_fit <- function(con, storage_account = "jpemodelresults", container_name = "model-results", access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
+                            model_fit_object, model_inputs, results_name, description, ...){
 
 
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
@@ -452,7 +449,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #' print(model_object$model.file)
 #' }
 #' @export
-get_model_object <- function(con, model_component="fit", keyword=NULL, model_run_id=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
+get_model_object <- function(con, model_component="model_fit", model_run_id=NULL, keyword=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
@@ -705,13 +702,27 @@ get_most_recent_model_results <- function(con) {
 #' @return A the most recent model objects.
 #' @export
 get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
-  most_recent_id <- SRJPEmodel::get_most_recent_model_results(con) |>
+  most_recent_ids <- SRJPEmodel::get_most_recent_model_results(con) |>
     distinct(model_run_id) |>
-    pull(model_run_id) |>
-    max()
-  most_recent_model_object <- get_model_object(con, model_component, model_run_id = most_recent_id)
-  return(most_recent_model_object)
-  }
+    pull(model_run_id)
+
+  model_object_list <- lapply(most_recent_ids, function(x) {
+    result <- get_model_object(con, model_component, model_run_id = x)
+  })
+  names(model_object_list) <- most_recent_id
+
+
+    # model_object_list <- lapply(most_recent_id, function(x) {
+    #
+    # })
+    #
+    # names(model_object_list) <- model_urls
+
+  return(model_object_list)
+  # most_recent_model_object <- get_model_object(con, model_component, model_run_id = most_recent_id)
+  #
+  # return(most_recent_model_object)
+}
 #'
 #'   model_ids <- get_most_recent_model_results(con) |>
 #'     distinct(model_run_id) |>

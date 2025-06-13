@@ -50,7 +50,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
     right_join(years_filter, by = c("brood_year", "stream"))
 
   # get juvenile results from database
-  juv_results_from_db <- SRJPEmodel::get_most_recent_model_output(con) |>
+  juv_results_from_db <- SRJPEmodel::get_most_recent_model_results(con) |>
     filter(model_name == "bt_spas_x",
            stream == !!stream,
            parameter == "Ntot",
@@ -459,7 +459,7 @@ generate_results_plot_sr <- function(sr_inputs, con) {
   obsv_R <- sr_inputs$year_lookup |>
     mutate(obsv_recruits = sr_inputs$data$R)
 
-  params <- get_most_recent_model_output(con) |>
+  params <- get_most_recent_model_results(con) |>
     filter(model_name == "stock_recruit",
            stream == sr_inputs$stream) |>
     rename(brood_year = year)

@@ -19,26 +19,17 @@ for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
   # push to cloud
   print(paste("Uploading to cloud for", i))
   store_model_fit(con,
-                  storage_account = "jpemodelresults",
-                  container_name = "model-results",
-                  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
                   model_fit_object = fit,
-                  inputs = P2S_inputs,
+                  model_inputs = P2S_inputs,
                   results_name = "p2s",
                   description = paste(i, "model fit object from auto-run tests using wy_type"))
 
 }
 
-test <- SRJPEmodel::get_most_recent_model_output(con)
 
-# plot
-for(i in c("battle creek", "clear creek")) {
-  inputs <- prepare_P2S_inputs(i, "wy_type")
-  generate_results_plot_p2s(inputs, con)
-  ggsave(here::here("data-raw", "adult_model", "figures", paste0(i, "_p2s_results.png")))
-}
 # sql code used in process, not relevant anymore ----------------------------------------------
 
 query <- glue::glue_sql("DELETE from model_parameters WHERE location_id IS null AND updated_at > '2025-05-12'")
+query <- glue::glue_sql("DELETE from model_run")
 res <- DBI::dbSendQuery(con, query)
 DBI::dbClearResult(res)
