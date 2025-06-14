@@ -1,9 +1,5 @@
 library(tidyverse)
-library(DBI)
-library(SRJPEdata)
 library(R2WinBUGS)
-library(AzureStor)
-library(RPostgres)
 
 # set up db connection
 cfg <- config::get()
@@ -27,6 +23,8 @@ store_model_fit(con,
                 results_name = "pcap_all",
                 description = paste("pcap model fit 06-13-2025"))
 
+model_fit_pcap <- get_model_object(con, model_component = "model_fit", 329)
+
 
 
 # abundance models --------------------------------------------------------
@@ -35,6 +33,7 @@ store_model_fit(con,
 JPE_sites_trib <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   distinct(site, run_year) |>
   filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam"))
+
 
 for(i in 1:nrow(JPE_sites_trib)) {
 
@@ -57,9 +56,11 @@ for(i in 1:nrow(JPE_sites_trib)) {
 
 }
 
+
+
 # knights landing
 kdl_pcap_inputs <- prepare_pCap_inputs(mainstem = TRUE, mainstem_site = "knights landing")
-kdl_pCap <- fit_pCap_model(kdl_pcap_inputs$inputs)
+kdl_pCap <- fit_pCap_model(kdl_pcap_inputs)
 
 store_model_fit(con,
                 model_fit_object = kdl_pCap,
@@ -76,7 +77,7 @@ for(i in kdl_years) {
   print(paste("fitting knights landing", i))
   inputs <- prepare_abundance_inputs("knights landing", i,
                                      effort_adjust = T, kdl_pCap)
-  abundance <- fit_abundance_model_BUGS(inputs, lt_pcap_us,
+  abundance <- fit_abundance_model_BUGS(inputs,
                                         "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                         "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
   store_model_fit(con,
@@ -89,7 +90,7 @@ for(i in kdl_years) {
 
 # tisdale
 tis_pcap_inputs <- prepare_pCap_inputs(mainstem = TRUE, mainstem_site = "tisdale")
-tis_pCap <- fit_pCap_model(tis_pcap_inputs$inputs)
+tis_pCap <- fit_pCap_model(tis_pcap_inputs)
 
 store_model_fit(con,
                 model_fit_object = tis_pCap,
@@ -106,7 +107,7 @@ for(i in tis_years) {
   print(paste("fitting tisdale", i))
   inputs <- prepare_abundance_inputs("tisdale", i,
                                      effort_adjust = T, tis_pCap)
-  abundance <- fit_abundance_model_BUGS(inputs, lt_pcap_us,
+  abundance <- fit_abundance_model_BUGS(inputs,
                                         "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                         "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
   store_model_fit(con,
