@@ -3,7 +3,7 @@
 \name{generate_diagnostic_plot}
 \alias{generate_diagnostic_plot}
 \title{model_ids <- get_most_recent_model_results(con) |>
-distinct(model_run_id) |>
+dplyr::distinct(model_run_id) |>
 pull(model_run_id)
 if (model_component == "model_fit"){
 model_urls <- tbl(con, "model_run") |>

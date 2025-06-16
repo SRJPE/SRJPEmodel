@@ -40,7 +40,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   years_filter <- SRJPEdata::stock_recruit_year_lookup |>
     mutate(have_both_data = ifelse(adult & rst, TRUE, FALSE)) |>
     filter(have_both_data) |>
-    distinct(brood_year, run_year, stream, site) |>
+    dplyr::distinct(brood_year, run_year, stream, site) |>
     filter(stream == !!stream)
 
   adult_data_and_covariates <- SRJPEdata::stock_recruit_model_inputs |>

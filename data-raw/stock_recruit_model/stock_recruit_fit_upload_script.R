@@ -32,15 +32,9 @@ for(i in c("battle creek", "clear creek", "deer creek",
   # push to cloud
   print(paste("Uploading to cloud for", i))
   store_model_fit(con,
-                  storage_account = "jpemodelresults",
-                  container_name = "model-results",
-                  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
                   model_fit_object = fit,
+                  model_inputs = sr_inputs,
                   results_name = "stock_recruit",
-                  stream = i,
-                  adult_data_type = data_type,
-                  covariate = "spawning_above_13_temp_week",
-                  truncate_dataset = FALSE,
                   description = paste(i, "model fit object from auto-run tests using spawning_above_13_temp_week"))
 
 }

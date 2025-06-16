@@ -263,7 +263,7 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 
     trib_index_for_release_groups <- data |>
       arrange(year) |>
-      distinct(study_id, trib_ind) |>
+      dplyr::distinct(study_id, trib_ind) |>
       pull(trib_ind)
   }
 
@@ -390,7 +390,7 @@ extract_survival_estimates <- function(model_object) {
     group_by(study_id) |>
     mutate(release_group_index_sac = cur_group_id()) |>
     ungroup() |>
-    distinct(release_group_sac = study_id, release_group_index_sac)
+    dplyr::distinct(release_group_sac = study_id, release_group_index_sac)
 
   release_group_lookup_trib <- SRJPEdata::survival_model_inputs |>
     filter(!is.na(trib_ind)) |>
@@ -398,7 +398,7 @@ extract_survival_estimates <- function(model_object) {
     group_by(study_id) |>
     mutate(release_group_index_trib = cur_group_id()) |>
     ungroup() |>
-    distinct(release_group_trib = study_id, release_group_index_trib)
+    dplyr::distinct(release_group_trib = study_id, release_group_index_trib)
 
   # get release group lookup
 

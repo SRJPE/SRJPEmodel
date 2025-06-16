@@ -57,8 +57,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     !is.na(standardized_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
     problem_data <- mark_recapture_data |>
@@ -76,7 +76,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
   site_lookup <- mark_recapture_data |>
-    distinct(site) |>
+    dplyr::distinct(site) |>
     mutate(ID = row_number())
 
   # pull the order of those sites
@@ -188,8 +188,8 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
                     !is.na(standardized_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
     problem_data <- mark_recapture_data |>
@@ -349,8 +349,8 @@ prepare_abundance_inputs <- function(site, run_year,
                       !is.na(standardized_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
-      # right now there's lifestage in the dataset, so we have to do distinct()
-      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   } else {
     # prepare "mark recapture" dataset but filter to only the mainstem site
@@ -364,8 +364,8 @@ prepare_abundance_inputs <- function(site, run_year,
                       !is.na(standardized_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
-      # right now there's lifestage in the dataset, so we have to do distinct()
-      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
   }
 
 
@@ -380,7 +380,7 @@ prepare_abundance_inputs <- function(site, run_year,
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
   site_lookup <- mark_recapture_data |>
-    distinct(site) |>
+    dplyr::distinct(site) |>
     mutate(ID = row_number())
 
   # pull the order of those sites
@@ -463,7 +463,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
-    distinct(site, run_year, week) |>
+    dplyr::distinct(site, run_year, week) |>
     filter(site == !!site) |>
     nrow()
 
@@ -885,6 +885,9 @@ extract_abundance_estimates <- function(abundance_inputs,
   week_lookup <- tibble("week_fit" = abundance_inputs$weeks_fit) |>
     mutate(week_index = row_number())
 
+  stream_lookup <- SRJPEdata::site_lookup |>
+    dplyr::distinct(stream, site)
+
   formatted_table <- model_object$summary |>
     as.data.frame() |>
     tibble::rownames_to_column("parameter") |>
@@ -896,13 +899,13 @@ extract_abundance_estimates <- function(abundance_inputs,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(week_lookup, by = "week_index") |>
+    left_join(stream_lookup, by = "site") |>
     # now clean up statistics
     pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
-    mutate(statistic = str_remove_all(statistic, "\\%"),
-           location_fit = NA) |> # this will be necessary for the pCap model fit object
-    select(model_name, site, run_year, week_fit, location_fit, parameter, statistic, value, srjpedata_version)
+    mutate(statistic = str_remove_all(statistic, "\\%")) |>
+    select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
 
   return(formatted_table)
 }
@@ -926,8 +929,11 @@ extract_abundance_estimates <- function(abundance_inputs,
 #' @md
 extract_pCap_estimates <- function(model_object, pCap_inputs) {
 
-  site_lookup <- tibble("location_fit" = pCap_inputs$sites_fit) |>
+  site_lookup <- tibble("site" = pCap_inputs$sites_fit) |>
     mutate(site_index = row_number())
+
+  stream_lookup <- SRJPEdata::site_lookup |>
+    dplyr::distinct(stream, site)
 
   formatted_table <- rstan::summary(model_object)$summary |>
     as.data.frame() |>
@@ -936,19 +942,27 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
            site_index = ifelse(str_detect(parameter, "b0_pCap|b_flow"),
                                suppressWarnings(readr::parse_number(substr(parameter, 3, length(parameter)))),
                                NA),
-           site = NA,
            run_year = NA,
            model_name = model_object@model_name,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(site_lookup, by = "site_index") |>
+    left_join(stream_lookup, by = "site") |>
+    mutate(stream = ifelse(is.na(site), NA, stream)) |>
     # now clean up statistics
     pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
     mutate(statistic = str_remove_all(statistic, "\\%"),
            week_fit = NA) |> # this won't be reported for the pCap model
-    select(model_name, site, run_year, week_fit, location_fit, parameter, statistic, value, srjpedata_version)
+    select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
+
+  if(pCap_inputs$model_name == "pcap_mainstem") {
+    formatted_table <- formatted_table |>
+      select(-c(site, stream)) |>
+      mutate(site = pCap_inputs$site) |>
+      left_join(stream_lookup, by = "site")
+  }
 
   return(formatted_table)
 }

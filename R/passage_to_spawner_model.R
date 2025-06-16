@@ -191,9 +191,9 @@ extract_P2S_estimates <- function(p2s_inputs,
     mutate(model_name = "p2s",
            site = NA,
            week_fit = NA,
-           location_fit = p2s_inputs$stream,
+           stream = p2s_inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
-    select(model_name, site, year, week_fit, location_fit,
+    select(model_name, site, stream, year, week_fit,
            parameter, statistic, value, srjpedata_version)
 
   return(table_with_years_long)

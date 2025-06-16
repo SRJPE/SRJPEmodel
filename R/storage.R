@@ -453,6 +453,9 @@ get_model_object <- function(con, model_component="model_fit", model_run_id=NULL
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
+  if(!model_component %in% c("model_fit", "model_input", "model_plot")) {
+    cli::cli_abort("Model component must be model_fit, model_input, or model_plot.")
+  }
   if (model_component == "model_fit"){
     model_run_url <- search_model_run(con, keyword, model_run_id) |>
       pull(blob_fit_storage_url)
@@ -560,10 +563,7 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
     model_final_results <- extract_abundance_estimates(inputs, model) |>
       rename(year = run_year)
-  } else if(results_name == "pcap_all") {
-    model_final_results <- extract_pCap_estimates(model, inputs) |>
-      rename(year = run_year)
-  } else if(results_name == "pcap_mainstem") {
+  } else if(results_name %in% c("pcap_all", "pcap_mainstem")) {
     model_final_results <- extract_pCap_estimates(model, inputs) |>
       rename(year = run_year)
   } else if(results_name == "p2s") {
@@ -578,15 +578,16 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
 
-  # location_fit_id is site, location_id is stream
+  # location_id is ALWAYS site, which determines stream.
+  # TODO what is location_fit_id ?
   model_final_results <- model_final_results |>
-    rename(stream = location_fit) |>
     left_join(tbl(con, "trap_location") |>
                 collect() |>
-                distinct(id, site, stream) |>
+                dplyr::distinct(site, stream, .keep_all = T) |>
                 rename(location_id = id) |>
-                mutate(location_fit_id = location_id), # TODO check this assumption
-              by = c("stream", "site")) # this will match on trap_location where site == NA
+                select(location_id, site, stream),
+              by = c("stream", "site")) |>
+    mutate(location_fit_id = NA)
 
 
   model_final_results <-  model_final_results |>
@@ -650,17 +651,17 @@ get_most_recent_model_results <- function(con) {
   results <- tbl(con, "model_parameters") |>
     # get stream (location id)
     left_join(tbl(con, "trap_location") |>
-                distinct(id, site, stream) |>
+                dplyr::distinct(id, site, stream) |>
                 select(location_id = id, stream),
               by = "location_id") |>
     # get site (location_fit_id
     # TODO should be location_fit_id for all bt spas x uploads in the future, need to fix that
     # left_join(tbl(con, "trap_location") |>
-    #             distinct(id, site, stream) |>
+    #             dplyr::distinct(id, site, stream) |>
     #             select(location_fit_id = id, site),
     #           by = "location_fit_id") |>
     left_join(tbl(con, "trap_location") |>
-                distinct(id, site, stream) |>
+                dplyr::distinct(id, site, stream) |>
                 select(location_id = id, site),
               by = "location_id") |>
     left_join(tbl(con, "parameter") |>
@@ -690,7 +691,7 @@ get_most_recent_model_results <- function(con) {
     select(-c(location_id, parameter_id, statistic_id,
               updated_at, location_fit_id,
               model_name_id, recent, most_recent_by_year)) |>
-    distinct(year, week_fit, value, stream, site, parameter, statistic, .keep_all = T) # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+    dplyr::distinct(year, week_fit, value, stream, site, parameter, statistic, .keep_all = T) # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
 
   return(results)
 }
@@ -703,7 +704,7 @@ get_most_recent_model_results <- function(con) {
 #' @export
 get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
   most_recent_ids <- SRJPEmodel::get_most_recent_model_results(con) |>
-    distinct(model_run_id) |>
+    dplyr::distinct(model_run_id) |>
     pull(model_run_id)
 
   model_object_list <- lapply(most_recent_ids, function(x) {
@@ -725,7 +726,7 @@ get_most_recent_model_objects <- function(con, model_component="model_fit", acce
 }
 #'
 #'   model_ids <- get_most_recent_model_results(con) |>
-#'     distinct(model_run_id) |>
+#'     dplyr::distinct(model_run_id) |>
 #'     pull(model_run_id)
 #'   if (model_component == "model_fit"){
 #'     model_urls <- tbl(con, "model_run") |>

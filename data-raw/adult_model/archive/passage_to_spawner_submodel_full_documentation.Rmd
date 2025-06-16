@@ -748,7 +748,7 @@ temp <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_tem
                                 bucket = gcs_get_global_bucket()),
                  show_col_types = FALSE) |>
   filter(stream %in% c("battle creek", "clear creek", "deer creek", "mill creek")) |>
-  distinct(stream, source) |>
+  dplyr::distinct(stream, source) |>
   mutate(`Stream` = str_to_title(stream),
          `Source Description` = case_when(source == "FWS" ~ "U.S. Fish and Wildlife Service",
                                           source == "CDEC DCV" ~ "CDEC Gauge code DCV",
@@ -763,7 +763,7 @@ flow <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_flo
                                 bucket = gcs_get_global_bucket()),
                  show_col_types = FALSE) |>
   filter(stream %in% c("battle creek", "clear creek", "deer creek", "mill creek")) |>
-  distinct(stream, source) |>
+  dplyr::distinct(stream, source) |>
   mutate(`Stream` = str_to_title(stream),
          `Source Description` = ifelse(str_detect(source, "USGS"), "U.S. Geological Survey Flow Data", source),
          `Source Link` = case_when(source == "USGS 11376550" ~ "https://waterdata.usgs.gov/monitoring-location/11376550/#parameterCode=00065&period=P7D",
