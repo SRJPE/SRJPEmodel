@@ -1,6 +1,12 @@
 library(tidyverse)
 library(R2WinBUGS)
 
+# check you are running on a PC
+operating_system <- ifelse(grepl("Mac", Sys.info()['nodename']) | grepl("MBP", Sys.info()['nodename']), "mac", "pc")
+
+if(operating_system != "pc") {
+  stop("You must be using a PC to run winBUGS")
+}
 # set up db connection
 cfg <- config::get()
 
@@ -21,9 +27,7 @@ store_model_fit(con,
                 model_fit_object = model_fit_pcap,
                 model_inputs = pcap_inputs,
                 results_name = "pcap_all",
-                description = paste("pcap model fit 06-16-2025"))
-
-model_fit_pcap <- get_model_object(con, model_component = "model_fit", 544)
+                description = paste("pcap model fit", Sys.Date()))
 
 
 
@@ -54,7 +58,7 @@ for(i in 1:nrow(JPE_sites_trib)) {
                   model_fit_object = fit,
                   model_inputs = inputs,
                   results_name = inputs$model_name,
-                  description = paste(JPE_sites_trib$site[i], JPE_sites_trib$run_year[i], "model fit object from auto-run tests"))
+                  description = paste(JPE_sites_trib$site[i], JPE_sites_trib$run_year[i], "model fit object from auto-run tests", Sys.Date()))
 
 }
 
@@ -68,7 +72,7 @@ store_model_fit(con,
                 model_fit_object = kdl_pCap,
                 model_inputs = kdl_pcap_inputs,
                 results_name = "pcap_mainstem",
-                description = "knights landing pcap 06-13-2025")
+                description = paste("knights landing pcap", Sys.Date()))
 
 kdl_years <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(site == "knights landing") |>
@@ -86,7 +90,7 @@ for(i in kdl_years) {
                   model_fit_object = abundance,
                   model_inputs = inputs,
                   results_name = inputs$model_name,
-                  description = paste("knights landing", i))
+                  description = paste("knights landing", i, "fit", Sys.Date()))
 
 }
 
@@ -98,7 +102,7 @@ store_model_fit(con,
                 model_fit_object = tis_pCap,
                 model_inputs = tis_pcap_inputs,
                 results_name = "pcap_mainstem",
-                description = "tisdale pcap 06-13-2025")
+                description = paste("tisdale pcap", Sys.Date()))
 
 tis_years <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(site == "tisdale") |>
@@ -116,7 +120,7 @@ for(i in tis_years) {
                   model_fit_object = abundance,
                   model_inputs = inputs,
                   results_name = inputs$model_name,
-                  description = paste("tisdale", i))
+                  description = paste("tisdale", i, "fit", Sys.Date()))
 
 }
 

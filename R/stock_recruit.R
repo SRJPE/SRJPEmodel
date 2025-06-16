@@ -244,7 +244,7 @@ extract_stock_recruit_estimates <- function(stock_recruit_inputs,
     mutate(model_name = "stock_recruit",
            site = NA,
            week_fit = NA,
-           location_fit = stock_recruit_inputs$stream,
+           stream = stock_recruit_inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata")))
 
   return(summary_table_long)

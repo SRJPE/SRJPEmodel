@@ -649,20 +649,10 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
 get_most_recent_model_results <- function(con) {
 
   results <- tbl(con, "model_parameters") |>
-    # get stream (location id)
+    # get site (location id), and pull matching stream from db
     left_join(tbl(con, "trap_location") |>
                 dplyr::distinct(id, site, stream) |>
-                select(location_id = id, stream),
-              by = "location_id") |>
-    # get site (location_fit_id
-    # TODO should be location_fit_id for all bt spas x uploads in the future, need to fix that
-    # left_join(tbl(con, "trap_location") |>
-    #             dplyr::distinct(id, site, stream) |>
-    #             select(location_fit_id = id, site),
-    #           by = "location_fit_id") |>
-    left_join(tbl(con, "trap_location") |>
-                dplyr::distinct(id, site, stream) |>
-                select(location_id = id, site),
+                select(location_id = id, site, stream),
               by = "location_id") |>
     left_join(tbl(con, "parameter") |>
                 select(parameter_id = id, parameter = definition),

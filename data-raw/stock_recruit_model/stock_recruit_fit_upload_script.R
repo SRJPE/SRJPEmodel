@@ -39,55 +39,55 @@ for(i in c("battle creek", "clear creek", "deer creek",
 
 }
 
-test <- SRJPEmodel::get_most_recent_model_results(con)
+# test <- SRJPEmodel::get_most_recent_model_results(con)
 
 
 # sql code used in process, not relevant anymore ----------------------------------------------
 
-to_insert <- tibble("definition" = unique(pars$parameter),
-                    "description" = "stock-recruit parameter") |>
-  filter(!definition %in% c("log_lik", "lp__"))
-unique(pars$parameter)
-query <- glue::glue_sql("INSERT INTO parameter (definition, description)
-                        VALUES (
-                              {to_insert$definition},
-                              {to_insert$description}
-                     );",
-                        .con = con)
-for(i in 1:length(query)) {
-  res <- DBI::dbSendQuery(con, query[i])
-  DBI::dbClearResult(res)
-}
-
-
-
-query <- glue::glue_sql("DELETE FROM model_run WHERE updated_at > '2025-04-12'")
-res <- DBI::dbSendQuery(con, query)
-DBI::dbClearResult(res)
-
-query <- glue::glue_sql("DELETE FROM parameter WHERE id = 109")
-res <- DBI::dbSendQuery(con, query)
-DBI::dbClearResult(res)
-
-# fix NA sites in trap location
-to_insert <- tibble("stream" = c("butte creek", "clear creek", "deer creek",
-                                 "feather river", "mill creek", "yuba river"),
-                    "site" = NA,
-                    "site_group" = c("butte creek", "clear creek", "deer creek",
-                                     "feather river", "mill creek", "yuba river"),
-                    "description" = "site is not recorded",
-                    "id" = 74:79)
-query <- glue::glue_sql("INSERT INTO trap_location (stream, site, site_group, description, id)
-                        OVERRIDING SYSTEM VALUE VALUES (
-                        {to_insert$stream},
-                        {to_insert$site},
-                        {to_insert$site_group},
-                        {to_insert$description},
-                        {to_insert$id}
-                        );",
-                        .con = con)
-for(i in 1:length(query)) {
-  res <- DBI::dbSendQuery(con, query[i])
-  DBI::dbClearResult(res)
-}
+# to_insert <- tibble("definition" = unique(pars$parameter),
+#                     "description" = "stock-recruit parameter") |>
+#   filter(!definition %in% c("log_lik", "lp__"))
+# unique(pars$parameter)
+# query <- glue::glue_sql("INSERT INTO parameter (definition, description)
+#                         VALUES (
+#                               {to_insert$definition},
+#                               {to_insert$description}
+#                      );",
+#                         .con = con)
+# for(i in 1:length(query)) {
+#   res <- DBI::dbSendQuery(con, query[i])
+#   DBI::dbClearResult(res)
+# }
+#
+#
+#
+# query <- glue::glue_sql("DELETE FROM model_run WHERE updated_at > '2025-04-12'")
+# res <- DBI::dbSendQuery(con, query)
+# DBI::dbClearResult(res)
+#
+# query <- glue::glue_sql("DELETE FROM parameter WHERE id = 109")
+# res <- DBI::dbSendQuery(con, query)
+# DBI::dbClearResult(res)
+#
+# # fix NA sites in trap location
+# to_insert <- tibble("stream" = c("butte creek", "clear creek", "deer creek",
+#                                  "feather river", "mill creek", "yuba river"),
+#                     "site" = NA,
+#                     "site_group" = c("butte creek", "clear creek", "deer creek",
+#                                      "feather river", "mill creek", "yuba river"),
+#                     "description" = "site is not recorded",
+#                     "id" = 74:79)
+# query <- glue::glue_sql("INSERT INTO trap_location (stream, site, site_group, description, id)
+#                         OVERRIDING SYSTEM VALUE VALUES (
+#                         {to_insert$stream},
+#                         {to_insert$site},
+#                         {to_insert$site_group},
+#                         {to_insert$description},
+#                         {to_insert$id}
+#                         );",
+#                         .con = con)
+# for(i in 1:length(query)) {
+#   res <- DBI::dbSendQuery(con, query[i])
+#   DBI::dbClearResult(res)
+# }
 
