@@ -29,7 +29,7 @@ for(i in c("battle creek", "clear creek", "deer creek", "mill creek")) {
 
 # sql code used in process, not relevant anymore ----------------------------------------------
 
-query <- glue::glue_sql("DELETE from model_parameters WHERE location_id IS null AND updated_at > '2025-05-12'")
-query <- glue::glue_sql("DELETE from model_run")
-res <- DBI::dbSendQuery(con, query)
-DBI::dbClearResult(res)
+# query <- glue::glue_sql("DELETE from model_parameters WHERE location_id IS null AND updated_at > '2025-05-12'")
+# query <- glue::glue_sql("DELETE from model_run")
+# res <- DBI::dbSendQuery(con, query)
+# DBI::dbClearResult(res)
