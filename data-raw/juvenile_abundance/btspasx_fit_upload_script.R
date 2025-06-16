@@ -21,9 +21,9 @@ store_model_fit(con,
                 model_fit_object = model_fit_pcap,
                 model_inputs = pcap_inputs,
                 results_name = "pcap_all",
-                description = paste("pcap model fit 06-13-2025"))
+                description = paste("pcap model fit 06-16-2025"))
 
-model_fit_pcap <- get_model_object(con, model_component = "model_fit", 329)
+model_fit_pcap <- get_model_object(con, model_component = "model_fit", 544)
 
 
 
@@ -32,8 +32,10 @@ model_fit_pcap <- get_model_object(con, model_component = "model_fit", 329)
 # trib
 JPE_sites_trib <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   dplyr::distinct(site, run_year) |>
-  filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam"))
-
+  filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
+  mutate(filter_out = ifelse(site == "hallwood" & run_year == 2024, TRUE, FALSE)) |>
+  filter(!filter_out) |>
+  select(-filter_out)
 
 for(i in 1:nrow(JPE_sites_trib)) {
 

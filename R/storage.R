@@ -587,7 +587,7 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
                 rename(location_id = id) |>
                 select(location_id, site, stream),
               by = c("stream", "site")) |>
-    mutate(location_fit_id = NA)
+    mutate(location_fit_id = NA_integer_)
 
 
   model_final_results <-  model_final_results |>
