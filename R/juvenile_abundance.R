@@ -1101,7 +1101,8 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
               catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
               lgN_prior = mean(lgN_prior, na.rm = T)) |>
     ungroup() |>
-    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
+    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+                select(-flow_cfs),
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(count = round(count, 0),
            catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
@@ -1120,18 +1121,17 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
   pCap_estimates <- model_table |>
     filter(parameter == "lt_pCap_U") |>
     select(week = week_fit,
-           mean:`97.5`)
+           c("97.5", "50", "mean", "75", "sd", "25", "2.5"))
 
   N_estimates <- model_table |>
     filter(parameter == "N") |>
     select(week = week_fit,
-           mean:`97.5`)
+           c("97.5", "50", "mean", "75", "sd", "25", "2.5"))
 
   # abundance plot
   abundance_plot <- data |>
     mutate(count_label = ifelse(is.na(count), "", count)) |>
     left_join(N_estimates, by = "week") |>
-    #mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis)) |>
     ggplot(aes(x = date, y = `50`)) +
     geom_bar(stat = "identity", fill = "grey", width = .75) +
     geom_errorbar(aes(x = date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
