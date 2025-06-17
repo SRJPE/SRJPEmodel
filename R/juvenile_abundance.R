@@ -1075,8 +1075,8 @@ run_abundance_workflow <- function(site,
 generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
                                          abundance_model_fit_table) {
 
-  abundance_inputs <- prepare_abundance_inputs(site_arg, run_year_arg,
-                                               T)
+  # abundance_inputs <- prepare_abundance_inputs(site_arg, run_year_arg,
+  #                                              T)
 
   model_table <- abundance_model_fit_table |>
     filter(site == site_arg,
