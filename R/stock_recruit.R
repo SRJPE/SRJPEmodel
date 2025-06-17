@@ -457,12 +457,13 @@ generate_results_plot_sr <- function(sr_inputs, con) {
   dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
 
   obsv_R <- sr_inputs$year_lookup |>
-    mutate(obsv_recruits = sr_inputs$data$R)
+    mutate(obsv_recruits = sr_inputs$inputs$data$R)
 
   params <- get_most_recent_model_results(con) |>
     filter(model_name == "stock_recruit",
            stream == sr_inputs$stream) |>
-    rename(brood_year = year)
+    rename(brood_year = year) |>
+    select(-c(id, model_run_id, model_name, week_fit, site))
 
   errors <- params |>
     filter(parameter == "pred_R",
@@ -470,7 +471,8 @@ generate_results_plot_sr <- function(sr_inputs, con) {
     select(-parameter) |>
     pivot_wider(names_from = "statistic",
                 values_from = "value") |>
-    mutate(type = "predicted")
+    mutate(type = "predicted") |>
+    select(-c(stream))
 
   plot_data <- params |>
     filter(parameter == "pred_R",
