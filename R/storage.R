@@ -394,7 +394,7 @@ search_model_run <- function(con, keyword=NULL, model_run_id=NULL, view_all=FALS
 get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 
   model_run_id <- search_model_run(con, keyword, model_run_id) |>
-    dplyr::dplyr::pull(id)
+    dplyr::pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
     filter(model_run_id == !!model_run_id) |>
@@ -693,70 +693,26 @@ get_most_recent_model_results <- function(con) {
 #' @return A the most recent model objects.
 #' @export
 get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
-  most_recent_ids <- SRJPEmodel::get_most_recent_model_results(con) |>
+
+  recent_models <- SRJPEmodel::get_most_recent_model_results(con)
+
+  most_recent_ids <- recent_models |>
     dplyr::distinct(model_run_id) |>
     dplyr::pull(model_run_id)
 
+  model_ids <- recent_models |>
+    dplyr::distinct(model_run_id, .keep_all = T) |>
+    mutate(model_id = paste(model_run_id, model_name, site, stream, year, sep = "_")) |>
+    dplyr::pull(model_id)
+
   model_object_list <- lapply(most_recent_ids, function(x) {
+    cli::cli_bullets(paste("Pulling", which(most_recent_ids == x), "of", length(most_recent_ids), "objects"))
     result <- get_model_object(con, model_component, model_run_id = x)
   })
-  names(model_object_list) <- most_recent_ids
-
-
-    # model_object_list <- lapply(most_recent_id, function(x) {
-    #
-    # })
-    #
-    # names(model_object_list) <- model_urls
+  names(model_object_list) <- model_ids
 
   return(model_object_list)
-  # most_recent_model_object <- get_model_object(con, model_component, model_run_id = most_recent_id)
-  #
-  # return(most_recent_model_object)
 }
-#'
-#'   model_ids <- get_most_recent_model_results(con) |>
-#'     dplyr::distinct(model_run_id) |>
-#'     dplyr::pull(model_run_id)
-#'   if (model_component == "model_fit"){
-#'     model_urls <- tbl(con, "model_run") |>
-#'       filter(id %in% model_ids) |>
-#'       dplyr::pull(blob_fit_storage_url)
-#'   }else if (model_component == "model_input"){
-#'     model_urls <- tbl(con, "model_run") |>
-#'       filter(id %in% model_ids) |>
-#'       dplyr::pull(blob_input_storage_url)
-#'   } else {
-#'     model_urls <- tbl(con, "model_run") |>
-#'       filter(id %in% model_ids) |>
-#'       dplyr::pull(blob_plot_storage_url)
-#'   }
-#'
-#'
-#'   if(model_name_filter == "bt_spas_x") {
-#'       model_name_filter <- "no_mark_recap|missing_mark_recap|all_mark_recap|no_mark_recap_no_trib"
-#'     }
-#'     model_urls <- model_urls[str_detect(model_urls, model_name_filter)]
-#'   }
-#'
-#'   if (access_key == "") {
-#'     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
-#'   }
-#'
-#'   container_name <- "model-results"
-#'
-#'   model_object_list <- lapply(model_urls, function(x) {
-#'     blob_path <- tools::file_path_sans_ext(sub("^.*/", "", x))
-#'     storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", x)
-#'     model_board <- model_pin_board(storage_account, container_name, model_name_filter)
-#'     model_object <- pins::pin_read(model_board, blob_path, )
-#'   })
-#'
-#'   names(model_object_list) <- model_urls
-#'
-#'   return(model_object_list)
-#'
-#' }
 
 #' Diagnostic plots
 #' @details This function produces a posterior predictive check plot.
