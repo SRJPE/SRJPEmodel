@@ -263,7 +263,7 @@ extract_stock_recruit_estimates <- function(stock_recruit_inputs,
 generate_diagnostic_plot_sr <- function(sr_inputs, sr_fit) {
   # Load posteriors and calculate predicted recruitment across a range of
   # spawning stock sizes (rather than just observed ones as model does)
-  spawner_vector <- seq(0, max(sr_inputs$data$SP) * 1.05, length.out = 50)
+  spawner_vector <- seq(0, max(sr_inputs$inputs$data$SP) * 1.05, length.out = 50)
   posteriors <- as.data.frame(sr_fit, pars = c("alpha", "beta", "gamma", "sd_pro"))
   pred_recruitment_matrix <- matrix(nrow = 50, ncol = 3)
 
@@ -275,16 +275,16 @@ generate_diagnostic_plot_sr <- function(sr_inputs, sr_fit) {
 
   # create observed data frame that also includes effect of covariate size
   # estimated using the posteriors
-  obsv_data <- tibble("obsv_spawners" = sr_inputs$data$SP,
-                      "obsv_recruits" = sr_inputs$data$R * 0.001,
-                      "obsv_covar" = sr_inputs$data$X,
+  obsv_data <- tibble("obsv_spawners" = sr_inputs$inputs$data$SP,
+                      "obsv_recruits" = sr_inputs$inputs$data$R * 0.001,
+                      "obsv_covar" = sr_inputs$inputs$data$X,
                       "brood_year" = paste0("\'", substr(sr_inputs$year_lookup$brood_year, 3, 4)))
 
   # calculate covariate effects
   # TODO can we add this code into the mutate?
   pred_covar <- c()
   pred_covar_w_gamma <- c()
-  for(i in 1:sr_inputs$data$Nyrs) {
+  for(i in 1:sr_inputs$inputs$data$Nyrs) {
     pred_covar[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i])) * 0.001
     pred_covar_w_gamma[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i] +
                                                                      posteriors$gamma * obsv_data$obsv_covar[i])) * 0.001
@@ -370,7 +370,7 @@ generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
   std_covar_vector <- (covar_vector - mean(covar_vector)) / sd(covar_vector)
   posteriors <- as.data.frame(sr_fit, pars = c("alpha", "beta", "gamma", "sd_pro"))
   pred_recruitment_matrix <- matrix(nrow = 50, ncol = 3)
-  mean_spawners <- mean(sr_inputs$data$SP)
+  mean_spawners <- mean(sr_inputs$inputs$data$SP)
 
   for(i in 1:50) {
     pred_recruitment <- mean_spawners * exp(posteriors$alpha + posteriors$beta * mean_spawners +
@@ -381,16 +381,16 @@ generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
 
   # create observed data frame that also includes effect of covariate size
   # estimated using the posteriors
-  obsv_data <- tibble("obsv_spawners" = sr_inputs$data$SP,
-                      "obsv_recruits" = sr_inputs$data$R * 0.001,
+  obsv_data <- tibble("obsv_spawners" = sr_inputs$inputs$data$SP,
+                      "obsv_recruits" = sr_inputs$inputs$data$R * 0.001,
                       "obsv_raw_covar" = raw_covar,
-                      "obsv_covar" = sr_inputs$data$X,
+                      "obsv_covar" = sr_inputs$inputs$data$X,
                       "brood_year" = paste0("\'", substr(sr_inputs$year_lookup$brood_year, 3, 4)))
 
   # calculate covariate effects
   pred_covar_1 <- c()
   pred_covar_2 <- c()
-  for(i in 1:sr_inputs$data$Nyrs) {
+  for(i in 1:sr_inputs$inputs$data$Nyrs) {
     pred_covar_1[i] <- mean(mean_spawners * exp(posteriors$alpha + posteriors$beta *
                                                   mean_spawners + posteriors$gamma * obsv_data$obsv_covar[i])) * 0.001
     pred_covar_2[i] <- mean(obsv_data$obsv_spawners[i] * exp(posteriors$alpha + posteriors$beta * obsv_data$obsv_spawners[i] +
