@@ -10,7 +10,7 @@ pCap <- fit_pCap_model(pCap_inputs$inputs) # pCap is a large STANfit object that
 
 # get inputs for every site and run year combination
 sites_to_run <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  distinct(site, run_year) |>
+  dplyr::distinct(site, run_year) |>
   filter(!site %in% c("knights landing", "red bluff diversion dam",
                       "tisdale")) |>
   arrange(site, run_year)

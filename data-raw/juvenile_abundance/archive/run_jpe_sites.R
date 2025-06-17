@@ -35,7 +35,7 @@ saveRDS(abundance_table, "ubc_2018_abundance_fit_table.rds")
 # tribs
 
 sites_to_run <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  distinct(site, run_year) |>
+  dplyr::distinct(site, run_year) |>
   filter(!site %in% c("knights landing", "red bluff diversion dam",
                       "tisdale")) |>
   arrange(site, run_year)
@@ -52,7 +52,7 @@ saveRDS(all_JPE_sites_clean, "C:/Users/Liz/Downloads/all_JPE_sites_clean.rds")
 # mainstem
 
 mainstem_sites <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-  distinct(site, run_year) |>
+  dplyr::distinct(site, run_year) |>
   filter(site %in% c("knights landing", "red bluff diversion dam",
                       "tisdale")) |>
   arrange(site, run_year)

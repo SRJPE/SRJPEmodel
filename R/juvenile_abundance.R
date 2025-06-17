@@ -57,24 +57,36 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     !is.na(standardized_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+
+  if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
+    problem_data <- mark_recapture_data |>
+      dplyr::filter(number_recaptured > number_released)
+
+    cli::cli_alert_info(paste0(nrow(problem_data), " rows of your data have more Recaptures than Releases for
+                          a given week. Filtering out the problematic data for now.
+                          Please check your data."))
+
+    mark_recapture_data <- mark_recapture_data |>
+      dplyr::filter(number_recaptured <= number_released)
+  }
 
 
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
   site_lookup <- mark_recapture_data |>
-    distinct(site) |>
+    dplyr::distinct(site) |>
     mutate(ID = row_number())
 
   # pull the order of those sites
   sites_fit <- site_lookup |>
-    pull(site)
+    dplyr::pull(site)
 
   # assign the IDs to the sites in the mark-recapture dataset
   indices_site_mark_recapture <- mark_recapture_data |>
     left_join(site_lookup, by = "site") |>
-    pull(ID)
+    dplyr::pull(ID)
 
   # get indexing for "mark recap" dataset (pCap model)
   Ntribs <- length(sites_fit) # number of sites (for pCap calculations)
@@ -101,7 +113,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("trib_mu.P", "trib_sd.P", "flow_mu.P", "flow_sd.P", "pro_sd.P",
+  pCap_parameters <-  c("trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
                         "b0_pCap", "b_flow")
 
   # initial parameter values
@@ -119,13 +131,13 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   pCap_mu_prior <- qlogis(sum(mark_recapture_data$number_recaptured) /
                             sum(mark_recapture_data$number_released))
 
-  init_list <- list(trib_mu.P = pCap_mu_prior,
+  init_list <- list(trib_mu_P = pCap_mu_prior,
                     b0_pCap = ini_b0_pCap,
-                    flow_mu.P = 0,
+                    flow_mu_P = 0,
                     b_flow = rep(0, Ntribs),
-                    trib_tau.P = 1,
-                    flow_tau.P = 1,
-                    pro_tau.P = 1)
+                    trib_tau_P = 1,
+                    flow_tau_P = 1,
+                    pro_tau_P = 1)
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
@@ -146,7 +158,9 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                  parameters = pCap_parameters)
 
   return(list("inputs" = inputs,
-              "sites_fit" = sites_fit))
+              "sites_fit" = sites_fit,
+              "location" = "tributary",
+              "model_name" = "pcap_all"))
 
 }
 
@@ -174,8 +188,20 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
                     !is.na(standardized_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+
+  if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
+    problem_data <- mark_recapture_data |>
+      dplyr::filter(number_recaptured > number_released)
+
+    cli::cli_alert_danger(paste0(nrow(problem_data), "rows of your data have more Recaptures than Releases for
+                          a given week. Filtering out the problematic data for now.
+                          Please check your data."))
+
+    mark_recapture_data <- mark_recapture_data |>
+      dplyr::filter(number_recaptured <= number_released)
+  }
 
 
   # get indexing for "mark recap" dataset (pCap model)
@@ -200,7 +226,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("pro_sd.P", "b0_pCap", "b_flow")
+  pCap_parameters <-  c("pro_sd_P", "b0_pCap", "b_flow")
 
   # initial parameter values
   ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
@@ -212,7 +238,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 
   init_list <- list(b0_pCap = ini_b0_pCap,
                     b_flow = 0,
-                    pro_tau.P = 1)
+                    pro_tau_P = 1)
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
@@ -233,7 +259,9 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
                  parameters = pCap_parameters)
 
   return(list("inputs" = inputs,
-              "sites_fit" = mainstem_site))
+              "sites_fit" = mainstem_site,
+              "location" = mainstem_site,
+              "model_name" = "pcap_mainstem"))
 
 }
 
@@ -252,12 +280,17 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 #' * **abundance_inputs** a list of data and inits for input into the abundance model.
 #' * **model_name** The version of the pCap logic to use for generating lt_pCap_U values. Either
 #' `all_mark_recap`, `missing_mark_recap`, `no_mark_recap`, or `no_mark_recap_no_trib`.
+#' * **site** The site run.
+#' * **run_year** The run year.
 #' * **weeks_fit** The weeks fit for the abundance model
 #' * **weeks_date** Associated dates for the weeks fit for the abundance model.
+#' * **lt_pCap_Us** A list containing output of `generate_lt_pCap_Us`: containing values of
+#' length `Nstrata` for `lt_pCap_mu` and `lt_pCap_sd`.
 #' @export
 #' @md
 prepare_abundance_inputs <- function(site, run_year,
                                      effort_adjust = c(T, F),
+                                     pcap_model_object,
                                      input_catch_data = NULL,
                                      input_efficiency_data = NULL) {
 
@@ -270,7 +303,6 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   catch_data <- input_catch_data |>
-    filter(life_stage != "yearling") |>
     filter(run_year == !!run_year,
            site == !!site,
            week %in% c(seq(45, 53), seq(1, 22))) |>
@@ -317,8 +349,8 @@ prepare_abundance_inputs <- function(site, run_year,
                       !is.na(standardized_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
-      # right now there's lifestage in the dataset, so we have to do distinct()
-      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   } else {
     # prepare "mark recapture" dataset but filter to only the mainstem site
@@ -332,8 +364,8 @@ prepare_abundance_inputs <- function(site, run_year,
                       !is.na(standardized_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
-      # right now there's lifestage in the dataset, so we have to do distinct()
-      distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
   }
 
 
@@ -348,17 +380,17 @@ prepare_abundance_inputs <- function(site, run_year,
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
   site_lookup <- mark_recapture_data |>
-    distinct(site) |>
+    dplyr::distinct(site) |>
     mutate(ID = row_number())
 
   # pull the order of those sites
   sites_fit <- site_lookup |>
-    pull(site)
+    dplyr::pull(site)
 
   # assign the IDs to the sites in the mark-recapture dataset
   indices_site_mark_recapture <- mark_recapture_data |>
     left_join(site_lookup, by = "site") |>
-    pull(ID)
+    dplyr::pull(ID)
 
   # indices for generating lt_pCap_Us
   indices_with_mark_recapture <- which(!is.na(all_data_for_indexing$number_released) &
@@ -431,7 +463,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
-    distinct(site, run_year, week) |>
+    dplyr::distinct(site, run_year, week) |>
     filter(site == !!site) |>
     nrow()
 
@@ -498,14 +530,26 @@ prepare_abundance_inputs <- function(site, run_year,
   weeks_fit <- tibble("Jwk" = catch_data$week) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = "Jwk")
 
-  return(list("inputs" = inputs_for_abundance,
-              "lt_pCap_U_data" = lt_pCap_U_data,
-              "model_name" = model_name,
-              "catch_flow_raw" = catch_data$flow_cfs,
-              "mr_flow_raw" = mark_recapture_data$flow_cfs,
-              "weeks_fit" = weeks_fit$Jwk,
-              "week_date" = weeks_fit$date,
-              "sites_fit" = sites_fit))
+  abundance_inputs <- list("inputs" = inputs_for_abundance,
+                           "lt_pCap_U_data" = lt_pCap_U_data,
+                           "model_name" = model_name,
+                           "site" = site,
+                           "run_year" = run_year,
+                           "catch_flow_raw" = catch_data$flow_cfs,
+                           "mr_flow_raw" = mark_recapture_data$flow_cfs,
+                           "weeks_fit" = weeks_fit$Jwk,
+                           "week_date" = weeks_fit$date,
+                           "sites_fit" = sites_fit)
+
+  # generate lt pcap Us based on inputs
+  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pcap_model_object)
+
+  final_abundance_inputs <- modifyList(abundance_inputs,
+                                       list("lt_pCap_Us" = lt_pCap_Us))
+  final_abundance_inputs$lt_pCap_U_data = NULL
+
+  return(final_abundance_inputs)
+
 }
 
 
@@ -543,7 +587,7 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @md
 fit_pCap_model <- function(input) {
 
-  if("trib_mu.P" %in% input$parameters) {
+  if("trib_mu_P" %in% input$inputs$parameters) {
     mainstem <- FALSE
   } else {
     mainstem <- TRUE
@@ -559,8 +603,8 @@ fit_pCap_model <- function(input) {
     cli::cli_alert("running pCap model")
     pcap <- rstan::stan(model_name = "pCap_mainstem",
                         model_code = stan_model,
-                        data = input$data,
-                        init = input$inits,
+                        data = input$inputs$data,
+                        init = input$inputs$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
                         pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
@@ -577,8 +621,8 @@ fit_pCap_model <- function(input) {
     cli::cli_alert("running pCap model")
     pcap <- rstan::stan(model_name = "pCap_all",
                         model_code = stan_model,
-                        data = input$data,
-                        init = input$inits,
+                        data = input$inputs$data,
+                        init = input$inputs$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
                         pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
                                  "flow_mu_P", "flow_sd_P"), # for new efficient model
@@ -596,13 +640,12 @@ fit_pCap_model <- function(input) {
 #' @param abundance_inputs A list containing the inputs for the site-specific abundance model including
 #' `model_name`, `Nstrata`, `catch_flow`, `use_trib`, `Ntribs`, `Nmr`, `Nwmr`, `Nwomr`, `Uind_wMR`, `Uind_woMR`,
 #' `ind_pCap`. This is created by calling `prepare_abundance_inputs()`.
-#' @param pCap_model_object A STANfit object with the output of the pCap hierarchical model. This is created
-#' by calling `fit_pCap_model()`.
 #' @returns a named list with the simulated `lt_pCap_mu` and `lt_pCap_sd` values for
 #' `Nstrata`.
 #' @export
 #' @md
-generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
+generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
+
 
   # if mainstem
   if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
@@ -620,7 +663,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
     # extract from pCap model fit object
 
-    samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
+    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
@@ -698,7 +741,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
     # extract from pCap model fit object
 
-    samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
                                                           "flow_mu_P", "flow_sd_P"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
@@ -773,14 +816,12 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 #' Fit abundance model in BUGS.
 #' @details This function runs the BUGS abundance model.
 #' @param abundance_inputs the object produced by `prepare_abundance_inputs()`
-#' @param lt_pCap_Us the object produced by `generate_lt_pCap_Us()` containing values of
-#' length `Nstrata` for `lt_pCap_mu` and `lt_pCap_sd`.
 #' @param bugs_model_file the filepath pointing to where your BUGS abundance model file is
 #' @param bugs_directory the filepath pointing to where your WinBUGS14/ directory is
 #' @returns a BUGS object.
 #' @export
 #' @md
-fit_abundance_model_BUGS <- function(abundance_inputs, lt_pCap_Us,
+fit_abundance_model_BUGS <- function(abundance_inputs,
                                      bugs_model_file,
                                      bugs_directory) {
 
@@ -792,8 +833,8 @@ fit_abundance_model_BUGS <- function(abundance_inputs, lt_pCap_Us,
 
   # clean up later
   data <- abundance_inputs$inputs$data
-  data$lt_pCap_mu <- lt_pCap_Us$lt_pCap_mu
-  data$lt_pCap_tau <- 1/lt_pCap_Us$lt_pCap_sd^2
+  data$lt_pCap_mu <- abundance_inputs$lt_pCap_Us$lt_pCap_mu
+  data$lt_pCap_tau <- 1/abundance_inputs$lt_pCap_Us$lt_pCap_sd^2
 
   inits_with_lt_pCap_U <- abundance_inputs$inputs$inits[[1]]
 
@@ -818,45 +859,6 @@ fit_abundance_model_BUGS <- function(abundance_inputs, lt_pCap_Us,
 }
 
 
-
-#' Fit abundance model in STAN
-#' @details This function calls a STAN model for abundance. It is currently in development.
-#' @param input A list containing the inputs for the abundance model. This is created by calling
-#' `prepare_abundance_inputs()`.
-#' @param pCap_fit A STANfit object resulting from running `fit_pCap_model()`.
-#' @param lt_pCap_Us A named list produced by running `generate_lt_pCap_Us()`.
-#' @returns a STANfit object containing abundance model fits.
-#' @md
-fit_abundance_model_STAN <- function(input, pCap_fit, lt_pCap_Us) {
-
-  # TODO this is in progress
-
-  input$data$lt_pCap_mu <- lt_pCap_Us$lt_pCap_mu
-  input$data$lt_pCap_sd <- lt_pCap_Us$lt_pCap_sd
-
-  # generate inits for lt_pCap_U
-  inits_with_lt_pCap_U <- input$inits[[1]]
-  inits_with_lt_pCap_U$lt_pCap_U <- input$data$lt_pCap_mu
-  new_inits <- list(inits = inits_with_lt_pCap_U,
-                    inits = inits_with_lt_pCap_U,
-                    inits = inits_with_lt_pCap_U)
-
-  stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$abundance"))
-
-  options(mc.cores=parallel::detectCores())
-
-  cli::cli_alert("running abundance model")
-  abundance <- rstan::stan(model_code = stan_model,
-                           data = input$data,
-                           # algorithm = "HMC",
-                           init = new_inits,
-                           chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                           iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
-                           seed = 84735)
-
-  return(abundance)
-}
-
 #' Extract parameter estimates from abundance BUGS model object
 #' @details This function extracts parameter estimates from the abundance BUGS model and returns them in a tidy data frame format.
 #' @param site the site fit.
@@ -875,8 +877,7 @@ fit_abundance_model_STAN <- function(input, pCap_fit, lt_pCap_Us) {
 #' * **srjpedata_version**
 #' @export
 #' @md
-extract_abundance_estimates <- function(site, run_year,
-                                        abundance_inputs,
+extract_abundance_estimates <- function(abundance_inputs,
                                         model_object) {
 
   # link to actual weeks
@@ -884,24 +885,27 @@ extract_abundance_estimates <- function(site, run_year,
   week_lookup <- tibble("week_fit" = abundance_inputs$weeks_fit) |>
     mutate(week_index = row_number())
 
+  stream_lookup <- SRJPEdata::site_lookup |>
+    dplyr::distinct(stream, site)
+
   formatted_table <- model_object$summary |>
     as.data.frame() |>
     tibble::rownames_to_column("parameter") |>
     mutate(week_index = ifelse(str_detect(parameter, "b0_pCap|b_flow"), NA,
                                suppressWarnings(readr::parse_number(parameter))),
-           site = site,
-           run_year = run_year,
+           site = abundance_inputs$site,
+           run_year = abundance_inputs$run_year,
            model_name = abundance_inputs$model_name,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(week_lookup, by = "week_index") |>
+    left_join(stream_lookup, by = "site") |>
     # now clean up statistics
     pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
-    mutate(statistic = str_remove_all(statistic, "\\%"),
-           location_fit = NA) |> # this will be necessary for the pCap model fit object
-    select(model_name, site, run_year, week_fit, location_fit, parameter, statistic, value, srjpedata_version)
+    mutate(statistic = str_remove_all(statistic, "\\%")) |>
+    select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
 
   return(formatted_table)
 }
@@ -925,8 +929,11 @@ extract_abundance_estimates <- function(site, run_year,
 #' @md
 extract_pCap_estimates <- function(model_object, pCap_inputs) {
 
-  site_lookup <- tibble("location_fit" = pCap_inputs$sites_fit) |>
+  site_lookup <- tibble("site" = pCap_inputs$sites_fit) |>
     mutate(site_index = row_number())
+
+  stream_lookup <- SRJPEdata::site_lookup |>
+    dplyr::distinct(stream, site)
 
   formatted_table <- rstan::summary(model_object)$summary |>
     as.data.frame() |>
@@ -935,19 +942,27 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
            site_index = ifelse(str_detect(parameter, "b0_pCap|b_flow"),
                                suppressWarnings(readr::parse_number(substr(parameter, 3, length(parameter)))),
                                NA),
-           site = NA,
            run_year = NA,
            model_name = model_object@model_name,
            parameter = gsub("[0-9]+|\\[|\\]", "", parameter),
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
     left_join(site_lookup, by = "site_index") |>
+    left_join(stream_lookup, by = "site") |>
+    mutate(stream = ifelse(is.na(site), NA, stream)) |>
     # now clean up statistics
     pivot_longer(mean:Rhat,
                  values_to = "value",
                  names_to = "statistic") |>
     mutate(statistic = str_remove_all(statistic, "\\%"),
            week_fit = NA) |> # this won't be reported for the pCap model
-    select(model_name, site, run_year, week_fit, location_fit, parameter, statistic, value, srjpedata_version)
+    select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
+
+  if(pCap_inputs$model_name == "pcap_mainstem") {
+    formatted_table <- formatted_table |>
+      select(-c(site, stream)) |>
+      mutate(site = pCap_inputs$site) |>
+      left_join(stream_lookup, by = "site")
+  }
 
   return(formatted_table)
 }
@@ -1032,11 +1047,10 @@ run_abundance_workflow <- function(site,
 
     lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
 
-    abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+    abundance <- fit_abundance_model_BUGS(abundance_inputs,
                                           bugs_model_file,
                                           bugs_directory)
-    clean_table <- extract_abundance_estimates(site, run_year,
-                                               abundance_inputs, abundance)
+    clean_table <- extract_abundance_estimates(abundance_inputs, abundance)
     return(clean_table)
 
   },
@@ -1073,7 +1087,6 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
   julian_week_to_date_lookup <- SRJPEmodel::julian_week_to_date_lookup
 
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-    filter(life_stage != "yearling") |>
     filter(run_year == run_year_arg,
            site == site_arg,
            week %in% c(seq(45, 53), seq(1, 22))) |>
@@ -1177,7 +1190,6 @@ generate_diagnostic_plot_juv <- function(site_arg, run_year_arg,
 #' @md
 plot_juv_data <- function(site, run_year) {
   data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-    filter(life_stage != "yearling") |>
     filter(run_year == !!run_year,
            site == !!site,
            week %in% c(seq(45, 53), seq(1, 22))) |>

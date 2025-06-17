@@ -5,20 +5,15 @@
 #' @param con A connection object to the database.
 #' @param storage_account A string specifying the Azure storage account name, typically `jpemodelresults`.
 #' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
-#' @param access_key A string specifying the Azure storage access key with write permissions.
+#' @param access_key A string specifying the Azure storage access key with write permissions. Default is stored in your R environment under `AZ_CONTAINER_ACCESS_KEY`.
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
-#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `juvenile_abundance`,
+#' @param model_inputs The inputs used to fit the `model_fit_object`.
+#' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `bt_spas_x`,
 #' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`.
-#' @param stream If uploading a stock-recruit model output, you must supply the stream for which you fit the model.
-#' @param site If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.
-#' @param run_year If uploading an abundance model output, you must supply the run_year for which you fit the model.
-#' @param adult_data_type If uploading a stock-recruit model input, you must specify the adult data type.
-#' @param covariate If uploading a stock-recruit model input, you must supply the selected covariate type.
-#' @param truncate_dataset If uploading a stock-recruit model input, you must supply whether or not the dataset was truncated when fit.
 #' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
-#' @return A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
+#' @return A string representing the URL of the blob in Azure Blob Storage where the model fit object, diagnostic plots, and inputs are stored.
 #'
 #' @examples
 #' \dontrun{
@@ -34,6 +29,7 @@
 #'                             container_name = "my_container",
 #'                             access_key = "my_access_key",
 #'                             model_fit_object = model_results,
+#'                             model_inputs = model_inputs,
 #'                             results_name = "model_name",
 #'                             description = "model_description")
 #'
@@ -42,11 +38,13 @@
 #' dbDisconnect(con)
 #'}
 #' @export
-store_model_fit <- function(con, storage_account, container_name, access_key, model_fit_object, results_name, stream = NULL, site = NULL, run_year = NULL,
-                            adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL, description, ...){
+store_model_fit <- function(con, storage_account = "jpemodelresults", container_name = "model-results", access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
+                            model_fit_object, model_inputs, results_name, description, ...){
+
+
   # extracts correct submodel name from "abundance" (assuming user does not know the specifics)
-  if(results_name == "juvenile_abundance") {
-    results_name <- prepare_abundance_inputs(site, run_year, effort_adjust = T)$model_name
+  if(results_name == "bt_spas_x") {
+    results_name <- model_inputs$model_name
   }
   # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
@@ -62,45 +60,30 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
       cli::cli_abort("For models pcap_all, pcap_mainstem, p2s, and stock_recruit, model object must be of class 'stanfit'.")
   }
 
-  # check that they supply a site and run year if supplying an abundance model fit or pCap mainstem
-  if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
-    if(is.null(site) | is.null(run_year)){
-      cli::cli_abort("You must supply a site and run year if uploading an abundance model result.")
-    }
-  }
-  if(results_name == "pcap_mainstem" & is.null(site)) {
-    cli::cli_abort("You must supply a site (either knights landing or tisdale) if uploading a pcap_mainstem model result.")
-  }
-  # check that they supply all the stock-recruit arguments
-  if(results_name == "stock_recruit") {
-    if(is.null(stream) | is.null(adult_data_type) | is.null(covariate) | is.null(truncate_dataset)) {
-      cli::cli_abort("You must supply a stream, adult data type, covariate, and truncate_dataset if processing stock-recruit results.")
-    }
-  }
-  # p2s args
-  if(results_name == "p2s" & is.null(covariate)) {
-    cli::cli_abort("You must supply a covariate when uploading a p2s model")
-  }
+  # generate diagnostic plot
+  model_plot <- generate_diagnostic_plot(model_inputs, model_fit_object)
+  # print(model_plot)
+  # storage workflow
+  model_board <- model_pin_board(storage_account, container_name, results_name)
 
-  model_board <- model_pin_board(storage_account, container_name)
-
-  blob_url <- pin_model_data(
+  blob_url_list <- pin_model_data(
     model_board,
     model_fit_object,
+    model_inputs,
+    model_plot,
     name = results_name,
     ...
   )
 
   tryCatch({
-    total_run_rows <- insert_model_run(con, model_fit_object, blob_url, description, results_name, stream, site, run_year,
-                                       adult_data_type, covariate, truncate_dataset)
+    total_run_rows <- insert_model_run(con, model_fit_object, blob_url_list, description, results_name,
+                                       model_inputs)
 
     if (!is.null(total_run_rows) && total_run_rows == 1) {
       message(glue::glue("Inserted new model run into database."))
 
-      total_rows <- insert_model_parameters(con, model_fit_object, blob_url, results_name, stream, site, run_year,
-                                            adult_data_type, covariate, truncate_dataset)
-      message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url}."))
+      total_rows <- insert_model_parameters(con, model_fit_object, blob_url_list, results_name, model_inputs)
+      message(glue::glue("Inserted {total_rows} into database. Uploaded model fit results to {blob_url_list$model_fit}."))
     } else {
       message(glue::glue("⚠️ No new model run inserted into database. Skipping parameter insert."))
     }
@@ -109,7 +92,7 @@ store_model_fit <- function(con, storage_account, container_name, access_key, mo
     stop(e)
   })
 
-  return(blob_url)
+  return(blob_url_list)
 }
 
 #' @title Azure Blob Setup
@@ -151,7 +134,7 @@ setup_azure_blob_backend <- function(storage_account, access_key=Sys.getenv("AZ_
 #' \code{\link[AzureStor]{blob_container}}
 #' \code{\link[pins]{board_azure}}
 #' @keywords internal
-model_pin_board <- function(storage_account, container, ...) {
+model_pin_board <- function(storage_account, container, model_name, ...) {
   storage_client <- setup_azure_blob_backend(storage_account, ...)
 
   all_containers <- AzureStor::list_blob_containers(storage_client)
@@ -162,7 +145,7 @@ model_pin_board <- function(storage_account, container, ...) {
   }
 
   blob_client <- AzureStor::blob_container(storage_client, container)
-  blob_board <- pins::board_azure(container = blob_client, "model-fits/")
+  blob_board <- pins::board_azure(container = blob_client, paste0("model-fits/", model_name))
 
   return(blob_board)
 }
@@ -241,23 +224,57 @@ model_pin_board <- function(storage_account, container, ...) {
 #'
 #' @export
 #' @md
-pin_model_data <- function(board, data, name, title = NULL, description = NULL, ...) {
+pin_model_data <- function(board, data, model_input, model_plot, name, title = NULL, description = NULL, ...) {
   pin_metadata <- list(...)
-  data_name <- pins::pin_write(board,
+  model_data_name <- pins::pin_write(board,
                                data,
-                               name = name,
+                               name = paste0(name, "_fit"),
                                title = title,
                                description = description,
                                metadata = pin_metadata, type = "rds"
   )
-  latest_version_df <- board |> pins::pin_versions(data_name) |>
+  model_input_name <- pins::pin_write(board,
+                                      model_input,
+                                      name = paste0(name, "_input"),
+                                     # title = title,
+                                     # description = description,
+                                     metadata = pin_metadata, type = "rds"
+  )
+  model_plot_name <- pins::pin_write(board,
+                                     model_plot,
+                                     name = paste0(name, "_plot"),
+                                     # title = title,
+                                     # description = description,
+                                     metadata = pin_metadata, type = "rds"
+  )
+
+  fit_latest_version_df <- board |> pins::pin_versions(model_data_name) |>
     arrange(desc(created))
-  latest_version <- latest_version_df$version[1]
+  fit_latest_version <- fit_latest_version_df$version[1]
+  print(paste0("model fit version:", fit_latest_version))
 
-  data_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{data_name}/{latest_version}/{data_name}.rds")
+  input_latest_version_df <- board |> pins::pin_versions(model_input_name) |>
+    arrange(desc(created))
+  input_latest_version <- input_latest_version_df$version[1]
+  print(paste0("model input version:", input_latest_version))
 
-  return(data_url)
+  plot_latest_version_df <- board |> pins::pin_versions(model_plot_name) |>
+    arrange(desc(created))
+  plot_latest_version <- plot_latest_version_df$version[1]
+  print(paste0("model plot version:", plot_latest_version))
+
+  model_fit_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_data_name}/{fit_latest_version}/{model_data_name}.rds")
+  model_input_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_input_name}/{input_latest_version}/{model_input_name}.rds")
+  model_plot_url <- glue::glue("{board$container$endpoint$url}/{board$path}/{model_plot_name}/{plot_latest_version}/{model_plot_name}.rds")
+
+  url_list <- list(
+    "model_fit_url"=model_fit_url,
+    "model_input_url"=model_input_url,
+    "model_plot_url"=model_plot_url
+  )
+  return(url_list)
 }
+
 
 #' @title Search Model Run
 #' @description This function searches for model runs in the JPE database using criteria, such as keywords, model run IDs, or an option to view all model runs.
@@ -415,6 +432,7 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #'
 #' @param con A connection object to the database.
 #' @param access_key A string specifying the Azure storage access key with read permissions. By default, it retrieves from the environment variable `AZ_CONTAINER_ACCESS_KEY`.
+#' @param model_component Select one of fit, input or plot object to pull.
 #' @param keyword An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.
 #' @param model_run_id An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither `keyword` nor `model_run_id` is provided, the latest model run is used.
 #'
@@ -422,29 +440,40 @@ get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 #' #' @examples
 #' \dontrun{
 # Example: Get a model object from Azure Blob Storage using a keyword
-#' model_object <- get_model_object(con = db_connection, keyword = "model description")
+#' model_plot_object <- get_model_object(con = db_connection, model_component = "plot", keyword = "model description")
 #'
 #' # Example: Get a model object from Azure Blob Storage using a model run ID
-#' model_object <- get_model_object(con = db_connection, model_run_id = 12)
+#' model_input_object <- get_model_object(con = db_connection, model_component = "input", model_run_id = 12)
 #'
 #' print(model_object$model.file)
 #' }
 #' @export
-get_model_object <- function(con, keyword=NULL, model_run_id=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
+get_model_object <- function(con, model_component="model_fit", model_run_id=NULL, keyword=NULL, access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")){
   if (access_key == "") {
     stop("Access key is required to read from Azure Blob Storage.", call. = FALSE)
   }
-  model_run_url <- search_model_run(con, keyword, model_run_id) |>
-    dplyr::pull(blob_storage_url)
+  if(!model_component %in% c("model_fit", "model_input", "model_plot")) {
+    cli::cli_abort("Model component must be model_fit, model_input, or model_plot.")
+  }
+  if (model_component == "model_fit"){
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      dplyr::pull(blob_fit_storage_url)
+  }else if (model_component == "model_input"){
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      dplyr::pull(blob_input_storage_url)
+  } else {
+    model_run_url <- search_model_run(con, keyword, model_run_id) |>
+      dplyr::pull(blob_plot_storage_url)
+  }
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
   container_name <- "model-results"
-  # container_name <- sub("https://.+\\.blob\\.core\\.windows\\.net/(.+?)/.*", "\\1", model_run_url)
-  blob_path <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
+  model_id <- sub("^.*/model-fits/([^/]+)/.*$", "\\1", model_run_url)
+  model_name <- tools::file_path_sans_ext(sub("^.*/", "", model_run_url))
 
-  model_board <- model_pin_board(storage_account, container_name)
-  print(model_board)
-  model_object <- pins::pin_read(model_board, blob_path)
+  model_board <- model_pin_board(storage_account, container_name, model_id)
+  version <- sub("^.*/([^/]+)/[^/]+$", "\\1", model_run_url)
+  model_object <- pins::pin_read(model_board, model_name, version = version)
 
   return(model_object)
 }
@@ -469,23 +498,20 @@ join_lookup <- function(df, db_table, model_lookup_column, db_lookup_column, fin
 }
 
 #' @keywords internal
-insert_model_run <- function(con, model, blob_url, description, results_name, stream = NULL, site = NULL, run_year = NULL,
-                             adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL){
+insert_model_run <- function(con, model, blob_url_list, description, results_name, inputs){
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
-    model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model)
+    model_final_results <- extract_abundance_estimates(inputs, model)
   } else if(results_name == "pcap_all") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE))
+    model_final_results <- extract_pCap_estimates(model, inputs)
   } else if(results_name == "pcap_mainstem") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site))
+    model_final_results <- extract_pCap_estimates(model, inputs)
   } else if(results_name == "p2s") {
-    model_final_results <- extract_P2S_estimates(prepare_P2S_inputs(stream, covariate),
+    model_final_results <- extract_P2S_estimates(inputs,
                                                  model)
   } else if(results_name == "stock_recruit") {
-    model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
-                                                                                        covariate, truncate_dataset),
+    model_final_results <- extract_stock_recruit_estimates(inputs,
                                                            model)
   }
   # TODO check that model names match user input model names
@@ -494,7 +520,9 @@ insert_model_run <- function(con, model, blob_url, description, results_name, st
   try({
     model_name_id <- join_lookup(model_final_results, "model_name", "model_name", "name", "model_name_id") |>
       select(model_name_id) |> unique()
-    blob_storage_url <- blob_url
+    blob_fit_storage_url <- blob_url_list$model_fit_url
+    blob_input_storage_url <- blob_url_list$model_input_url
+    blob_plot_storage_url <- blob_url_list$model_plot_url
     srjpedata_version <- model_final_results$srjpedata_version |> unique()
     model_run_description <- description
 
@@ -506,12 +534,16 @@ insert_model_run <- function(con, model, blob_url, description, results_name, st
     }
     query <- glue::glue_sql(
       "INSERT INTO model_run (
-          blob_storage_url,
+          blob_fit_storage_url,
+          blob_input_storage_url,
+          blob_plot_storage_url,
           model_name_id,
           srjpedata_version,
           description
         ) VALUES (
-          UNNEST(ARRAY[{blob_storage_url*}]),
+          UNNEST(ARRAY[{blob_fit_storage_url*}]),
+          UNNEST(ARRAY[{blob_input_storage_url*}]),
+          UNNEST(ARRAY[{blob_plot_storage_url*}]),
           UNNEST(ARRAY[{model_name_id*}]),
           UNNEST(ARRAY[{srjpedata_version*}]),
           UNNEST(ARRAY[{model_run_description*}])
@@ -524,47 +556,37 @@ insert_model_run <- function(con, model, blob_url, description, results_name, st
 }
 
 #' @keywords internal
-insert_model_parameters <- function(con, model, blob_url, results_name, stream = NULL, site = NULL, run_year = NULL,
-                                    adult_data_type = NULL, covariate = NULL, truncate_dataset = NULL) {
+insert_model_parameters <- function(con, model, blob_url_list, results_name, inputs) {
 
   # call extract function based on the model name
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib")) {
-    model_final_results <- extract_abundance_estimates(site, run_year,
-                                                       prepare_abundance_inputs(site, run_year, effort_adjust = T), model) |>
+    model_final_results <- extract_abundance_estimates(inputs, model) |>
       rename(year = run_year)
-  } else if(results_name == "pcap_all") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = FALSE)) |>
-      rename(year = run_year)
-  } else if(results_name == "pcap_mainstem") {
-    model_final_results <- extract_pCap_estimates(model, prepare_pCap_inputs(mainstem = TRUE, mainstem_site = site)) |>
+  } else if(results_name %in% c("pcap_all", "pcap_mainstem")) {
+    model_final_results <- extract_pCap_estimates(model, inputs) |>
       rename(year = run_year)
   } else if(results_name == "p2s") {
-    model_final_results <- extract_P2S_estimates(prepare_P2S_inputs(stream, covariate),
+    model_final_results <- extract_P2S_estimates(inputs,
                                                  model)
   } else if(results_name == "stock_recruit") {
-    model_final_results <- extract_stock_recruit_estimates(prepare_stock_recruit_inputs(con, stream, adult_data_type,
-                                                                                        covariate, truncate_dataset),
+    model_final_results <- extract_stock_recruit_estimates(inputs,
                                                            model)
   }
-  # model_fit_filename <- stringr::str_extract(model$full_object$model.file, "[^/]+$")
-  # model_final_results$model_fit_filename <- file_name
-  model_final_results$blob_url <- blob_url
-
-
-  model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_storage_url", "model_run_id")
+  model_final_results$blob_url <- blob_url_list$model_fit_url
+  model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_fit_storage_url", "model_run_id")
   model_final_results <- join_lookup(model_final_results, "statistic", "statistic", "definition", "statistic_id")
-  # model_final_results <- join_lookup(model_final_results, "lifestage", "life_stage", "definition", "lifestage_id")
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
 
-  # location_fit_id is site, location_id is stream
+  # location_id is ALWAYS site, which determines stream.
+  # TODO what is location_fit_id ?
   model_final_results <- model_final_results |>
-    rename(stream = location_fit) |>
     left_join(tbl(con, "trap_location") |>
                 collect() |>
-                distinct(id, site, stream) |>
+                dplyr::distinct(site, stream, .keep_all = T) |>
                 rename(location_id = id) |>
-                mutate(location_fit_id = location_id), # TODO check this assumption
-              by = c("stream", "site")) # this will match on trap_location where site == NA
+                select(location_id, site, stream),
+              by = c("stream", "site")) |>
+    mutate(location_fit_id = NA_integer_)
 
 
   model_final_results <-  model_final_results |>
@@ -623,23 +645,13 @@ insert_model_parameters <- function(con, model, blob_url, results_name, stream =
 #' dbDisconnect(con)
 #' }
 #' @export
-get_most_recent_model_output <- function(con) {
+get_most_recent_model_results <- function(con) {
 
   results <- tbl(con, "model_parameters") |>
-    # get stream (location id)
+    # get site (location id), and pull matching stream from db
     left_join(tbl(con, "trap_location") |>
-                distinct(id, site, stream) |>
-                select(location_id = id, stream),
-              by = "location_id") |>
-    # get site (location_fit_id
-    # TODO should be location_fit_id for all bt spas x uploads in the future, need to fix that
-    # left_join(tbl(con, "trap_location") |>
-    #             distinct(id, site, stream) |>
-    #             select(location_fit_id = id, site),
-    #           by = "location_fit_id") |>
-    left_join(tbl(con, "trap_location") |>
-                distinct(id, site, stream) |>
-                select(location_id = id, site),
+                dplyr::distinct(id, site, stream) |>
+                select(location_id = id, site, stream),
               by = "location_id") |>
     left_join(tbl(con, "parameter") |>
                 select(parameter_id = id, parameter = definition),
@@ -665,10 +677,133 @@ get_most_recent_model_output <- function(con) {
     ungroup() |>
     # filter to only keep the most recent run for each year
     filter(recent == most_recent_by_year) |>
-    select(-c(id, location_id, parameter_id, statistic_id,
+    select(-c(location_id, parameter_id, statistic_id,
               updated_at, location_fit_id,
               model_name_id, recent, most_recent_by_year)) |>
-    distinct_all() # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
+    dplyr::distinct(year, week_fit, value, stream, site, parameter, statistic, .keep_all = T) # TODO this is an error in the model parameter upload. we are joining on location_id but there are multiple matches for knights landing, so we are getting duplicates of all the parameter esitimates.
 
   return(results)
 }
+
+#' @title Get Most Recent Model Objects
+#' @description This function retrieves the most recent model objects for each model name, site, year, stream, etc. You can
+#' specify model_object (the full fit object, either `BUGS` or `stanfit`, the model plot (a posterior predictive check plot), or
+#' the inputs used to fit the associated model object.
+#' @param con A connection object to the database.
+#' @param model_component A choice of `model_fit`, `model_input` or `model_plot` to pull.
+#' @return A the most recent model fit objects, inputs, or plots. The format will be a named list,
+#' where each element is named by the `model_run_id`, `model_name`, `site`, `stream`, and `year`.
+#' @export
+get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+
+  recent_models <- SRJPEmodel::get_most_recent_model_results(con)
+
+  most_recent_ids <- recent_models |>
+    dplyr::distinct(model_run_id) |>
+    dplyr::pull(model_run_id)
+
+  model_ids <- recent_models |>
+    dplyr::distinct(model_run_id, .keep_all = T) |>
+    mutate(model_id = paste(model_run_id, model_name, site, stream, year, sep = "_")) |>
+    dplyr::pull(model_id)
+
+  model_object_list <- lapply(most_recent_ids, function(x) {
+    cli::cli_bullets(paste("Pulling", which(most_recent_ids == x), "of", length(most_recent_ids), "objects"))
+    result <- get_model_object(con, model_component, model_run_id = x)
+  })
+  names(model_object_list) <- model_ids
+
+  return(model_object_list)
+}
+
+#' Diagnostic plots
+#' @details This function produces a posterior predictive check plot.
+#' @param model_results_name The model type name associated with options in the database: either
+#' `all_mark_recap`, `no_mark_recap`, `missing_mark_recap`, `no_mark_recap_no_trib`,
+#' `pcap_all`, `pcap_mainstem`, `p2s`, or `stock_recruit`.
+#' @param inputs inputs for the fit model, created by running the appropriate `prepare_inputs` function.
+#' @param fit the model fit
+#' @returns Generates a diagnostic posterior predictive plot for a model fit.
+#' @export
+#' @md
+generate_diagnostic_plot <- function(inputs, fit) {
+
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  model_results_name = inputs$model_name
+  print(model_results_name)
+
+  # observed variable is more complicated, need some basic calcs
+  if(model_results_name %in% c("pcap_mainstem", "pcap_all")) {
+    basic_pcap <- inputs$inputs$data$Recaptures / inputs$inputs$data$Releases
+    obsv_variable <- qlogis(basic_pcap)
+    pred_variable <- "logit_pCap"
+    location <- inputs$location
+  } else if (model_results_name %in% c("all_mark_recap", "no_mark_recap",
+                                       "missing_mark_recap", "no_mark_recap_no_trib")) {
+    pCap_mu <- plogis(inputs$lt_pCap_Us$lt_pCap_mu)
+    obsv_variable <- inputs$inputs$data$u / pCap_mu[inputs$inputs$data$Nstrata_wc]
+    pred_variable <- "N"
+    location <- paste(inputs$site, inputs$run_year, sep = "-")
+  } else if (model_results_name == "p2s") {
+    obsv_variable <- inputs$inputs$data$observed_spawners
+    pred_variable <- "predicted_spawners"
+    location <- inputs$stream
+  } else if (model_results_name == "stock_recruit") {
+    obsv_variable <- inputs$inputs$data$R
+    pred_variable <- "pred_R"
+    location <- inputs$stream
+  } # TODO add survival
+
+  # Extract posterior samples for predicted values
+  n_posterior_samples <- 100
+
+  if(model_results_name %in% c("all_mark_recap", "no_mark_recap",
+                               "missing_mark_recap", "no_mark_recap_no_trib")) {
+    extract_preds <- fit$sims.list$N[ , inputs$inputs$data$Uwc_ind] # predicted catch for weeks with obsv catch
+    y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), ]
+  } else {
+    posterior_samples <- rstan::extract(fit)
+    extract_preds <- eval(parse(text = paste0("posterior_samples$", pred_variable)))
+    y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), ]
+  }
+
+  # Basic posterior predictive check
+  ppc_plot <- bayesplot::ppc_dens_overlay(obsv_variable, y_rep) +
+    theme_minimal() +
+    labs(
+      title = "Posterior Predictive Check",
+      subtitle = paste("Distribution of observed data vs. posterior predictions:", location),
+      x = pred_variable,
+      y = "Density"
+    )
+
+  return(ppc_plot)
+
+  # 2. Observed vs Predicted Plot
+  # Get the mean prediction for each observation
+  # pred_mean <- colMeans(extract_preds)
+  #
+  # # Create dataframe for prediction vs observed plot
+  # obs_pred_df <- data.frame(
+  #   Observed = observed_data,
+  #   Predicted = pred_mean
+  # )
+  #
+  # # Plot observed vs predicted with 1:1 line
+  # obs_pred_plot <- ggplot(obs_pred_df, aes(x = Observed, y = Predicted)) +
+  #   geom_point(alpha = 0.7) +
+  #   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  #   theme_minimal() +
+  #   labs(
+  #     title = "Observed vs. Predicted",
+  #     subtitle = "Points closer to the line indicate better fit",
+  #     x = "Observed Spawners",
+  #     y = "Predicted Spawners"
+  #   )
+  #
+  # gridExtra::grid.arrange(ppc_plot, obs_pred_plot)
+  # ggsave(plot = ppc_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_ppc_plot.png"), width = 10, height = 8)
+  # ggsave(plot = obs_pred_plot, filename = paste0(local_folder, "/", stream, "_", "p2s_pred_plot.png"), width = 10, height = 8)
+}
+

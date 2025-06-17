@@ -14,10 +14,8 @@ pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
 pCap <- fit_pCap_model(pCap_inputs$inputs)
 
 # run abundance model
-abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T)
-lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap)
-
-abundance <- fit_abundance_model_BUGS(abundance_inputs, lt_pCap_Us,
+abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T, pCap)
+abundance <- fit_abundance_model_BUGS(abundance_inputs,
                                       # point towards where you store the .bug model
                                       "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                       # point to where you have WinBUGS

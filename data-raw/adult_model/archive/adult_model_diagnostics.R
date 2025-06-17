@@ -390,7 +390,7 @@ plot_raw_spawners <- function(all_data_sources, stream_name_arg) {
 
   type_for_plot <- unique(all_data_sources |>
                             filter(stream == stream_name_arg) |>
-                            pull(data_type))
+                            dplyr::pull(data_type))
   plot <- all_data_sources |>
     mutate(year = as.integer(year)) |>
     filter(stream == stream_name_arg) |>

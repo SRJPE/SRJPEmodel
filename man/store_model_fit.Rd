@@ -6,17 +6,12 @@
 \usage{
 store_model_fit(
   con,
-  storage_account,
-  container_name,
-  access_key,
+  storage_account = "jpemodelresults",
+  container_name = "model-results",
+  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
   model_fit_object,
+  model_inputs,
   results_name,
-  stream = NULL,
-  site = NULL,
-  run_year = NULL,
-  adult_data_type = NULL,
-  covariate = NULL,
-  truncate_dataset = NULL,
   description,
   ...
 )
@@ -28,31 +23,21 @@ store_model_fit(
 
 \item{container_name}{A string specifying the container name in the Azure storage account, typically \code{model-results}.}
 
-\item{access_key}{A string specifying the Azure storage access key with write permissions.}
+\item{access_key}{A string specifying the Azure storage access key with write permissions. Default is stored in your R environment under \code{AZ_CONTAINER_ACCESS_KEY}.}
 
 \item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 
-\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{juvenile_abundance},
+\item{model_inputs}{The inputs used to fit the \code{model_fit_object}.}
+
+\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{bt_spas_x},
 \code{pcap_all}, \code{pcap_mainstem}, \code{p2s}, \code{stock_recruit}.}
-
-\item{stream}{If uploading a stock-recruit model output, you must supply the stream for which you fit the model.}
-
-\item{site}{If uploading an abundance model output, or a pCap mainstem object, you must supply the site for which you fit the model.}
-
-\item{run_year}{If uploading an abundance model output, you must supply the run_year for which you fit the model.}
-
-\item{adult_data_type}{If uploading a stock-recruit model input, you must specify the adult data type.}
-
-\item{covariate}{If uploading a stock-recruit model input, you must supply the selected covariate type.}
-
-\item{truncate_dataset}{If uploading a stock-recruit model input, you must supply whether or not the dataset was truncated when fit.}
 
 \item{description}{A description of the model fit you are uploading.}
 
 \item{...}{Additional named arguments to be passed as metadata to the blob storage.}
 }
 \value{
-A string representing the URL of the blob in Azure Blob Storage where the model results are stored.
+A string representing the URL of the blob in Azure Blob Storage where the model fit object, diagnostic plots, and inputs are stored.
 }
 \description{
 This function stores a model fit object in an Azure Blob Container and the data into JPE database.
@@ -72,6 +57,7 @@ blob_url <- store_model_fit(con,
                             container_name = "my_container",
                             access_key = "my_access_key",
                             model_fit_object = model_results,
+                            model_inputs = model_inputs,
                             results_name = "model_name",
                             description = "model_description")
 

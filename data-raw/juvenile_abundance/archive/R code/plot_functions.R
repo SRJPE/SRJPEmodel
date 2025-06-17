@@ -115,7 +115,7 @@ plot_weekly_capture_probability <- function(bt_spas_x_results_clean) {
                   !is.na(number_recaptured)) |>
     select(-c(year, mean_fork_length, count, hours_fished, flow_cfs,
               catch_standardized_by_hours_fished, lgN_prior)) |>
-    distinct(site)
+    dplyr::distinct(site)
 
   trib_index_arg <- which(unique(trib_index_data$site) == site_arg)
 

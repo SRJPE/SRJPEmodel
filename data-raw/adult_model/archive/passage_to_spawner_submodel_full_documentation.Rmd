@@ -283,13 +283,13 @@ Models fit with the null model produced an $\hat{R}$ statistic above 1.05 for at
 
 For Battle Creek, Clear Creek, and Mill Creek the best environmental covariate was temperature, and for Deer Creek the best environmental variable was maximum flow. However, the null model performed well across all streams (Table 3).
 
-The highest estimate for $\beta_{1}$ for Battle Creek was `r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_max(mean) |> pull(round(mean, 3))` (`r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_max(mean) |> pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_min(sd) |> pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "battle creek", par_names == "R2_fixed") |> slice_max(mean) |> pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "battle creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> pull(covar_considered)`.
+The highest estimate for $\beta_{1}$ for Battle Creek was `r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(round(mean, 3))` (`r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "battle creek", par_names == "b1_survival") |> slice_min(sd) |> dplyr::pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "battle creek", par_names == "R2_fixed") |> slice_max(mean) |> dplyr::pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "battle creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> dplyr::pull(covar_considered)`.
 
-The highest estimate for $\beta_{1}$ for Clear Creek was `r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_max(mean) |> pull(round(mean, 3))` (`r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_max(mean) |> pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_min(sd) |> pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "clear creek", par_names == "R2_fixed") |> slice_max(mean) |> pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "clear creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> pull(covar_considered)`.
+The highest estimate for $\beta_{1}$ for Clear Creek was `r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(round(mean, 3))` (`r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "clear creek", par_names == "b1_survival") |> slice_min(sd) |> dplyr::pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "clear creek", par_names == "R2_fixed") |> slice_max(mean) |> dplyr::pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "clear creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> dplyr::pull(covar_considered)`.
 
-The highest estimate for $\beta_{1}$ for Deer Creek was `r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_max(mean) |> pull(round(mean, 3))` (`r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_max(mean) |> pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_min(sd) |> pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "deer creek", par_names == "R2_fixed") |> slice_max(mean) |> pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "deer creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> pull(covar_considered)`.
+The highest estimate for $\beta_{1}$ for Deer Creek was `r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(round(mean, 3))` (`r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "deer creek", par_names == "b1_survival") |> slice_min(sd) |> dplyr::pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "deer creek", par_names == "R2_fixed") |> slice_max(mean) |> dplyr::pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "deer creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> dplyr::pull(covar_considered)`.
 
-The highest estimate for $\beta_{1}$ for Mill Creek was `r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_max(mean) |> pull(round(mean, 3))` (`r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_max(mean) |> pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_min(sd) |> pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "mill creek", par_names == "R2_fixed") |> slice_max(mean) |> pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "mill creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> pull(covar_considered)`.
+The highest estimate for $\beta_{1}$ for Mill Creek was `r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(round(mean, 3))` (`r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_max(mean) |> dplyr::pull(covar_considered)`). The covariate with the least variance around $\beta_{1}$ was `r comparison_results |> filter(stream == "mill creek", par_names == "b1_survival") |> slice_min(sd) |> dplyr::pull(covar_considered)`. The covariate with the highest $R^{2}$ was `r comparison_results |> filter(stream == "mill creek", par_names == "R2_fixed") |> slice_max(mean) |> dplyr::pull(covar_considered)`. The covariate with the least variance produced in forecasting at average conditions was `r comparison_results |> filter(stream == "mill creek", par_names == "spawner_abundance_forecast[1]") |> slice_min(sd) |> dplyr::pull(covar_considered)`.
 
 Important to note for all continuous environmental variables is that the forecast is based on an average; if implemented, forecasts would rely on modeled future temperature and flow and likely have more uncertainty. For this reason further analyses are based on results from fitting each tributary's data to the model using water year type.
 
@@ -342,7 +342,7 @@ predicted_vs_observed_spawner_counts <- P2S_model_fits |>
 
 #### Battle
 
-The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(mean, 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> pull(CIs)`.
+The environmental covariate for Battle creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> dplyr::pull(mean, 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "battle creek", par_names == "b1_survival") |> dplyr::pull(CIs)`.
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 predicted_vs_observed_spawner_counts |>
@@ -357,7 +357,7 @@ predicted_vs_observed_spawner_counts |>
 
 #### Clear
 
-The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> pull(CIs)`.
+The environmental covariate for Clear creek was `max_flow` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> dplyr::pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "clear creek", par_names == "b1_survival") |> dplyr::pull(CIs)`.
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 predicted_vs_observed_spawner_counts |>
@@ -373,7 +373,7 @@ predicted_vs_observed_spawner_counts |>
 
 #### Mill
 
-The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> pull(CIs)`.
+The environmental covariate for Mill creek was `gdd_total` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> dplyr::pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "mill creek", par_names == "b1_survival") |> dplyr::pull(CIs)`.
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 predicted_vs_observed_spawner_counts |>
@@ -388,7 +388,7 @@ predicted_vs_observed_spawner_counts |>
 
 #### Deer
 
-The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> pull(CIs)`.
+The environmental covariate for Deer creek was `water_year_type` and the estimated effect of the environmental covariate in the STAN model (`b1_survival`) was `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> mutate(mean = round(mean, 3)) |> dplyr::pull(round(mean), 3)` with a 95% confidence interval of `r P2S_model_fits |> filter(stream == "deer creek", par_names == "b1_survival") |> dplyr::pull(CIs)`.
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 predicted_vs_observed_spawner_counts |>
@@ -748,7 +748,7 @@ temp <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_tem
                                 bucket = gcs_get_global_bucket()),
                  show_col_types = FALSE) |>
   filter(stream %in% c("battle creek", "clear creek", "deer creek", "mill creek")) |>
-  distinct(stream, source) |>
+  dplyr::distinct(stream, source) |>
   mutate(`Stream` = str_to_title(stream),
          `Source Description` = case_when(source == "FWS" ~ "U.S. Fish and Wildlife Service",
                                           source == "CDEC DCV" ~ "CDEC Gauge code DCV",
@@ -763,7 +763,7 @@ flow <- read_csv(gcs_get_object(object_name = "standard-format-data/standard_flo
                                 bucket = gcs_get_global_bucket()),
                  show_col_types = FALSE) |>
   filter(stream %in% c("battle creek", "clear creek", "deer creek", "mill creek")) |>
-  distinct(stream, source) |>
+  dplyr::distinct(stream, source) |>
   mutate(`Stream` = str_to_title(stream),
          `Source Description` = ifelse(str_detect(source, "USGS"), "U.S. Geological Survey Flow Data", source),
          `Source Link` = case_when(source == "USGS 11376550" ~ "https://waterdata.usgs.gov/monitoring-location/11376550/#parameterCode=00065&period=P7D",

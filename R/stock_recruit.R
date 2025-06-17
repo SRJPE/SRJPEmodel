@@ -40,7 +40,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   years_filter <- SRJPEdata::stock_recruit_year_lookup |>
     mutate(have_both_data = ifelse(adult & rst, TRUE, FALSE)) |>
     filter(have_both_data) |>
-    distinct(brood_year, run_year, stream, site) |>
+    dplyr::distinct(brood_year, run_year, stream, site) |>
     filter(stream == !!stream)
 
   adult_data_and_covariates <- SRJPEdata::stock_recruit_model_inputs |>
@@ -50,7 +50,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
     right_join(years_filter, by = c("brood_year", "stream"))
 
   # get juvenile results from database
-  juv_results_from_db <- SRJPEmodel::get_most_recent_model_output(con) |>
+  juv_results_from_db <- SRJPEmodel::get_most_recent_model_results(con) |>
     filter(model_name == "bt_spas_x",
            stream == !!stream,
            parameter == "Ntot",
@@ -63,7 +63,8 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
   juv_results <- juv_results_from_db |>
     mutate(brood_year = year - 1) |>
     pivot_wider(names_from = "statistic",
-                values_from = "value") |>
+                values_from = "value",
+                id_cols = c(brood_year, stream, site)) |>
     mutate(mean_juvenile_abundance = mean,
            cv_juvenile_abundance = sd/mean) |>
     select(brood_year, site, mean_juvenile_abundance, cv_juvenile_abundance) |>
@@ -113,7 +114,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   # covariate
   covariate_data <- data_with_selected_covar_adult_data |>
-    pull(all_of(covariate))
+    dplyr::pull(all_of(covariate))
 
   # simulate variation in log recruits and divide by spawner stock to get mean and sd of observed log recruits-per-spawner
   for(i in 1:n_years) {
@@ -160,13 +161,14 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   inits <- list(inits1, inits2, inits3)
 
-  return(list("data" = data_list,
-              "inits" = inits,
+  return(list(inputs = list("data" = data_list,
+                            "inits" = inits),
               "year_lookup" = year_lookup,
               "stream" = stream,
               "data_type" = adult_data_type,
               "truncate_dataset" = truncate_dataset,
-              "covariate_name" = covariate))
+              "covariate_name" = covariate,
+              "model_name" = "stock_recruit"))
 
 }
 
@@ -180,8 +182,8 @@ fit_stock_recruit_model <- function(stock_recruit_inputs) {
 
   cli::cli_process_start("Fitting stock-recruit model")
   stock_recruit_fit <- rstan::stan(model_code = SRJPEmodel::stock_recruit_model_code,# eval(parse(text = "SRJPEmodel::stock_recruit_model_code"))
-                                   data = stock_recruit_inputs$data,
-                                   init = stock_recruit_inputs$inits,
+                                   data = stock_recruit_inputs$inputs$data,
+                                   init = stock_recruit_inputs$inputs$inits,
                                    chains = 3,
                                    iter = 1000,
                                    seed = 84735,  # TODO confirm setting seed
@@ -242,7 +244,7 @@ extract_stock_recruit_estimates <- function(stock_recruit_inputs,
     mutate(model_name = "stock_recruit",
            site = NA,
            week_fit = NA,
-           location_fit = stock_recruit_inputs$stream,
+           stream = stock_recruit_inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata")))
 
   return(summary_table_long)
@@ -361,7 +363,7 @@ generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
     filter(covar_nm == sr_inputs$covariate_name,
            stream == sr_inputs$stream,
            year %in% sr_inputs$year_lookup$brood_year) |>
-    pull(value)
+    dplyr::pull(value)
 
   # create covariate vector across range of values
   covar_vector <- seq(min(raw_covar), max(raw_covar), length.out = 50)
@@ -457,7 +459,7 @@ generate_results_plot_sr <- function(sr_inputs, con) {
   obsv_R <- sr_inputs$year_lookup |>
     mutate(obsv_recruits = sr_inputs$data$R)
 
-  params <- get_most_recent_model_output(con) |>
+  params <- get_most_recent_model_results(con) |>
     filter(model_name == "stock_recruit",
            stream == sr_inputs$stream) |>
     rename(brood_year = year)
