@@ -77,7 +77,7 @@ store_model_fit(con,
 kdl_years <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(site == "knights landing") |>
   dplyr::distinct(site, run_year) |>
-  pull(run_year)
+  dplyr::pull(run_year)
 
 for(i in kdl_years) {
   print(paste("fitting knights landing", i))
@@ -107,7 +107,7 @@ store_model_fit(con,
 tis_years <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
   filter(site == "tisdale") |>
   dplyr::distinct(site, run_year) |>
-  pull(run_year)
+  dplyr::pull(run_year)
 
 for(i in tis_years) {
   print(paste("fitting tisdale", i))

@@ -394,7 +394,7 @@ search_model_run <- function(con, keyword=NULL, model_run_id=NULL, view_all=FALS
 get_model_results_parameters <- function(con, keyword=NULL, model_run_id=NULL){
 
   model_run_id <- search_model_run(con, keyword, model_run_id) |>
-    dplyr::pull(id)
+    dplyr::dplyr::pull(id)
 
   model_parameters <- tbl(con, "model_parameters") |>
     filter(model_run_id == !!model_run_id) |>
@@ -458,13 +458,13 @@ get_model_object <- function(con, model_component="model_fit", model_run_id=NULL
   }
   if (model_component == "model_fit"){
     model_run_url <- search_model_run(con, keyword, model_run_id) |>
-      pull(blob_fit_storage_url)
+      dplyr::pull(blob_fit_storage_url)
   }else if (model_component == "model_input"){
     model_run_url <- search_model_run(con, keyword, model_run_id) |>
-      pull(blob_input_storage_url)
+      dplyr::pull(blob_input_storage_url)
   } else {
     model_run_url <- search_model_run(con, keyword, model_run_id) |>
-      pull(blob_plot_storage_url)
+      dplyr::pull(blob_plot_storage_url)
   }
 
   storage_account <- sub("https://(.+?)\\.blob\\.core\\.windows\\.net.*", "\\1", model_run_url)
@@ -695,12 +695,12 @@ get_most_recent_model_results <- function(con) {
 get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
   most_recent_ids <- SRJPEmodel::get_most_recent_model_results(con) |>
     dplyr::distinct(model_run_id) |>
-    pull(model_run_id)
+    dplyr::pull(model_run_id)
 
   model_object_list <- lapply(most_recent_ids, function(x) {
     result <- get_model_object(con, model_component, model_run_id = x)
   })
-  names(model_object_list) <- most_recent_id
+  names(model_object_list) <- most_recent_ids
 
 
     # model_object_list <- lapply(most_recent_id, function(x) {
@@ -717,19 +717,19 @@ get_most_recent_model_objects <- function(con, model_component="model_fit", acce
 #'
 #'   model_ids <- get_most_recent_model_results(con) |>
 #'     dplyr::distinct(model_run_id) |>
-#'     pull(model_run_id)
+#'     dplyr::pull(model_run_id)
 #'   if (model_component == "model_fit"){
 #'     model_urls <- tbl(con, "model_run") |>
 #'       filter(id %in% model_ids) |>
-#'       pull(blob_fit_storage_url)
+#'       dplyr::pull(blob_fit_storage_url)
 #'   }else if (model_component == "model_input"){
 #'     model_urls <- tbl(con, "model_run") |>
 #'       filter(id %in% model_ids) |>
-#'       pull(blob_input_storage_url)
+#'       dplyr::pull(blob_input_storage_url)
 #'   } else {
 #'     model_urls <- tbl(con, "model_run") |>
 #'       filter(id %in% model_ids) |>
-#'       pull(blob_plot_storage_url)
+#'       dplyr::pull(blob_plot_storage_url)
 #'   }
 #'
 #'

@@ -83,7 +83,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   }
 
   covar <- truncated_data |>
-    pull(all_of(selected_covariate))
+    dplyr::pull(all_of(selected_covariate))
 
   data <- list("N" = length(unique(truncated_data$year)),
                "input_years" = unique(truncated_data$year),

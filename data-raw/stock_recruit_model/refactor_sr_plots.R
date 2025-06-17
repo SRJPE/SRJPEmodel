@@ -34,7 +34,7 @@ raw_covar <- SRJPEdata::stock_recruit_covariates |>
   filter(covar_nm == CoVarNm,
          stream == sr_inputs$stream,
          year %in% sr_inputs$year_lookup$brood_year) |>
-  pull(value)
+  dplyr::pull(value)
 
 # create covariate vector across range of values
 covar_vector <- seq(min(raw_covar), max(raw_covar), length.out = 50)

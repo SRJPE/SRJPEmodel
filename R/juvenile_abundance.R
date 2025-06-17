@@ -81,12 +81,12 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
   # pull the order of those sites
   sites_fit <- site_lookup |>
-    pull(site)
+    dplyr::pull(site)
 
   # assign the IDs to the sites in the mark-recapture dataset
   indices_site_mark_recapture <- mark_recapture_data |>
     left_join(site_lookup, by = "site") |>
-    pull(ID)
+    dplyr::pull(ID)
 
   # get indexing for "mark recap" dataset (pCap model)
   Ntribs <- length(sites_fit) # number of sites (for pCap calculations)
@@ -385,12 +385,12 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # pull the order of those sites
   sites_fit <- site_lookup |>
-    pull(site)
+    dplyr::pull(site)
 
   # assign the IDs to the sites in the mark-recapture dataset
   indices_site_mark_recapture <- mark_recapture_data |>
     left_join(site_lookup, by = "site") |>
-    pull(ID)
+    dplyr::pull(ID)
 
   # indices for generating lt_pCap_Us
   indices_with_mark_recapture <- which(!is.na(all_data_for_indexing$number_released) &

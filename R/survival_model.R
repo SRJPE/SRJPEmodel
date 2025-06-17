@@ -264,33 +264,33 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
     trib_index_for_release_groups <- data |>
       arrange(year) |>
       dplyr::distinct(study_id, trib_ind) |>
-      pull(trib_ind)
+      dplyr::pull(trib_ind)
   }
 
   year_index <- data |>
     left_join(all_study_years, by = "year") |>
-    pull(year_index)
+    dplyr::pull(year_index)
 
   release_group_index <- data |>
     arrange(year) |>
     group_by(study_id) |>
     mutate(index = cur_group_id()) |>
     ungroup() |>
-    pull(index)
+    dplyr::pull(index)
 
   release_group_water_year_3_index <- data |>
     arrange(year) |>
     group_by(study_id) |>
     summarise(ind = unique(wy_three_categories)) |>
     ungroup() |>
-    pull(ind)
+    dplyr::pull(ind)
 
   release_group_water_year_2_index <- data |>
     arrange(year) |>
     group_by(study_id) |>
     summarise(ind = unique(wy_two_categories)) |>
     ungroup() |>
-    pull(ind)
+    dplyr::pull(ind)
 
   fork_length <- data$fish_length
   weight <- data$fish_weight

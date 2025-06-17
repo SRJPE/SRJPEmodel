@@ -114,7 +114,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 
   # covariate
   covariate_data <- data_with_selected_covar_adult_data |>
-    pull(all_of(covariate))
+    dplyr::pull(all_of(covariate))
 
   # simulate variation in log recruits and divide by spawner stock to get mean and sd of observed log recruits-per-spawner
   for(i in 1:n_years) {
@@ -363,7 +363,7 @@ generate_diagnostic_plot_sr_covar <- function(sr_inputs, sr_fit) {
     filter(covar_nm == sr_inputs$covariate_name,
            stream == sr_inputs$stream,
            year %in% sr_inputs$year_lookup$brood_year) |>
-    pull(value)
+    dplyr::pull(value)
 
   # create covariate vector across range of values
   covar_vector <- seq(min(raw_covar), max(raw_covar), length.out = 50)
