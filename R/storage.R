@@ -5,7 +5,7 @@
 #' @param con A connection object to the database.
 #' @param storage_account A string specifying the Azure storage account name, typically `jpemodelresults`.
 #' @param container_name A string specifying the container name in the Azure storage account, typically `model-results`.
-#' @param access_key A string specifying the Azure storage access key with write permissions.
+#' @param access_key A string specifying the Azure storage access key with write permissions. Default is stored in your R environment under `AZ_CONTAINER_ACCESS_KEY`.
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param model_inputs The inputs used to fit the `model_fit_object`.
 #' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `bt_spas_x`,
@@ -74,7 +74,6 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
     name = results_name,
     ...
   )
-  # TODO ensure that this blob url stores the model_inputs and .pngs, output of model_plot - Inigo
 
   tryCatch({
     total_run_rows <- insert_model_run(con, model_fit_object, blob_url_list, description, results_name,
@@ -686,11 +685,14 @@ get_most_recent_model_results <- function(con) {
   return(results)
 }
 
-#' @title Get Most Recent Model Run Objects
-#' @description This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
+#' @title Get Most Recent Model Objects
+#' @description This function retrieves the most recent model objects for each model name, site, year, stream, etc. You can
+#' specify model_object (the full fit object, either `BUGS` or `stanfit`, the model plot (a posterior predictive check plot), or
+#' the inputs used to fit the associated model object.
 #' @param con A connection object to the database.
-#' @param model_component A choice of model_fit, model_input or model_plot to pull.
-#' @return A the most recent model objects.
+#' @param model_component A choice of `model_fit`, `model_input` or `model_plot` to pull.
+#' @return A the most recent model fit objects, inputs, or plots. The format will be a named list,
+#' where each element is named by the `model_run_id`, `model_name`, `site`, `stream`, and `year`.
 #' @export
 get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 

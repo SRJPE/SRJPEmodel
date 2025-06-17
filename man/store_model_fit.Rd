@@ -6,9 +6,9 @@
 \usage{
 store_model_fit(
   con,
-  storage_account,
-  container_name,
-  access_key,
+  storage_account = "jpemodelresults",
+  container_name = "model-results",
+  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
   model_fit_object,
   model_inputs,
   results_name,
@@ -23,7 +23,7 @@ store_model_fit(
 
 \item{container_name}{A string specifying the container name in the Azure storage account, typically \code{model-results}.}
 
-\item{access_key}{A string specifying the Azure storage access key with write permissions.}
+\item{access_key}{A string specifying the Azure storage access key with write permissions. Default is stored in your R environment under \code{AZ_CONTAINER_ACCESS_KEY}.}
 
 \item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
 

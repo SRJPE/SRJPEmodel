@@ -2,7 +2,7 @@
 % Please edit documentation in R/storage.R
 \name{get_most_recent_model_objects}
 \alias{get_most_recent_model_objects}
-\title{Get Most Recent Model Run Objects}
+\title{Get Most Recent Model Objects}
 \usage{
 get_most_recent_model_objects(
   con,
@@ -13,11 +13,14 @@ get_most_recent_model_objects(
 \arguments{
 \item{con}{A connection object to the database.}
 
-\item{model_component}{A choice of model_fit, model_input or model_plot to pull.}
+\item{model_component}{A choice of \code{model_fit}, \code{model_input} or \code{model_plot} to pull.}
 }
 \value{
-A the most recent model objects.
+A the most recent model fit objects, inputs, or plots. The format will be a named list,
+where each element is named by the \code{model_run_id}, \code{model_name}, \code{site}, \code{stream}, and \code{year}.
 }
 \description{
-This function retrieves the most recent model run objects for each model name, site, year, stream, etc.
+This function retrieves the most recent model objects for each model name, site, year, stream, etc. You can
+specify model_object (the full fit object, either \code{BUGS} or \code{stanfit}, the model plot (a posterior predictive check plot), or
+the inputs used to fit the associated model object.
 }
