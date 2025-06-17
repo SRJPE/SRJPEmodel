@@ -263,10 +263,11 @@ generate_results_plot_p2s <- function(p2s_inputs, con) {
 
   params <- get_most_recent_model_results(con) |>
     filter(model_name == "p2s",
-           stream == p2s_inputs$stream)
+           stream == p2s_inputs$stream) |>
+    select(-c(id, week_fit, model_run_id, site, model_name))
 
-  obsv_spawners <- tibble("year" = p2s_inputs$input_years,
-                          "obsv_spawners" = p2s_inputs$observed_spawners)
+  obsv_spawners <- tibble("year" = p2s_inputs$inputs$data$input_years,
+                          "obsv_spawners" = p2s_inputs$inputs$data$observed_spawners)
 
   plot <- params |>
     pivot_wider(names_from = "statistic", values_from = "value") |>
