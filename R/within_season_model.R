@@ -1,8 +1,11 @@
-library(tidyverse)
-library(DBI)
-library(SRJPEdata)
-
-
+#' Prepare inputs for within season model
+#' @details This function prepares data for input into a within season model.
+#' @param con A valid connection to the model run database.
+#' @param stream The stream for which you want to fit the model.
+#' @param site The site for which you want to fit the model.
+#' @returns a list of inputs TBD
+#' @export
+#' @md
 prepare_within_season_inputs <- function(con, stream, site) {
 
   if(!DBI::dbIsValid(con)) {
@@ -152,4 +155,3 @@ prepare_within_season_inputs <- function(con, stream, site) {
 
   return(list(inputs = list(data = data)))
 }
-
