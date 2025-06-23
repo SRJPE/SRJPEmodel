@@ -41,3 +41,14 @@ survival_NoCov <- readr::read_file(here::here("model_files", "survival_NoCov.sta
 survival_model_code <- list(survival_CovWY = survival_CovWY,
                             survival_NoCov = survival_NoCov)
 usethis::use_data(survival_model_code, overwrite = T)
+
+
+# in-season ---------------------------------------------------------------
+
+in_season_autocorrelation <- readr::read_file(here::here("model_files", "BetaDevHBMRT_lag1.stan"))
+in_season_no_autocorrelation <- readr::read_file(here::here("model_files", "BetaDevHBMRT.stan"))
+
+in_season_model_code <- list(autocorrelation = in_season_autocorrelation,
+                             no_autocorrelation = in_season_no_autocorrelation)
+
+usethis::use_data(in_season_model_code, overwrite = T)

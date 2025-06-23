@@ -88,3 +88,11 @@ survival_results <- fit_survival_model(survival_inputs)
 survival_estimates <- extract_survival_estimates(survival_results)
 generate_survival_rate_plot(survival_estimates)
 
+
+# in season ---------------------------------------------------------------
+
+inseason_inputs <- prepare_inseason_inputs(con, "battle creek", "ubc",
+                                             covariate_effect = FALSE,
+                                             autocorrelation = FALSE)
+inseason_fit <- fit_inseason_model(inseason_inputs)
+inseason_estimates <- extract_inseason_estimates(inseason_inputs, inseason_fit)
