@@ -6,21 +6,20 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Juvenile Abundance Model • SRJPEmodel</title>
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <meta property="og:title" content="Juvenile Abundance Model">
-<meta property="og:description" content="SRJPEmodel">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
-    
+
 
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -46,7 +45,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Articles
-     
+
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
@@ -63,7 +62,7 @@
 <li>
   <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
     <span class="fab fa-github fa-lg"></span>
-     
+
   </a>
 </li>
       </ul>
@@ -74,7 +73,7 @@
 </div>
 <!--/.navbar -->
 
-      
+
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -84,7 +83,7 @@
 Korman</h4>
             
       
-      
+
       <div class="hidden name"><code>btspas_submodel_documentation.Rmd</code></div>
 
     </div>
@@ -94,47 +93,131 @@ Korman</h4>
 <div class="section level3">
 <h3 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h3>
+<p>BT-SPAS-X is a Bayesian model that estimates the weekly abundance of
+outmigrating Chinook at RST sites in Central Valley tributaries and the
+mainstem Sacramento River. Weekly estimates can be summed to calculate
+annual outmigrant abundance. To account for many sites and years with
+limited trap efficiency data or where few recaptures are obtained, the
+model uses trap efficiency data from multiple years and sites to
+estimate trap efficiency for any given site-week. Estimates of Chinook
+outmigrant abundance in a given week can be converted to estimates of
+spring run outmigrant abundance in a post-processing step using
+predictions from a probability length-at-date model that was fit using
+genetic data.</p>
 </div>
 <div class="section level3">
 <h3 id="submodel-objective">Submodel Objective<a class="anchor" aria-label="anchor" href="#submodel-objective"></a>
 </h3>
+<p>BT-SPAS-X estimates juvenile abundance needed for the stock recruit
+model or a within season outmigrant forecast model. BT-SPAS-X was
+specifically designed to address the often-sparse trap efficiency data
+available to estimate abundance at any given RST site. Trap efficiency
+is predicted based on a hierarchical model that estimates site-specific
+means, site-specific flow effects, and unexplained error. Weekly
+abundance is estimated using a spline model that is fit to the weekly
+catch data given weekly estimates of trap efficiency. The spline model
+allows estimation of abundance in weeks when the trap was not
+operated.</p>
+<p>The input data for the model includes weekly catch (‘u’ in Figure x
+below, trap efficiency data (releases ‘R’ and recaptures ‘r’ ), and
+weekly average flow (Q’). The model output includes weekly estimates of
+abundance and uncertainty, and weekly estimates of trap efficiency and
+uncertainty. Length frequency data for each week is required if
+calculating abundance by run type in a post-processing step using the
+PLAD model.</p>
 </div>
 <div class="section level3">
 <h3 id="conceptual-model">Conceptual model<a class="anchor" aria-label="anchor" href="#conceptual-model"></a>
 </h3>
+<p>BT-SPAS-X estimates juvenile abundance needed for the stock recruit
+model or a within season outmigrant forecast model. See figure 1 below
+to see how it fits into the full JPE model system.</p>
+<p><em>Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model
+highlighted in red.</em></p>
+<p><img src="images%2FBTSPASX%20jpe%20diagram.png"></p>
 </div>
 <div class="section level3">
 <h3 id="submodel-architecture">Submodel Architecture<a class="anchor" aria-label="anchor" href="#submodel-architecture"></a>
 </h3>
+<p>There are two main components of the model: trap efficiency and
+abundance estimation (Figure 1). The trap efficiency component estimates
+parameters of a global trap efficiency model by fitting to data from
+more than 900 efficiency trials across all available tributary RST
+sites. This model is then used to estimate trap efficiency for each week
+in a run year (November 1-June 1) at the site the abundance model is run
+for. There are three levels for the trap efficiency model. The lowest
+level is where the predicted trap efficiency (P) for any site, year, and
+week with trap efficiency data is compared to the data. The next level
+is where site, year, and week-specific trap efficiencies are estimated.
+The highest level is represented by hyper-distributions which define the
+distributions where site specific parameters are estimated.</p>
+<p>Figure X.1. Directed acyclic diagram (DAG) showing the hierarchical
+structure of the trap efficiency component of BT-SPAS-X and how
+predictions of trap efficiency are by the abundance component of the
+model. Ovals denote stochastic nodes (variables that are estimated)
+while squares with bolded text denote data. Arrows indicate the
+direction of influence. For example, the hyper parameters μS and σS
+define a normal distribution from which site specific intercepts β_S are
+drawn. The red triangle indicates that trap efficiency estimates
+contribute to estimates of abundance, but that abundance model
+parameters do not influence trap efficiency parameters.</p>
 </div>
 <div class="section level2">
 <h2 id="model-inputs">Model inputs<a class="anchor" aria-label="anchor" href="#model-inputs"></a>
 </h2>
-<p>The model takes in X datasets:</p>
+<p>The model takes in two datasets:</p>
+<ul>
+<li>
+<strong>Weekly Juvenile Abundance Model Data</strong> Weekly catch,
+efficiency, flow, and log normal priors needed to run the model. This is
+in the <code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_model_data</a></code> data
+object.</li>
+<li>
+<strong>BTSPAS params</strong> Bayesian estimation specifications.
+<code><a href="../reference/bt_spas_x_bayes_params.html">SRJPEmodel::bt_spas_x_bayes_params</a></code>
+</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="running-btspas-x-submodel">Running BTSPAS-X submodel<a class="anchor" aria-label="anchor" href="#running-btspas-x-submodel"></a>
 </h2>
+<p>BTSPAS-X can be run in single run mode or multi run mode.</p>
+<p>In the single run mode, BTSPAS-X is run independently for each stream
+site and run year. Below is an example for the upper battle creek RST in
+2004.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bt_spas_x_results</span> <span class="op">&lt;-</span> <span class="fu">run_single_bt_spas_x</span><span class="op">(</span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="va"><a href="../reference/bt_spas_x_bayes_params.html">bt_spas_x_bayes_params</a></span>,</span>
+<span>                                         bt_spas_x_input_data <span class="op">=</span> <span class="va">updated_input</span>,</span>
+<span>                                         site <span class="op">=</span> <span class="st">"ubc"</span>,</span>
+<span>                                         run_year <span class="op">=</span> <span class="fl">2004</span>,</span>
+<span>                                         effort_adjust <span class="op">=</span> <span class="cn">T</span>,</span>
+<span>                                         bugs_directory <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data-raw"</span>, <span class="st">"WinBUGS14"</span><span class="op">)</span>,</span>
+<span>                                         debug_mode <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>In the multi run mode, BTSPAS-X is run for all stream sites and run
+years at once. Below is an example of multi run mode.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">bt_spas_x_multiple_system_results</span> <span class="op">&lt;-</span> <span class="fu">run_multiple_bt_spas_x</span><span class="op">(</span>bt_spas_x_bayes_params <span class="op">=</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="va"><a href="../reference/bt_spas_x_bayes_params.html">bt_spas_x_bayes_params</a></span>,</span>
+<span>                                                            bt_spas_x_input_data <span class="op">=</span> <span class="fu">SRJPEdata</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">weekly_juvenile_abundance_model_data</a></span>,</span>
+<span>                                                            effort_adjust <span class="op">=</span> <span class="cn">T</span>, </span>
+<span>                                                            bugs_directory <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data-raw"</span>, <span class="st">"WinBUGS14"</span><span class="op">)</span>, </span>
+<span>                                                            debug_mode <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
 </h2>
-<div class="section level3">
-<h3 id="extract-predicted-juveniles-by-year-with-uncertainty">Extract predicted juveniles by year, with uncertainty<a class="anchor" aria-label="anchor" href="#extract-predicted-juveniles-by-year-with-uncertainty"></a>
-</h3>
-</div>
+<p>TODO - code for model output</p>
 </div>
 <div class="section level2">
 <h2 id="resources">Resources<a class="anchor" aria-label="anchor" href="#resources"></a>
 </h2>
+<p>Link to juvenile report once published.</p>
 </div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
-    </nav>
-</div>
+      </div>
 
 </div>
 
@@ -147,16 +230,16 @@ Korman</h4>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
       </footer>
 </div>
 
-  
 
 
-  
+
+
 
   </body>
 </html>
