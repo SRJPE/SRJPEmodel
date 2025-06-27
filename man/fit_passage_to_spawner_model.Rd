@@ -28,8 +28,10 @@ will return the full fitted \code{stanfit} object.
 See \code{vignette("passage_to_spawner_submodel.Rmd", package = "SRJPEmodel")} for more details.
 }
 \seealso{
-Other passage_to_spawner: 
-\code{\link{compare_P2S_model_covariates}()},
-\code{\link{extract_P2S_estimates}()}
+Other Fit model: 
+\code{\link{fit_inseason_model}()},
+\code{\link{fit_pCap_model}()},
+\code{\link{fit_stock_recruit_model}()},
+\code{\link{fit_survival_model}()}
 }
-\concept{passage_to_spawner}
+\concept{Fit model}

@@ -43,3 +43,11 @@ Prepare inputs for stock-recruit model
 \details{
 This function prepares data for input into a stock recruit model.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_pCap_inputs}()},
+\code{\link{prepare_survival_inputs}()}
+}
+\concept{Prepare Model Inputs}

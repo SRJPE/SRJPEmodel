@@ -40,3 +40,11 @@ Prepare inputs for pCap STAN model
 \details{
 This function prepares data for input into a pCap STAN model.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_stock_recruit_inputs}()},
+\code{\link{prepare_survival_inputs}()}
+}
+\concept{Prepare Model Inputs}

@@ -18,3 +18,11 @@ Fit pCap model
 \details{
 This function prepares the data list for the abundance STAN model based on what the model name is.
 }
+\seealso{
+Other Fit model: 
+\code{\link{fit_inseason_model}()},
+\code{\link{fit_passage_to_spawner_model}()},
+\code{\link{fit_stock_recruit_model}()},
+\code{\link{fit_survival_model}()}
+}
+\concept{Fit model}

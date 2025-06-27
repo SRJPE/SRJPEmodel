@@ -14,6 +14,7 @@
 #' @returns a list:
 #' * **pCap_inputs** a list of data and inits for input into the pCap model.
 #' * **sites_fit** a list of site names associated with `ind_trib`.
+#' @family Prepare Model Inputs
 #' @export
 #' @md
 prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
@@ -583,6 +584,7 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @details This function prepares the data list for the abundance STAN model based on what the model name is.
 #' @param input A list containing the inputs for the pCap model.
 #' @returns a STANfit object with the pCap model fit.
+#' @family Fit model
 #' @export
 #' @md
 fit_pCap_model <- function(input) {

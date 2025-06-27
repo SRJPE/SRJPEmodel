@@ -15,6 +15,8 @@
 #' * **stock_recruit_table** juvenile abundance and adult abundance by brood year.
 #' * **full_covariate_table** full table of covariates associated with the site, stream, and brood years in the stock recruit table
 #' * **truncated_covariate_table** table of covariates limited to only those years where all covariates are available (for covariate comparison analyses)
+#'
+#' @family Prepare Model Inputs
 #' @export
 #' @md
 prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
@@ -176,6 +178,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
 #' @details This function runs the STAN stock-recruit model.
 #' @param stock_recruit_inputs the object produced by `prepare_stock_recruit_inputs()`
 #' @returns a STAN object.
+#' @family Fit model
 #' @export
 #' @md
 fit_stock_recruit_model <- function(stock_recruit_inputs) {
