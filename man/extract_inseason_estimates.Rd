@@ -2,18 +2,38 @@
 % Please edit documentation in R/in_season_model.R
 \name{extract_inseason_estimates}
 \alias{extract_inseason_estimates}
-\title{Extract parameter estimates from in-season model}
+\title{Extract Parameter Estimates from In-Season Model}
 \usage{
 extract_inseason_estimates(inputs, fit)
 }
 \arguments{
-\item{inputs}{a list produced by running \code{prepare_inseason_inputs()}}
+\item{inputs}{A list of inputs produced by \code{prepare_inseason_inputs()}.}
 
-\item{fit}{a stanfit object produced by running \code{fit_inseason_model()}}
+\item{fit}{A fitted \code{stanfit} model object returned by \code{fit_inseason_model()}.}
 }
 \value{
-a table
+A tibble in long format with columns:
+\describe{
+\item{\code{parameter}}{Name of the parameter (e.g., \code{lambda}, \code{phi}, \code{cp}, \code{muRT_log_lambda}).}
+\item{\code{statistic}}{Summary statistic (e.g., \code{mean}, \code{sd}, \code{2.5}, \code{97.5}, \code{Rhat}).}
+\item{\code{value}}{Numeric value of the summary statistic.}
+\item{\code{year}, \code{week}}{Optional indices matched to corresponding dimensions.}
+\item{\code{model_name}, \code{site}, \code{stream}}{Metadata from the model inputs.}
+\item{\code{srjpedata_version}}{Version of the \code{SRJPEdata} package used.}
+}
 }
 \description{
-This produces a formatted data frame of parameter estimates for the inseason STAN model.
+Extracts and formats posterior summary statistics from a fitted in-season STAN model.
+Converts the STAN output into a long-format table suitable for downstream use.
+}
+\details{
+The function computes summaries for all monitored parameters, including population-level
+effects (e.g., \code{phi}, \code{lambda}), year- and week-specific estimates (\code{cp}, \code{RTpars}),
+and covariate or autocorrelation parameters (e.g., \code{bCov}, \code{rho_pro}).
+
+Indexing from STAN arrays is decoded and matched to human-readable variables such as year
+or week. Warnings are issued if convergence diagnostics (Rhat) exceed 1.05 for any parameter.
+}
+\seealso{
+\code{\link[=fit_inseason_model]{fit_inseason_model()}}, \code{\link[rstan:summary]{rstan::summary()}}
 }

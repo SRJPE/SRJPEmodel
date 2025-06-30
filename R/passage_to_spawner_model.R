@@ -26,6 +26,7 @@ calculate_ss_tot <- function(data) {
 #' @param truncate_dataset a TRUE/FALSE value. If TRUE, will truncate the dataset so that only years where all covariate values are
 #' present are used.
 #' @returns a list containing data elements required to run the STAN passage to spawner model
+#' @family Prepare Model Inputs
 #' @export
 #' @md
 prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FALSE) {
@@ -117,7 +118,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
 #' * **average_upstream_passage** average upstream passage across all years, used to forecast.
 #' @returns a STANfit model object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html))
 #' @export
-#' @family passage_to_spawner
+#' @family Fit model
 #' @md
 fit_passage_to_spawner_model <- function(data_inputs) {
 
@@ -220,7 +221,6 @@ extract_P2S_estimates <- function(p2s_inputs,
 #' * **Rhat** Split Rhats for a parameter
 #' * **year** Year observed data came from
 #' @export
-#' @family passage_to_spawner
 #' @md
 compare_P2S_model_covariates <- function(stream) {
 

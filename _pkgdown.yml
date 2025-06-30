@@ -17,40 +17,65 @@ reference:
 - contents:
   - prepare_pCap_inputs
   - prepare_abundance_inputs
+  - prepare_mainstem_pCap_data
   - build_spline_data
   - fit_pCap_model
   - generate_lt_pCap_Us
   - fit_abundance_model_BUGS
-  - fit_abundance_model_STAN
   - plot_juv_data
   - generate_diagnostic_plot_juv
+  - extract_abundance_estimates
+  - extract_pCap_estimates
+  - run_abundance_workflow
+  - run_bt_spas_x_JPE_sites
 - subtitle: P2S
   desc: Functions to run P2S
 - contents:
-  - run_passage_to_spawner_model
+  - prepare_P2S_inputs
+  - fit_passage_to_spawner_model
+  - extract_P2S_estimates
+  - generate_results_plot_p2s
 - subtitle: Survival
   desc: Functions to run Survival Model
 - contents:
-  - run_survival_model
-
-- title: Model Results
-  desc: Data objsects produced by models
+  - prepare_survival_inputs
+  - fit_survival_model
+  - extract_survival_estimates
+  - generate_survival_rate_plot
+- subtitle: Stock Recruit
+  desc: Functions to run Stock recruit Model
 - contents:
-  - P2S_model_fits
-  - P2S_comparison_results
-
+  - prepare_stock_recruit_inputs
+  - fit_stock_recruit_model
+  - extract_stock_recruit_estimates
+  - generate_results_plot_sr
+  - generate_diagnostic_plot_sr
+  - generate_diagnostic_plot_sr_covar
+- subtitle: Within season
+  desc: Functions to run within season model
+- contents:
+  - prepare_inseason_inputs
+  - fit_inseason_model
+  - extract_inseason_estimates
 - title: Model Data
   desc: Additional data beyons SRJPEdata needed to run model
 - contents:
   - bt_spas_x_bayes_params
-
-- title: Helper Functions
-  desc: Functions used as to generate model data / format model outputs
+  - bt_spas_x_model_code
+  - survival_model_code
+  - p2s_model_code
+- title: Helper and Storage Functions
+  desc: Functions used as to generate model data / format model outputs / and interface with the database
 - contents:
-  - get_predicted_spawners_from_P2S
   - compare_P2S_model_covariates
-  - compare_P2S_covariates_within_stream
-  - get_years_from_P2S_model_fits
+  - get_model_object
+  - get_model_results_parameters
+  - get_most_recent_model_objects
+  - get_most_recent_model_results
+  - store_model_fit
+  - search_model_run
+  - generate_diagnostic_plot
+  - pin_model_data
 
 navbar:
   structure:

@@ -18,3 +18,11 @@ Fit stock-recruit model in STAN
 \details{
 This function runs the STAN stock-recruit model.
 }
+\seealso{
+Other Fit model: 
+\code{\link{fit_inseason_model}()},
+\code{\link{fit_pCap_model}()},
+\code{\link{fit_passage_to_spawner_model}()},
+\code{\link{fit_survival_model}()}
+}
+\concept{Fit model}
