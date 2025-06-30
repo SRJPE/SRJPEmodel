@@ -21,9 +21,15 @@ for(i in c("battle creek", "clear creek", "deer creek",
                                             covariate = "spawning_above_13_temp_week")
   # modify inits for beta
   if(i == "feather river") {
-    sr_inputs$inits[[1]]$beta <- -0.0001
-    sr_inputs$inits[[2]]$beta <- -0.0001
-    sr_inputs$inits[[3]]$beta <- -0.0001
+    sr_inputs$inputs$inits[[1]]$beta <- -0.0001
+    sr_inputs$inputs$inits[[2]]$beta <- -0.0001
+    sr_inputs$inputs$inits[[3]]$beta <- -0.0001
+  }
+  # modify inits for gamma and yuba
+  if(i == "yuba river") {
+    sr_inputs$inputs$inits[[1]]$gamma <- -3
+    sr_inputs$inputs$inits[[2]]$gamma <- -3
+    sr_inputs$inputs$inits[[3]]$gamma <- -3
   }
 
   print(paste("fitting for", i))
