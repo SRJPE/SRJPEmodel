@@ -361,3 +361,59 @@ extract_inseason_estimates <- function(inputs,
   return(summary_table_long)
 
 }
+
+#' Inseason forecast plot
+#'
+#' @description This function produces a plot of observed and predicted abundance
+#' using posterior summaries retrieved from the database.
+#'
+#' @param forecast_inputs A list with forecast metadata and inputs, including For_ewk and calendar labels.
+#' @param con A database connection object.
+#' @returns A ggplot object.
+#' @export
+#' @md
+generate_results_plot_inseason <- function(inseason_inputs, con) {
+  # Custom color palette
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  # Pull forecast results from the database
+  # inseason_params <- get_most_recent_model_results(con) |> glimpse()
+  #   filter(model_name == "inseason",  # assumed model name
+  #          stream == inseason_inputs$stream) |> glimpse()
+  #   rename(inseason_week = week,
+  #          value = value) |>
+  #   select(-c(id, model_run_id, site))
+
+  inseason_params <- inseason_estimates |>
+    select(-c(site))
+
+  # Quantiles
+  ci <- inseason_params |>
+    filter(parameter == "For_cp", statistic %in% c("25", "75")) |>
+    pivot_wider(names_from = "statistic", values_from = "value") |>
+    mutate(type = "predicted")
+
+  # Central prediction and observations
+  plot_data <- inseason_params |>
+    filter(parameter == "For_cp", statistic == "50") |>
+    rename(median = value) |>
+    left_join(ci) |> glimpse()
+
+  plot <- plot_data |>
+    ggplot(aes(x = week, y = median)) +
+    geom_line(position = "dodge") +
+    geom_ribbon(aes(ymin = `25`, ymax = `75`),
+                position = position_dodge(width = 0.9),
+                alpha = .1) +
+    scale_fill_manual(values = dark_JPE) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
+    labs(
+      x = "Inseason Week",
+      y = "Proportion of annual outmigration abundance (0 - 1)"
+    )
+  plot
+  return(plot)
+}
+generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
+
