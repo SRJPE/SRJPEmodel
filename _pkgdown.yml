@@ -89,8 +89,8 @@ navbar:
     menu:
       - text: 'Passage to Spawner Model (P2S)'
         href: articles/passage_to_spawner_submodel.html
-      - text: 'Juvenile Abundance Model (BTSPAS-X)'
-        href: articles/btspas_submodel_documentation.html
+      - text: 'Survival Model'
+        href: articles/survival_submodel_documentation.html
 
 
 repo:
