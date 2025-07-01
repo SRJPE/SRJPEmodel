@@ -9,3 +9,6 @@ source(here::here("data-raw", "adult_model", "p2s_fit_upload_script.R"))
 
 # stock recruit
 source(here::here("data-raw", "stock_recruit_model", "stock_recruit_fit_upload_script.R"))
+
+# inseason
+source(here::here("data-raw", "in_season_model", "inseason_fit_upload_script.R"))

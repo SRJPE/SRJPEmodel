@@ -204,7 +204,7 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
   inits <- list(init_list, init_list, init_list)
 
   # model name
-  model_name <- ifelse(autocorrelation, "BetaDevHBMRT_lag1", "BetaDevHBMRT")
+  model_name <- ifelse(autocorrelation, "beta_dv_hbmrt_lag1", "beta_dev_hbmrt")
 
   return(list(inputs = list(data = data,
                             inits = inits),
