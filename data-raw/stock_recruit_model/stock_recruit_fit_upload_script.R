@@ -15,7 +15,8 @@ for(i in c("battle creek", "clear creek", "deer creek",
   data_type = case_when(i %in% c("battle creek", "clear creek", "mill creek") ~ "redd",
                         i == "yuba river" ~ "passage",
                         i == "deer creek" ~ "holding",
-                        i %in% c("butte creek", "feather river") ~ "carcass")
+                        i == "feather river" ~ "broodstock_tag",
+                        i == "butte creek" ~ "carcass")
 
   sr_inputs <- prepare_stock_recruit_inputs(con, stream = i, adult_data_type = data_type,
                                             covariate = "spawning_above_13_temp_week")
