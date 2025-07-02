@@ -30,6 +30,7 @@
 #'   \item{`stream`}{Input stream name.}
 #'   \item{`site`}{Input site name.}
 #'   \item{`year_lookup`}{Vector of years used to match indices to results.}
+#'   \item{`week_lookup`}{Vector of weeks used to match indices to results.}
 #' }
 #'
 #' @family Prepare Model Inputs
@@ -203,7 +204,7 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
   inits <- list(init_list, init_list, init_list)
 
   # model name
-  model_name <- ifelse(autocorrelation, "BetaDevHBMRT_lag1", "BetaDevHBMRT")
+  model_name <- ifelse(autocorrelation, "beta_dv_hbmrt_lag1", "beta_dev_hbmrt")
 
   return(list(inputs = list(data = data,
                             inits = inits),
@@ -212,7 +213,8 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
               model_name = model_name,
               stream = stream,
               site = site,
-              year_lookup = annual_abundance$year)) # TODO update model name table in database
+              year_lookup = annual_abundance$year,
+              weeks_fit = weeks_ordered)) # TODO update model name table in database
 }
 
 #' Fit In-Season STAN Model
@@ -304,7 +306,7 @@ extract_inseason_estimates <- function(inputs,
 
   # week, year matrices is cp
   # nweeks is For_cp
-  week_lookup <- tibble("week" = seq(1:inputs$inputs$data$Nwks)) |>
+  week_lookup <- tibble("week_fit" = inputs$weeks_fit) |>
     mutate(week_index = row_number())
 
   # year, log lambda matrix is RTpars
@@ -354,7 +356,6 @@ extract_inseason_estimates <- function(inputs,
                  values_to = "value") |>
     mutate(model_name = inputs$model_name,
            site = inputs$site,
-           week_fit = NA,
            stream = inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata")))
 

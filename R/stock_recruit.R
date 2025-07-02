@@ -3,7 +3,7 @@
 #' @param con A valid connection to the model run database.
 #' @param stream The stream for which you want to fit the model.
 #' @param adult_data_type the type of survey the adult data came from. Either `passage`,
-#' `redd`, `holding`, or `carcass`.
+#' `redd`, `holding`, `broodstock_tag`, or `carcass`.
 #' @param covariate The covariate you would like to use to fit the model. One of `rearing_max_flow`, `rearing_mean_flow`,
 #' `rearing_median_flow`, `rearing_min_flow`, `spawning_max_flow`, `spawning_mean_flow`, `spawning_median_flow`, `spawning_min_flow`,
 #' `spawning_above_13_temp_day`, `spawning_above_13_temp_week`, `spawning_gdd_spawn`, `spawning_weekly_max_temp_max`,
@@ -26,7 +26,7 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
     cli::cli_abort("Connection argument does not have a valid connection to the database. Please try reconnecting to the database using DBI::dbConnect")
   }
 
-  if(!adult_data_type %in% c("redd", "holding", "passage", "carcass")) {
+  if(!adult_data_type %in% c("redd", "holding", "passage", "carcass", "broodstock_tag")) {
     cli::cli_abort("Please supply an approved adult data type value: either redd, carcass, holding, or passage.")
   }
 
@@ -78,7 +78,8 @@ prepare_stock_recruit_inputs <- function(con, stream, adult_data_type,
            adult_abundance = case_when(adult_data_type == "redd" ~ redd,
                                        adult_data_type == "holding" ~ holding,
                                        adult_data_type == "carcass" ~ carcass,
-                                       adult_data_type == "passage" ~ passage)) |>
+                                       adult_data_type == "passage" ~ passage,
+                                       adult_data_type == "broodstock_tag" ~ broodstock_tag)) |>
     filter(!is.na(adult_abundance))
 
   if(missing(covariate)) {

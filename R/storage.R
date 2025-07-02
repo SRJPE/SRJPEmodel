@@ -9,7 +9,7 @@
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param model_inputs The inputs used to fit the `model_fit_object`.
 #' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `bt_spas_x`,
-#' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`.
+#' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`, `inseason`.
 #' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
@@ -46,9 +46,12 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
   if(results_name == "bt_spas_x") {
     results_name <- model_inputs$model_name
   }
+  if(results_name == "inseason") {
+    results_name <- model_inputs$model_name
+  }
   # check that they supply an approved results name
   if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
-                          "pcap_all", "pcap_mainstem", "p2s", "stock_recruit")) {
+                          "pcap_all", "pcap_mainstem", "p2s", "stock_recruit", "beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
     cli::cli_abort("You must supply an approved value to the results_name argument.")
   }
 
@@ -56,11 +59,12 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
     cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
   }
-  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit") & class(model_fit_object) != "stanfit") {
+  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit", "beta_dev_hbmrt", "beta_dv_hbmrt_lag1") & class(model_fit_object) != "stanfit") {
       cli::cli_abort("For models pcap_all, pcap_mainstem, p2s, and stock_recruit, model object must be of class 'stanfit'.")
   }
 
   # generate diagnostic plot
+  # TODO update for inseason
   model_plot <- generate_diagnostic_plot(model_inputs, model_fit_object)
   # print(model_plot)
   # storage workflow
@@ -513,6 +517,9 @@ insert_model_run <- function(con, model, blob_url_list, description, results_nam
   } else if(results_name == "stock_recruit") {
     model_final_results <- extract_stock_recruit_estimates(inputs,
                                                            model)
+  } else if(results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
+    model_final_results <- extract_inseason_estimates(inputs,
+                                                      model)
   }
   # TODO check that model names match user input model names
   model_final_results$model_name <- tolower(model_final_results$model_name)
@@ -571,6 +578,9 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
   } else if(results_name == "stock_recruit") {
     model_final_results <- extract_stock_recruit_estimates(inputs,
                                                            model)
+  } else if(results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
+    model_final_results <- extract_inseason_estimates(inputs,
+                                                      model)
   }
   model_final_results$blob_url <- blob_url_list$model_fit_url
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_fit_storage_url", "model_run_id")
@@ -667,8 +677,10 @@ get_most_recent_model_results <- function(con) {
               by = "model_name_id") |>
     # TODO join any other lookups needed for other model types (i.e. survival)
     collect() |>
-    mutate(model_name = ifelse(model_name %in% c("no_mark_recap", "no_mark_recap_no_trib",
-                                                 "missing_mark_recap", "all_mark_recap"), "bt_spas_x", model_name)) |>
+    mutate(model_name = case_when(model_name %in% c("no_mark_recap", "no_mark_recap_no_trib",
+                                                    "missing_mark_recap", "all_mark_recap") ~ "bt_spas_x",
+                                  model_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1") ~ "inseason",
+                                  TRUE ~ model_name)) |>
     group_by(model_name, stream, site, year, updated_at) |>
     mutate(recent = cur_group_id()) |>
     ungroup() |>
@@ -753,7 +765,10 @@ generate_diagnostic_plot <- function(inputs, fit) {
     obsv_variable <- inputs$inputs$data$R
     pred_variable <- "pred_R"
     location <- inputs$stream
-  } # TODO add survival
+  } else if(model_results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
+    null_plot <- ggplot() # TODO add ppc plot for inseason
+    return(null_plot)
+  }# TODO add survival
 
   # Extract posterior samples for predicted values
   n_posterior_samples <- 100
