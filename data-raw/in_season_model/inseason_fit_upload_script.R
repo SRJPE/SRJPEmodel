@@ -8,13 +8,12 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
                       password = cfg$db_password)
 library(tidyverse)
 
-for(i in c("battle creek")) {
+for(i in c("battle creek", "clear creek")) {
 
   print(paste("running for", i))
 
   site <- case_when(i == "battle creek" ~ "ubc",
-                    # TODO build out for other streams
-                    TRUE ~ NA)
+                    i == "clear creek" ~ "lcc")
 
   inseason_inputs <- prepare_inseason_inputs(con, i, site,
                                              covariate_effect = FALSE,
@@ -24,9 +23,6 @@ for(i in c("battle creek")) {
   inseason_fit <- fit_inseason_model(inseason_inputs)
 
   # push to cloud
-  # TODO remove this block of code
-  inseason_inputs <- readRDS("~/Downloads/inputs.rds")
-  inseason_fit <- readRDS("~/Downloads/fit.rds")
   print(paste("Uploading to cloud for", i))
   store_model_fit(con,
                   model_fit_object = inseason_fit,
