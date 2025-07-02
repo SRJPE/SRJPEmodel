@@ -43,7 +43,6 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
     cli::cli_abort("Connection argument does not have a valid connection to the database. Please try reconnecting to the database using DBI::dbConnect")
   }
 
-  # TODO our dates are slightly off (3 days?) from josh's weeks
   # set up weeks processing
   number_weeks <- nrow(SRJPEmodel::julian_week_to_date_lookup)
   first_week <- 36
@@ -214,7 +213,7 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
               stream = stream,
               site = site,
               year_lookup = annual_abundance$year,
-              weeks_fit = weeks_ordered)) # TODO update model name table in database
+              weeks_fit = weeks_ordered))
 }
 
 #' Fit In-Season STAN Model
