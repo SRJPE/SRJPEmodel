@@ -7,13 +7,22 @@
 get_most_recent_model_objects(
   con,
   model_component = "model_fit",
-  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
+  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
+  model_name = NULL,
+  stream = NULL
 )
 }
 \arguments{
 \item{con}{A connection object to the database.}
 
 \item{model_component}{A choice of \code{model_fit}, \code{model_input} or \code{model_plot} to pull.}
+
+\item{model_name}{Can be left empty. If provided, must be one of \code{pcap_all}, \code{bt_spas_x},
+\code{pcap_mainstem}, \code{p2s}, \code{inseason}, or \code{stock_recruit}}
+
+\item{stream}{Can be left empty. If provided, must be one of \verb{battle creek},
+\verb{clear creek}, \verb{deer creek}, \verb{mill creek}, \verb{feather river}, \verb{butte creek},
+\verb{sacramento river}, or \verb{yuba river}.}
 }
 \value{
 A the most recent model fit objects, inputs, or plots. The format will be a named list,

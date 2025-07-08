@@ -18,7 +18,7 @@ prepare_stock_recruit_inputs(
 \item{stream}{The stream for which you want to fit the model.}
 
 \item{adult_data_type}{the type of survey the adult data came from. Either \code{passage},
-\code{redd}, \code{holding}, or \code{carcass}.}
+\code{redd}, \code{holding}, \code{broodstock_tag}, or \code{carcass}.}
 
 \item{covariate}{The covariate you would like to use to fit the model. One of \code{rearing_max_flow}, \code{rearing_mean_flow},
 \code{rearing_median_flow}, \code{rearing_min_flow}, \code{spawning_max_flow}, \code{spawning_mean_flow}, \code{spawning_median_flow}, \code{spawning_min_flow},

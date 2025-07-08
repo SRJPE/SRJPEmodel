@@ -30,7 +30,7 @@ store_model_fit(
 \item{model_inputs}{The inputs used to fit the \code{model_fit_object}.}
 
 \item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{bt_spas_x},
-\code{pcap_all}, \code{pcap_mainstem}, \code{p2s}, \code{stock_recruit}.}
+\code{pcap_all}, \code{pcap_mainstem}, \code{p2s}, \code{stock_recruit}, \code{inseason}.}
 
 \item{description}{A description of the model fit you are uploading.}
 

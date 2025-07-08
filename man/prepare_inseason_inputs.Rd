@@ -27,6 +27,7 @@ A named list containing:
 \item{\code{stream}}{Input stream name.}
 \item{\code{site}}{Input site name.}
 \item{\code{year_lookup}}{Vector of years used to match indices to results.}
+\item{\code{week_lookup}}{Vector of weeks used to match indices to results.}
 }
 }
 \description{

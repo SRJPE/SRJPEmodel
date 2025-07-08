@@ -703,12 +703,29 @@ get_most_recent_model_results <- function(con) {
 #' the inputs used to fit the associated model object.
 #' @param con A connection object to the database.
 #' @param model_component A choice of `model_fit`, `model_input` or `model_plot` to pull.
+#' @param model_name Can be left empty. If provided, must be one of `pcap_all`, `bt_spas_x`,
+#' `pcap_mainstem`, `p2s`, `inseason`, or `stock_recruit`
+#' @param stream Can be left empty. If provided, must be one of `battle creek`,
+#' `clear creek`, `deer creek`, `mill creek`, `feather river`, `butte creek`,
+#' `sacramento river`, or `yuba river`.
 #' @return A the most recent model fit objects, inputs, or plots. The format will be a named list,
 #' where each element is named by the `model_run_id`, `model_name`, `site`, `stream`, and `year`.
 #' @export
-get_most_recent_model_objects <- function(con, model_component="model_fit", access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+get_most_recent_model_objects <- function(con, model_component="model_fit",
+                                          access_key=Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
+                                          model_name = NULL,
+                                          stream = NULL) {
 
   recent_models <- SRJPEmodel::get_most_recent_model_results(con)
+
+  if(!missing(model_name)) {
+    recent_models <- recent_models |>
+      filter(model_name == !!model_name)
+  }
+  if(!missing(stream)) {
+    recent_models <- recent_models |>
+      filter(stream == !!stream)
+  }
 
   most_recent_ids <- recent_models |>
     dplyr::distinct(model_run_id) |>
