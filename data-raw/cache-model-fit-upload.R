@@ -2,7 +2,7 @@
 
 # important - need to be running on a PC
 # pCap and BT-SPAS-X
-source(here::here("data-raw", "juvenile_abundance", "btspasx_fit_uplaod_script.R"))
+source(here::here("data-raw", "juvenile_abundance", "btspasx_fit_upload_script.R"))
 
 # P2S
 source(here::here("data-raw", "adult_model", "p2s_fit_upload_script.R"))
