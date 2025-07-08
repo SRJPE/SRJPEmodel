@@ -18,9 +18,11 @@ parameters {
 transformed parameters{
   array[Nyrs] real lgRS;
   array[Nyrs] real pred_R;
+  array[Nyrs] real pred_lgRS;
   //array[Nyrs] real sdTot;
   for(iyr in 1:Nyrs){
     lgRS[iyr] = alpha + beta*SP[iyr] + gamma*X[iyr] + dev[iyr];
+    pred_lgRS[iyr] = alpha + beta * SP[iyr] + gamma * X[iyr]; // to compare with observed for R2
     //sdTot[iyr]=pow(pow(sd_obslgRS[iyr],2) + pow(sd_pro,2),0.5);
     pred_R[iyr]=SP[iyr]*exp(lgRS[iyr]);
   }

@@ -762,12 +762,14 @@ generate_diagnostic_plot <- function(inputs, fit) {
     pred_variable <- "predicted_spawners"
     location <- inputs$stream
   } else if (model_results_name == "stock_recruit") {
-    obsv_variable <- inputs$inputs$data$R
-    pred_variable <- "pred_R"
+    obsv_variable <- inputs$inputs$data$mu_obslgRS
+    pred_variable <- "pred_lgRS"
     location <- inputs$stream
   } else if(model_results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
-    null_plot <- ggplot() # TODO add ppc plot for inseason
-    return(null_plot)
+    obsv_variable <- inputs$inputs$data$Nx_mu |>
+      rowMeans()
+    pred_variable <- "pred_pNx"
+    location <- inputs$stream
   }# TODO add survival
 
   # Extract posterior samples for predicted values
@@ -777,6 +779,13 @@ generate_diagnostic_plot <- function(inputs, fit) {
                                "missing_mark_recap", "no_mark_recap_no_trib")) {
     extract_preds <- fit$sims.list$N[ , inputs$inputs$data$Uwc_ind] # predicted catch for weeks with obsv catch
     y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), ]
+  } else if(model_results_name %in%c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
+    posterior_samples <- rstan::extract(fit)$pred_pNx
+    # take weeks estimated and average across years
+    y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), , ] |>
+      # average across years
+      apply(c(1, 2), mean, na.rm = T)
+    y_rep[is.nan(y_rep)] <- as.numeric(0) # set NaNs to 0
   } else {
     posterior_samples <- rstan::extract(fit)
     extract_preds <- eval(parse(text = paste0("posterior_samples$", pred_variable)))

@@ -244,7 +244,7 @@ prepare_inseason_inputs <- function(con, stream, site, covariate_effect, autocor
 fit_inseason_model <- function(inputs) {
 
   parameters <- c("phi", "lambda", "cp", "sd_pro", "RTpars", "muRT", "sigmaRT",
-                  "rho", "mu_phi", "mu_lambda", "bCov", "For_cp")
+                  "rho", "mu_phi", "mu_lambda", "bCov", "For_cp", "pred_pNx")
 
   if(inputs$autocorrelation) {
     parameters <- c(parameters, "rho_pro")
@@ -325,9 +325,9 @@ extract_inseason_estimates <- function(inputs,
     mutate(across(index_1:index_2, as.numeric)) |>
     # now match to lookups
     mutate(year_index = case_when(parameter %in% c("phi", "lambda", "RT_pars") ~ index_1,
-                                  parameter == "cp" ~ index_2,
+                                  parameter %in% c("cp", "pred_pNx") ~ index_2,
                                   TRUE ~ NA),
-           week_index = ifelse(parameter %in% c("cp", "For_cp"), index_1, NA),
+           week_index = ifelse(parameter %in% c("cp", "pred_pNx", "For_cp"), index_1, NA),
            par_index = case_when(parameter == "RTpars" ~ index_2,
                                  parameter %in% c("muRT", "sigmaRT", "bCov") ~ index_1,
                                  TRUE ~ NA)) |>
@@ -374,46 +374,44 @@ extract_inseason_estimates <- function(inputs,
 #' @md
 generate_results_plot_inseason <- function(inseason_inputs, con) {
   # Custom color palette
-  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
-
-  # Pull forecast results from the database
-  # inseason_params <- get_most_recent_model_results(con) |> glimpse()
+  # dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+  #
+  # # Pull forecast results from the database
+  # inseason_estimates <- get_most_recent_model_results(con) |>
   #   filter(model_name == "inseason",  # assumed model name
-  #          stream == inseason_inputs$stream) |> glimpse()
+  #          stream == inseason_inputs$stream) |>
   #   rename(inseason_week = week,
   #          value = value) |>
   #   select(-c(id, model_run_id, site))
-
-  inseason_params <- inseason_estimates |>
-    select(-c(site))
-
-  # Quantiles
-  ci <- inseason_params |>
-    filter(parameter == "For_cp", statistic %in% c("25", "75")) |>
-    pivot_wider(names_from = "statistic", values_from = "value") |>
-    mutate(type = "predicted")
-
-  # Central prediction and observations
-  plot_data <- inseason_params |>
-    filter(parameter == "For_cp", statistic == "50") |>
-    rename(median = value) |>
-    left_join(ci) |> glimpse()
-
-  plot <- plot_data |>
-    ggplot(aes(x = week, y = median)) +
-    geom_line(position = "dodge") +
-    geom_ribbon(aes(ymin = `25`, ymax = `75`),
-                position = position_dodge(width = 0.9),
-                alpha = .1) +
-    scale_fill_manual(values = dark_JPE) +
-    theme_minimal() +
-    theme(legend.position = "bottom") +
-    labs(
-      x = "Inseason Week",
-      y = "Proportion of annual outmigration abundance (0 - 1)"
-    )
-  plot
-  return(plot)
+  #
+  # inseason_params <- inseason_estimates |>
+  #   select(-site)
+  #
+  # # Quantiles
+  # ci <- inseason_params |>
+  #   filter(parameter == "For_cp", statistic %in% c("25", "75")) |>
+  #   pivot_wider(names_from = "statistic", values_from = "value") |>
+  #   mutate(type = "predicted")
+  #
+  # # Central prediction and observations
+  # plot_data <- inseason_params |>
+  #   filter(parameter == "For_cp", statistic == "50") |>
+  #   rename(median = value) |>
+  #   left_join(ci)
+  #
+  # plot <- plot_data |>
+  #   ggplot(aes(x = week, y = median)) +
+  #   geom_line(position = "dodge") +
+  #   geom_ribbon(aes(ymin = `25`, ymax = `75`),
+  #               position = position_dodge(width = 0.9),
+  #               alpha = .1) +
+  #   scale_fill_manual(values = dark_JPE) +
+  #   theme_minimal() +
+  #   theme(legend.position = "bottom") +
+  #   labs(
+  #     x = "Inseason Week",
+  #     y = "Proportion of annual outmigration abundance (0 - 1)"
+  #   )
+  # return(plot)
 }
-generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
 
