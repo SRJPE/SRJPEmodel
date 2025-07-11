@@ -9,7 +9,8 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
 library(tidyverse)
 
 for(i in c("battle creek", "clear creek", "deer creek",
-           "feather river", "mill creek", "yuba river")) {
+           "feather river", "mill creek", "yuba river",
+           "butte creek")) {
 
   print(paste("running for", i))
   data_type = case_when(i %in% c("battle creek", "clear creek", "mill creek") ~ "redd",

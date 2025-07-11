@@ -767,25 +767,30 @@ generate_diagnostic_plot <- function(inputs, fit) {
     basic_pcap <- inputs$inputs$data$Recaptures / inputs$inputs$data$Releases
     obsv_variable <- qlogis(basic_pcap)
     pred_variable <- "logit_pCap"
+    pred_variable_name <- "Proportion captured (logit)"
     location <- inputs$location
   } else if (model_results_name %in% c("all_mark_recap", "no_mark_recap",
                                        "missing_mark_recap", "no_mark_recap_no_trib")) {
     pCap_mu <- plogis(inputs$lt_pCap_Us$lt_pCap_mu)
     obsv_variable <- inputs$inputs$data$u / pCap_mu[inputs$inputs$data$Nstrata_wc]
     pred_variable <- "N"
+    pred_variable_name <- "Weekly juvenile abundance"
     location <- paste(inputs$site, inputs$run_year, sep = "-")
   } else if (model_results_name == "p2s") {
     obsv_variable <- inputs$inputs$data$observed_spawners
     pred_variable <- "predicted_spawners"
+    pred_variable_name <- "Spawner abundance"
     location <- inputs$stream
   } else if (model_results_name == "stock_recruit") {
     obsv_variable <- inputs$inputs$data$mu_obslgRS
     pred_variable <- "pred_lgRS"
+    pred_variable_name <- "Mean recruits-per-spawner (log scale)"
     location <- inputs$stream
   } else if(model_results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
     obsv_variable <- inputs$inputs$data$Nx_mu |>
       rowMeans()
     pred_variable <- "pred_pNx"
+    pred_variable_name <- "Weekly cumulative juvenile abundance (averaged across years)"
     location <- inputs$stream
   }# TODO add survival
 
@@ -814,8 +819,9 @@ generate_diagnostic_plot <- function(inputs, fit) {
     theme_minimal() +
     labs(
       title = "Posterior Predictive Check",
-      subtitle = paste("Distribution of observed data vs. posterior predictions:", location),
-      x = pred_variable,
+      subtitle =
+      "Is this model representative of the data? If the light blue lines (yrep = simulated data) look like the \ndark blue line (y = observed data) then the model is making predictions similar to the observed data.",
+      x = pred_variable_name,
       y = "Density"
     )
 
