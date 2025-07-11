@@ -92,10 +92,28 @@ generate_diagnostic_plot_juv("ubc", 2018, abundance_table)
 ```
 
 ```{r, echo = FALSE}
+cfg <- config::get()
 
+con <- DBI::dbConnect(RPostgres::Postgres(),
+                      dbname = cfg$db_name,
+                      host = cfg$db_host,
+                      port = cfg$db_port,
+                      user = cfg$db_user,
+                      password = cfg$db_password)
+
+inputs <- get_most_recent_model_objects(con, 
+                                        model_component = "model_input", 
+                                        model_name = "bt_spas_x", 
+                                        stream = "battle creek") 
+fits <- get_most_recent_model_objects(con, 
+                                        model_component = "model_fit", 
+                                        model_name = "bt_spas_x", 
+                                        stream = "battle creek") 
+inputs_2018 <- inputs$`567_bt_spas_x_ubc_battle creek_2018`
+fits_2018 <- fits$`567_bt_spas_x_ubc_battle creek_2018`
+
+generate_diagnostic_plot_juv(site_arg = "ubc", run_year_arg = 2018, abundance_model_fit_table = fits_2018)
 plot_juv_data("ubc", 2018)
-generate_diagnostic_plot_juv("ubc", 2018, abundance_table)
-
 ```
 
 # Resources
