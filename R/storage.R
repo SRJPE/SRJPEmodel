@@ -719,6 +719,11 @@ get_most_recent_model_objects <- function(con, model_component="model_fit",
   recent_models <- SRJPEmodel::get_most_recent_model_results(con)
 
   if(!missing(model_name)) {
+
+    if(!model_name %in% c("inseason", "pcap_all", "bt_spas_x",
+                          "pcap_mainstem", "p2s", "stock_recruit")) {
+      cli::abort("You must provide an approved model name.")
+    }
     recent_models <- recent_models |>
       filter(model_name == !!model_name)
   }
@@ -804,7 +809,7 @@ generate_diagnostic_plot <- function(inputs, fit) {
   } else if(model_results_name %in%c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
     posterior_samples <- rstan::extract(fit)$pred_pNx
     # take weeks estimated and average across years
-    y_rep <- extract_preds[sample(nrow(extract_preds), n_posterior_samples), , ] |>
+    y_rep <- posterior_samples[sample(nrow(posterior_samples), n_posterior_samples), , ] |>
       # average across years
       apply(c(1, 2), mean, na.rm = T)
     y_rep[is.nan(y_rep)] <- as.numeric(0) # set NaNs to 0
