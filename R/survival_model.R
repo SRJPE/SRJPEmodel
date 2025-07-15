@@ -63,6 +63,9 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     SzT <- rep(0, fb_data_list$n_ind)
     Xsz <- rep(0, sac_data_list$n_size_classes)
 
+    # model name
+    model_name <- "survival_no_cov"
+
   } else {
 
     parameters <- c("P_b", "muPb", "sdPb", "S_bReach", "S_bTrib", "S_bCov", "S_bCovT", "S_bSz", "RE_sd",
@@ -78,6 +81,9 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                   S_bReach = rep(0, 3),
                   S_RE = rep(-3, sac_data_list$n_release_groups),
                   RE_sd = 0.5)
+
+    # model name
+    model_name <- "survival_cov_wy"
 
     # now step through all possible covariate versions - water year type (either 2 or 3) and
     # effects (no effect, fork length, weight, and condition)
@@ -197,10 +203,10 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
 
   inits <- list(inits, inits, inits)
 
-  return(list("data_inputs" = model_data,
-              "inits" = inits,
-              "parameters" = parameters))
-
+  return(list("inputs" = list("data" = model_data,
+                              "inits" = inits,
+                              "parameter" = parameters),
+              "model_name" = model_name))
 
 }
 
@@ -335,29 +341,28 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 #' @md
 fit_survival_model <- function(survival_inputs) {
 
-  # check which model we're running by checking NS_bCov, which is 0 for the no covariate model
-  if(survival_inputs$data_inputs$NS_bCov == 0) {
-    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_NoCov"))
-    cli::cli_bullets("Running NoCov survival model")
-  } else {
+  # select model to run (either covariate or no covariate)
+  if(survival_inputs$model_name == "survival_cov_wy") {
     stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_CovWY"))
-    cli::cli_bullets("Running CovWY survival model")
+  } else {
+    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_NoCov"))
   }
+
 
   options(mc.cores = parallel::detectCores())
 
   cli::cli_process_start("Fitting STAN survival model")
   fit <- rstan::stan(model_code = stan_model,
-                     data = survival_inputs$data_inputs,
-                     init = survival_inputs$inits,
+                     data = survival_inputs$inputs$data,
+                     init = survival_inputs$inputs$inits,
                      chains = 3,
                      iter = 2000,
                      include = T,
-                     pars = survival_inputs$parameters,
-                     seed=1234)
+                     pars = survival_inputs$inputs$parameter,
+                     seed = 1234)
   cli::cli_process_done("STAN survival model fitting complete")
 
-  return("fit" = fit)
+  return(fit)
 }
 
 #' Extract parameter estimates from the survival STAN model object

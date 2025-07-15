@@ -344,7 +344,7 @@ extract_inseason_estimates <- function(inputs,
            `75` = `75%`,
            `97.5` = `97.5%`)
 
-  if(any(summary_table$Rhat > 1.05)) {
+  if(any(summary_table$Rhat > 1.05, na.rm = T)) {
     cli::cli_alert_warning("One or more parameters has an Rhat value over 1.05 :(")
   } else {
     cli::cli_bullets("No parameters have an Rhat value exceeding 1.05 :)")

@@ -9,7 +9,7 @@
 #' @param model_fit_object The model result object that needs to be stored, of class `stanfit` or `bugs`.
 #' @param model_inputs The inputs used to fit the `model_fit_object`.
 #' @param results_name A string specifying a name to identify the model results in Azure Blob Storage. One of `bt_spas_x`,
-#' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`, `inseason`.
+#' `pcap_all`, `pcap_mainstem`, `p2s`, `stock_recruit`, `inseason`, `survival`.
 #' @param description A description of the model fit you are uploading.
 #' @param ... Additional named arguments to be passed as metadata to the blob storage.
 #'
@@ -49,9 +49,14 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
   if(results_name == "inseason") {
     results_name <- model_inputs$model_name
   }
+  if(results_name == "survival") {
+    results_name <- model_inputs$model_name
+  }
   # check that they supply an approved results name
-  if(!results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
-                          "pcap_all", "pcap_mainstem", "p2s", "stock_recruit", "beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
+  if(!results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit",
+                          "bt_spas_x", "inseason", "survival",
+                          "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
+                          "survival_cov_wy", "survival_no_cov")) {
     cli::cli_abort("You must supply an approved value to the results_name argument.")
   }
 
@@ -59,12 +64,12 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
   if(results_name %in% c("all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib") & class(model_fit_object) != "bugs") {
     cli::cli_abort("For models all_mark_recap, no_mark_recap, missing_mark_recap, and no_mark_recap_no_trib, model object must be of class 'bugs'.")
   }
-  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit", "beta_dev_hbmrt", "beta_dv_hbmrt_lag1") & class(model_fit_object) != "stanfit") {
+  if(results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit",
+                         "beta_dev_hbmrt", "beta_dv_hbmrt_lag1", "survival_cov_wy", "survival_no_cov") & class(model_fit_object) != "stanfit") {
       cli::cli_abort("For models pcap_all, pcap_mainstem, p2s, and stock_recruit, model object must be of class 'stanfit'.")
   }
 
   # generate diagnostic plot
-  # TODO update for inseason
   model_plot <- generate_diagnostic_plot(model_inputs, model_fit_object)
   # print(model_plot)
   # storage workflow
@@ -520,6 +525,8 @@ insert_model_run <- function(con, model, blob_url_list, description, results_nam
   } else if(results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
     model_final_results <- extract_inseason_estimates(inputs,
                                                       model)
+  } else if(results_name %in% c("survival_no_cov", "survival_cov_wy")) {
+    model_final_results <- extract_survival_estimates(model)
   }
   # TODO check that model names match user input model names
   model_final_results$model_name <- tolower(model_final_results$model_name)
@@ -581,6 +588,8 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
   } else if(results_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1")) {
     model_final_results <- extract_inseason_estimates(inputs,
                                                       model)
+  } else if(results_name %in% c("survival_cov_wy", "survival_no_cov")) {
+    model_final_results <- extract_survival_estimates(model)
   }
   model_final_results$blob_url <- blob_url_list$model_fit_url
   model_final_results <- join_lookup(model_final_results, "model_run", "blob_url", "blob_fit_storage_url", "model_run_id")
@@ -588,7 +597,7 @@ insert_model_parameters <- function(con, model, blob_url_list, results_name, inp
   model_final_results <- join_lookup(model_final_results, "parameter", "parameter", "definition", "parameter_id")
 
   # location_id is ALWAYS site, which determines stream.
-  # TODO what is location_fit_id ?
+  # TODO need to do this for survival model
   model_final_results <- model_final_results |>
     left_join(tbl(con, "trap_location") |>
                 collect() |>
@@ -680,6 +689,7 @@ get_most_recent_model_results <- function(con) {
     mutate(model_name = case_when(model_name %in% c("no_mark_recap", "no_mark_recap_no_trib",
                                                     "missing_mark_recap", "all_mark_recap") ~ "bt_spas_x",
                                   model_name %in% c("beta_dev_hbmrt", "beta_dv_hbmrt_lag1") ~ "inseason",
+                                  model_name %in% c("survival_cov_wy", "survival_no_cov") ~ "survival",
                                   TRUE ~ model_name)) |>
     group_by(model_name, stream, site, year, updated_at) |>
     mutate(recent = cur_group_id()) |>
@@ -721,7 +731,7 @@ get_most_recent_model_objects <- function(con, model_component="model_fit",
   if(!missing(model_name)) {
 
     if(!model_name %in% c("inseason", "pcap_all", "bt_spas_x",
-                          "pcap_mainstem", "p2s", "stock_recruit")) {
+                          "pcap_mainstem", "p2s", "stock_recruit", "survival")) {
       cli::abort("You must provide an approved model name.")
     }
     recent_models <- recent_models |>
