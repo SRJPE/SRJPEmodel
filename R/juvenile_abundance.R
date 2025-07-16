@@ -331,7 +331,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # Calculate lincoln peterson abundance
   lp_data <- catch_data |>
-    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
+    left_join(input_efficiency_data |>
                 select(-flow_cfs),
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(# plot things
