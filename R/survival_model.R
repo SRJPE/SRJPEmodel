@@ -422,10 +422,11 @@ extract_survival_estimates <- function(model_object) {
     mutate(across(index_1:index_3, as.numeric),
            # year-structured parameters
            year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
+           # TODO water_year_type can be any covariate, not just water year type per Flora
            water_year_type = ifelse(parameter %in% c("SurvRelSacSz", "SurvWoodSacSz", "SurvForecastSz",
                                                      "pred_SurvTSz"), index_2, NA),
            environmental_covarariate_dimension = ifelse(parameter %in% c("S_bCov", "s_bCovT"), index_1, NA),
-           forecast_index = ifelse(parameter == "SurvForecast", index_1, NA),
+           forecast_index = ifelse(parameter == "SurvForecast", index_1, NA), # TODO this is "covariate dimension" per Flora
            # reach-structured parameters
            sac_reach_index = case_when(parameter == "P_b" ~ index_2,
                                        parameter %in% c("muPb", "sdPb", "S_bReach") ~ index_1,
@@ -433,12 +434,15 @@ extract_survival_estimates <- function(model_object) {
                                        TRUE ~ NA),
            # trib-structured parameters
            trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
-                                        parameter == "pred_survT" ~ index_2, # TODO confirm this, it's hard coded as c(1, 2), it's the trib model reaches?
-                                        parameter %in% c("pred_survTSz", "TribSurvForecastSz", "pred_SurvTSz") ~ index_3,
+                                        parameter == "pred_survT" ~ index_2,
+                                        parameter %in% c("TribSurvForecastSz", "pred_SurvTSz") ~ index_3,
                                         TRUE ~ NA),
            # release group structured parameters
+           # TODO SurvRelSac is release group OR individual depending on covariate used
+           # TODO pred_surv is release group OR individual depending on covariate used
            release_group_index_sac = ifelse(parameter %in% c("SurvRelSac", "pred_surv",
                                                              "S_RE"), index_1, NA),
+           # TODO pred_survT is release group OR individual depending on covariate used
            release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT", "SurvWoodSac"), index_1, NA),
            pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
            size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz",
