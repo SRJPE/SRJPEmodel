@@ -85,9 +85,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
     dplyr::pull(site)
 
   # assign the IDs to the sites in the mark-recapture dataset
-  indices_site_mark_recapture <- mark_recapture_data |>
-    left_join(site_lookup, by = "site") |>
-    dplyr::pull(ID)
+  mark_recapture_data <- mark_recapture_data |>
+    left_join(site_lookup, by = "site")
 
   # get indexing for "mark recap" dataset (pCap model)
   Ntribs <- length(sites_fit) # number of sites (for pCap calculations)
@@ -97,7 +96,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   # build data list with ALL elements
   data <- list("Nmr" = number_efficiency_experiments,
                "Ntribs" = Ntribs,
-               "ind_trib" = indices_site_mark_recapture,
+               "ind_trib" = mark_recapture_data$ID,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
                "mr_flow" = mark_recapture_data$standardized_flow)
@@ -564,7 +563,7 @@ prepare_abundance_inputs <- function(site, run_year,
   final_abundance_inputs <- modifyList(abundance_inputs,
                                        list("lt_pCap_Us" = lt_pCap_Us,
                                             "lp_data" = lp_data))
-  final_abundance_inputs$lt_pCap_U_data = NULL
+  #final_abundance_inputs$lt_pCap_U_data = NULL
 
   return(final_abundance_inputs)
 
