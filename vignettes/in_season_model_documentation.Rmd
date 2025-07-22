@@ -1,0 +1,57 @@
+---
+title: "In Season Model"
+author: "Josh Kroman"
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Stock Recruit Model} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+#output: word_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(wesanderson)
+library(SRJPEdata)
+library(SRJPEmodel)
+```
+
+## Overview
+
+The in-season outmigrant abundance model aims to predict the Juvenile Production Estimate (JPE) in near-real time by leveraging historical relationships between partial season catch estimates and total seasonal outmigration. 
+
+Unlike the stock-recruit approach, which relies on adult spawner estimates, the in-season model allows forecasting within the same water year. Note: these forecasts become more reliable later in the season as more data are available.
+
+## Model Objective
+
+To develop a predictive model that estimates total spring-run Chinook outmigrant abundance at Delta entry using partial in-season RST data.
+
+## Conceptual model
+
+The framework fits historical timing curves to weekly BT‑SPAS‑X outputs (including uncertainty), then uses partial-season observations to forecast remaining weekly passage, total outmigrants, and downstream routing to the Delta.
+
+*Figure 1: Conceptual Diagram of SRJPE In - Season model.* 
+
+# Model Architecture
+
+# Model Inputs
+
+# Running stock recruit submodel
+
+
+# Model Output
+
+
+
+**Resources**
