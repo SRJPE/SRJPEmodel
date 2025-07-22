@@ -119,7 +119,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   # initial parameter values
   ini_b0_pCap <- rep(NA, Ntribs)
   for(i in 1:Ntribs) {
-    irows = which(indices_site_mark_recapture == i)
+    irows = which(mark_recapture_data$ID == i)
     ini_b0_pCap[i] = qlogis(sum(mark_recapture_data$number_recaptured[irows]) /
                               sum(mark_recapture_data$number_released[irows]))
     if(is.nan(ini_b0_pCap[i]) | is.infinite(ini_b0_pCap[i])) {
