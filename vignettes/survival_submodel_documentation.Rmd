@@ -130,4 +130,4 @@ generate_survival_rate_plot(survival_estimates)
 
 **Resources**
 
-For more in depth documentation on the Spring Run JPE Survival Model please see the full report. (TODO add link once available online)
+For more in depth documentation on the Spring Run JPE Survival Model please see the full report.
