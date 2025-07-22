@@ -11,7 +11,7 @@ library(RPostgres) # for stock-recruit
 
 # run pCap model
 pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
-pCap <- fit_pCap_model(pCap_inputs$inputs)
+pCap <- fit_pCap_model(pCap_inputs)
 
 # run abundance model
 abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T, pCap)
