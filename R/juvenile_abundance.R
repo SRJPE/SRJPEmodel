@@ -59,7 +59,10 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+    group_by(site) |>
+    arrange(year, week) |>
+    ungroup()
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
     problem_data <- mark_recapture_data |>
@@ -189,7 +192,10 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+    group_by(site) |>
+    arrange(year, week) |>
+    ungroup()
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
     problem_data <- mark_recapture_data |>
@@ -366,7 +372,10 @@ prepare_abundance_inputs <- function(site, run_year,
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+      group_by(site) |>
+      arrange(year, week) |>
+      ungroup()
 
   } else {
     # prepare "mark recapture" dataset but filter to only the mainstem site
@@ -381,7 +390,10 @@ prepare_abundance_inputs <- function(site, run_year,
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+      dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+      group_by(site) |>
+      arrange(year, week) |>
+      ungroup()
   }
 
 
@@ -391,8 +403,7 @@ prepare_abundance_inputs <- function(site, run_year,
   all_data_for_indexing <- left_join(catch_data, mark_recapture_data,
                                      by = c("year", "week", "stream",
                                             "site", "run_year", "flow_cfs",
-                                            "standardized_flow")) |>
-    arrange(week)
+                                            "standardized_flow"))
 
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
@@ -424,6 +435,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # plotting vectors for josh
   efficiency_plotting_vectors <- all_data_for_indexing |>
+    arrange(week) |>
     #arrange(year, week) |>
     filter(week %in% weeks_with_mark_recapture) |>
     select(week, number_released, number_recaptured)
@@ -474,6 +486,7 @@ prepare_abundance_inputs <- function(site, run_year,
                          "Nwomr" = number_weeks_without_mark_recapture,
                          "Uind_wMR" = indices_with_mark_recapture,
                          "Uind_woMR" = indices_without_mark_recapture,
+                         #"mr_week_order" = mark_recapture_data[indices_pCap, ]$week, # this is because we pull mr data ordered by julian week, and we need to modify it to be model week for bt spas x
                          "releases_sort" = efficiency_plotting_vectors$number_released, # this is for josh's plots
                          "recaptures_sort" = efficiency_plotting_vectors$number_recaptured, # for josh's plots
                          "ind_pCap" = indices_pCap)
