@@ -391,7 +391,8 @@ prepare_abundance_inputs <- function(site, run_year,
   all_data_for_indexing <- left_join(catch_data, mark_recapture_data,
                                      by = c("year", "week", "stream",
                                             "site", "run_year", "flow_cfs",
-                                            "standardized_flow"))
+                                            "standardized_flow")) |>
+    arrange(week)
 
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
@@ -423,7 +424,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # plotting vectors for josh
   efficiency_plotting_vectors <- all_data_for_indexing |>
-    arrange(year, week) |>
+    #arrange(year, week) |>
     filter(week %in% weeks_with_mark_recapture) |>
     select(week, number_released, number_recaptured)
 
