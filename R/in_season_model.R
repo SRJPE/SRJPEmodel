@@ -374,44 +374,51 @@ extract_inseason_estimates <- function(inputs,
 #' @md
 generate_results_plot_inseason <- function(inseason_inputs, con) {
   # Custom color palette
-  # dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
-  #
-  # # Pull forecast results from the database
-  # inseason_estimates <- get_most_recent_model_results(con) |>
-  #   filter(model_name == "inseason",  # assumed model name
-  #          stream == inseason_inputs$stream) |>
-  #   rename(inseason_week = week,
-  #          value = value) |>
-  #   select(-c(id, model_run_id, site))
-  #
-  # inseason_params <- inseason_estimates |>
-  #   select(-site)
-  #
-  # # Quantiles
-  # ci <- inseason_params |>
-  #   filter(parameter == "For_cp", statistic %in% c("25", "75")) |>
-  #   pivot_wider(names_from = "statistic", values_from = "value") |>
-  #   mutate(type = "predicted")
-  #
-  # # Central prediction and observations
-  # plot_data <- inseason_params |>
-  #   filter(parameter == "For_cp", statistic == "50") |>
-  #   rename(median = value) |>
-  #   left_join(ci)
-  #
-  # plot <- plot_data |>
-  #   ggplot(aes(x = week, y = median)) +
-  #   geom_line(position = "dodge") +
-  #   geom_ribbon(aes(ymin = `25`, ymax = `75`),
-  #               position = position_dodge(width = 0.9),
-  #               alpha = .1) +
-  #   scale_fill_manual(values = dark_JPE) +
-  #   theme_minimal() +
-  #   theme(legend.position = "bottom") +
-  #   labs(
-  #     x = "Inseason Week",
-  #     y = "Proportion of annual outmigration abundance (0 - 1)"
-  #   )
-  # return(plot)
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  # Pull forecast results from the database
+  inseason_estimates <- get_most_recent_model_results(con) |>
+    filter(model_name == "inseason",  # assumed model name
+           stream == inseason_inputs$stream) |>
+    rename(value = value) |>
+    select(-c(id, model_run_id, site))
+
+  inseason_params <- inseason_estimates
+
+  # Quantiles
+  ci <- inseason_params |>
+    filter(parameter == "For_cp", statistic %in% c("25", "75")) |>
+    pivot_wider(names_from = "statistic", values_from = "value") |>
+    mutate(type = "predicted")
+
+  # Central prediction and observations
+  plot_data <- inseason_params |>
+    filter(parameter == "For_cp", statistic == "50") |>
+    rename(median = value) |>
+    left_join(ci) |>
+    # fill in date for weeks not sampled
+    mutate(year = ifelse(week_fit > 35, 1999, 2000),
+           fake_date = ymd(paste0(year, "-01-01")),
+           final_date = fake_date + weeks(week_fit - 1),
+           date = format(final_date, "%b-%d"))
+
+
+plot <- plot_data |>
+    ggplot(aes(x = final_date, y = median)) +
+    geom_line(position = "dodge") +
+    geom_ribbon(aes(ymin = `25`, ymax = `75`),
+                position = position_dodge(width = 0.9),
+                alpha = .1) +
+    scale_fill_manual(values = dark_JPE) +
+    scale_x_date(
+    breaks = scales::pretty_breaks(n = 10),
+    labels = scales::label_date(format = "%b-%d")) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
+    labs(
+      x = "Inseason Week",
+      y = "Proportion of annual outmigration abundance (0 - 1)"
+    )
+  return(plot)
 }
 

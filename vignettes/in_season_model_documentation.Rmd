@@ -44,7 +44,7 @@ The framework fits historical timing curves to weekly BT‑SPAS‑X outputs (inc
 *Figure 1: Conceptual Diagram of SRJPE In - Season model.* 
 
 ```{r}
-knitr::include_graphics("vignettes/images/inseason_conceptual_diagram.png")
+knitr::include_graphics(path = here::here("vignettes", "images", "inseason_conceptual_diagram.png")) 
 ```
 
 # Model Architecture
@@ -90,6 +90,11 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
 inseason_inputs <- prepare_inseason_inputs(con, "battle creek", "ubc",
                                              covariate_effect = FALSE,
                                              autocorrelation = FALSE)
+inseason_fit <-  get_most_recent_model_objects(con, 
+                                        model_component = "model_fit", 
+                                        model_name = "inseason", 
+                                        stream = "battle creek")
+inseason_fit <- inseason_fit$`1023_inseason_ubc_battle creek_NA`
 ```
 
 # Model Output
@@ -108,6 +113,7 @@ The following plots show SR model results.
 ```{r, message = FALSE, warning = FALSE}
 SRJPEmodel::generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
 
+generate_diagnostic_plot(inseason_inputs, inseason_fit)
 ```
 
 **Resources**
