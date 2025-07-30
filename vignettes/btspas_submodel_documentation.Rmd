@@ -87,11 +87,10 @@ abundance <- fit_abundance_model_BUGS(abundance_inputs,
 ```{r, eval = FALSE}
 abundance_table <- extract_abundance_estimates("ubc", 2018, abundance_inputs, abundance)
 
-plot_juv_data("ubc", 2018)
-generate_diagnostic_plot_juv("ubc", 2018, abundance_table)
+generate_diagnostic_plot_juv(inputs = abundance_inputs, results_df = abundance_table)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
 cfg <- config::get()
 
 con <- DBI::dbConnect(RPostgres::Postgres(),
@@ -105,15 +104,12 @@ inputs <- get_most_recent_model_objects(con,
                                         model_component = "model_input", 
                                         model_name = "bt_spas_x", 
                                         stream = "battle creek") 
-fits <- get_most_recent_model_objects(con, 
-                                        model_component = "model_fit", 
-                                        model_name = "bt_spas_x", 
-                                        stream = "battle creek") 
-inputs_2018 <- inputs$`567_bt_spas_x_ubc_battle creek_2018`
-fits_2018 <- fits$`567_bt_spas_x_ubc_battle creek_2018`
+results <- get_most_recent_model_results(con)
 
-generate_diagnostic_plot_juv(site_arg = "ubc", run_year_arg = 2018, abundance_model_fit_table = fits_2018)
-plot_juv_data("ubc", 2018)
+inputs_2018 <- inputs$`1238_bt_spas_x_ubc_battle creek_2018`
+
+generate_diagnostic_plot_juv(inputs = inputs_2018, results_df = results)
+
 ```
 
 # Resources
