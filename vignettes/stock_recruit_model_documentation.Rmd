@@ -87,24 +87,6 @@ battle_inputs <- prepare_stock_recruit_inputs(con = con,
 battle_SR_model <- fit_stock_recruit_model(battle_inputs)
 ```
 
-```{r, show = FALSE}
-# cfg <- config::get()
-# 
-# con <- DBI::dbConnect(RPostgres::Postgres(),
-#                       dbname = cfg$db_name,
-#                       host = cfg$db_host,
-#                       port = cfg$db_port,
-#                       user = cfg$db_user,
-#                       password = cfg$db_password)
-# 
-# SRJPEmodel::get_model_object(con = con, 
-#                              model_component = "model_fit",
-#                              model_run_id = NULL,
-#                              keyword = NULL,
-#                              access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
-#                              )
-```
-
 # Model Output
 The Stock Recruit model produces a STAN fit object when run. You can extract parameter estimates from the model object with the function `extract_stock_recruit_estimates()`. This produces a table.
 
