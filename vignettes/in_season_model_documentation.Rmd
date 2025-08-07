@@ -87,21 +87,21 @@ con <- DBI::dbConnect(RPostgres::Postgres(),
                       password = cfg$db_password)
 
 
-inseason_inputs <- prepare_inseason_inputs(con, "battle creek", "ubc",
+inseason_inputs <- prepare_inseason_inputs(con, "clear creek", "lcc",
                                              covariate_effect = FALSE,
                                              autocorrelation = FALSE)
 inseason_fit <-  get_most_recent_model_objects(con, 
                                         model_component = "model_fit", 
                                         model_name = "inseason", 
-                                        stream = "battle creek")
-inseason_fit <- inseason_fit$`1023_inseason_ubc_battle creek_NA`
+                                        stream = "clear creek")
+inseason_fit_subset <- inseason_fit$`1024_inseason_lcc_clear creek_NA`
 ```
 
 # Model Output
 The Stock Recruit model produces a STAN fit object when run. You can extract parameter estimates from the model object with the function `extract_inseason_estimates()`. This produces a table.
 
 ```{r, message = FALSE, warning = FALSE}
-inseason_estimates <- extract_inseason_estimates(inseason_inputs, inseason_fit)
+inseason_estimates <- extract_inseason_estimates(inseason_inputs, inseason_fit_subset)
 ```
 
 ```{r, message = FALSE, warning = FALSE}
@@ -113,7 +113,7 @@ The following plots show SR model results.
 ```{r, message = FALSE, warning = FALSE}
 SRJPEmodel::generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
 
-generate_diagnostic_plot(inseason_inputs, inseason_fit)
+generate_diagnostic_plot(inseason_inputs, inseason_fit_subset)
 ```
 
 **Resources**
