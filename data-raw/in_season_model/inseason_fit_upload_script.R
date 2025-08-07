@@ -27,7 +27,7 @@ for(i in c("battle creek", "clear creek")) {
   store_model_fit(con,
                   model_fit_object = inseason_fit,
                   model_inputs = inseason_inputs,
-                  results_name = "inseason",
+                  results_name = inseason_inputs$model_name,
                   description = paste(i, "model fit object from auto-run tests no covariate effect or autocorrelation"))
 
 }
