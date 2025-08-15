@@ -54,7 +54,7 @@ store_model_fit <- function(con, storage_account = "jpemodelresults", container_
   }
   # check that they supply an approved results name
   if(!results_name %in% c("pcap_all", "pcap_mainstem", "p2s", "stock_recruit",
-                          "bt_spas_x", "inseason", "survival",
+                          "bt_spas_x", "beta_dev_hbmrt", "beta_dv_hbmrt_lag1", "survival",
                           "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
                           "survival_cov_wy", "survival_no_cov")) {
     cli::cli_abort("You must supply an approved value to the results_name argument.")
