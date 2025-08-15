@@ -400,25 +400,25 @@ generate_results_plot_inseason <- function(inseason_inputs, con) {
     mutate(year = ifelse(week_fit > 35, 1999, 2000),
            fake_date = ymd(paste0(year, "-01-01")),
            final_date = fake_date + weeks(week_fit - 1),
-           date = format(final_date, "%b-%d"))
+           date = format(final_date, "%b-%d"),
+           order = 1:n(),
+           theta = order/n()) |> glimpse()
 
-
-plot <- plot_data |>
-    ggplot(aes(x = final_date, y = median)) +
-    geom_line(position = "dodge") +
-    geom_ribbon(aes(ymin = `25`, ymax = `75`),
-                position = position_dodge(width = 0.9),
-                alpha = .1) +
-    scale_fill_manual(values = dark_JPE) +
-    scale_x_date(
-    breaks = scales::pretty_breaks(n = 10),
-    labels = scales::label_date(format = "%b-%d")) +
-    theme_minimal() +
-    theme(legend.position = "bottom") +
-    labs(
-      x = "Inseason Week",
-      y = "Proportion of annual outmigration abundance (0 - 1)"
-    )
+    plot <- plot_data |>
+      ggplot(aes(x = theta, y = median)) +
+      geom_line() +
+      # geom_point() +
+      geom_ribbon(aes(ymin = `25`, ymax = `75`),
+                  position = position_dodge(width = 0.9),
+                  alpha = .1) +
+      scale_fill_manual(values = dark_JPE) +
+      xlim(0, 1) +
+      theme_minimal() +
+      theme(legend.position = "bottom") +
+      labs(
+        x = "Inseason Week",
+        y = "Proportion of annual outmigration abundance (0 - 1)"
+      )
   return(plot)
 }
 
