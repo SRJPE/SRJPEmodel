@@ -391,16 +391,6 @@ generate_results_plot_inseason <- function(inseason_inputs, con) {
     pivot_wider(names_from = "statistic", values_from = "value") |>
     mutate(type = "predicted")
 
-  # Dates to highlight
-  highlight_dates <- as.Date(c("1999-12-28", "2000-02-01", "2000-03-01", "2000-03-29"))
-
-  # Find the closest theta for each target date
-  highlight_data <- lapply(highlight_dates, function(d) {
-    idx <- which.min(abs(as.numeric(plot_data$final_date - d)))
-    tibble(theta = plot_data$theta[idx],
-           label = format(d, "%b-%d"))
-  }) |> bind_rows()
-
   # Central prediction and observations
   plot_data <- inseason_params |>
     filter(parameter == "For_cp", statistic == "50") |>
@@ -410,10 +400,21 @@ generate_results_plot_inseason <- function(inseason_inputs, con) {
     # fill in date for weeks not sampled
     mutate(year = ifelse(week_fit > 35, 1999, 2000),
            fake_date = ymd(paste0(year, "-01-01")),
-           final_date = fake_date + weeks(week_fit - 1),
-           date = format(final_date, "%b-%d"),
+           final_date = fake_date + weeks(week_fit - 1)) |>
+    arrange(final_date) |>
+    mutate(date = format(final_date, "%b-%d"),
            order = 1:n(),
-           theta = order/n()) |> glimpse()
+           theta = order/n())
+
+  # Dates to highlight
+  highlight_dates <- as.Date(c("1999-12-28", "2000-02-01", "2000-03-01", "2000-03-29"))
+
+  # Find the closest theta for each target date
+  highlight_data <- lapply(highlight_dates, function(d) {
+    idx <- which.min(abs(as.numeric(plot_data$final_date - d)))
+    tibble(theta = plot_data$theta[idx],
+           label = format(d, "%b-%d"))
+  }) |> bind_rows()
 
     plot <- plot_data |>
       ggplot(aes(x = theta, y = median)) +
