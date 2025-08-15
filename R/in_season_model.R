@@ -391,10 +391,21 @@ generate_results_plot_inseason <- function(inseason_inputs, con) {
     pivot_wider(names_from = "statistic", values_from = "value") |>
     mutate(type = "predicted")
 
+  # Dates to highlight
+  highlight_dates <- as.Date(c("1999-12-28", "2000-02-01", "2000-03-01", "2000-03-29"))
+
+  # Find the closest theta for each target date
+  highlight_data <- lapply(highlight_dates, function(d) {
+    idx <- which.min(abs(as.numeric(plot_data$final_date - d)))
+    tibble(theta = plot_data$theta[idx],
+           label = format(d, "%b-%d"))
+  }) |> bind_rows()
+
   # Central prediction and observations
   plot_data <- inseason_params |>
     filter(parameter == "For_cp", statistic == "50") |>
     rename(median = value) |>
+    # mutate(median =  format(median, scientific = FALSE)) |> View()
     left_join(ci) |>
     # fill in date for weeks not sampled
     mutate(year = ifelse(week_fit > 35, 1999, 2000),
@@ -412,9 +423,38 @@ generate_results_plot_inseason <- function(inseason_inputs, con) {
                   position = position_dodge(width = 0.9),
                   alpha = .1) +
       scale_fill_manual(values = dark_JPE) +
-      xlim(0, 1) +
+      scale_x_continuous(
+        name = "Date",
+        limits = c(0.2, 0.7), #can adjust limits to show full year
+        breaks = plot_data$theta[plot_data$week_fit %% 4 == 0], # every 4th week
+        labels = plot_data$date[plot_data$week_fit %% 4 == 0]
+      ) +
+      # Black thin vertical lines
+      geom_vline(
+        data = highlight_data,
+        aes(xintercept = theta),
+        linetype = "dotted",
+        color = "black",
+        size = 0.25
+      ) +
+      # Black text at bottom of the line
+      geom_text(
+        data = highlight_data,
+        aes(
+          x = theta,
+          y = min(plot_data$median, na.rm = TRUE) * 0.95,  # slightly below min
+          label = label
+        ),
+        angle = 90,
+        vjust = 1.5,
+        hjust = .5,
+        color = "black",
+        size = 2,
+        inherit.aes = FALSE
+      ) +
       theme_minimal() +
-      theme(legend.position = "bottom") +
+      theme(legend.position = "bottom",
+            axis.text.x = element_text(angle = 60, vjust = 0.5, hjust = 0.5)) +
       labs(
         x = "Inseason Week",
         y = "Proportion of annual outmigration abundance (0 - 1)"
