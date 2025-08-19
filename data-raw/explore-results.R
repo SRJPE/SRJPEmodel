@@ -83,7 +83,8 @@ generate_results_plot_sr(sr_inputs, battle_sr)
 # survival model ----------------------------------------------------------
 
 # explore results for survival model
-survival_inputs <- prepare_survival_inputs(number_of_water_year_types = 3)
+survival_inputs <- prepare_survival_inputs(number_of_water_year_types = 3,
+                                           effect = "fork_length_effect")
 survival_results <- fit_survival_model(survival_inputs)
 survival_estimates <- extract_survival_estimates(survival_results)
 generate_survival_rate_plot(survival_estimates)
