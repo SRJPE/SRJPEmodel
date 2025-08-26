@@ -2,6 +2,19 @@
 #
 # }
 
+read_plad_csv <- function(site) {
+  PLAD_results <- suppressWarnings(read_csv(paste0(here::here("data-raw", "PLAD", "PLAD_results"),
+                                                   "/SRforklength_", site, ".csv"))) |>
+    mutate(site = site) |>
+    tidyr::separate_wider_delim("0.975", names = c("0.975", "extra"), delim = ",") |>
+    mutate(across(`0.5`:extra, as.numeric))
+
+  colnames(PLAD_results) <- c("week", "plad_0.5", "plad_0.025", "plad_0.25",
+                              "plad_0.75", "plad_0.975", "site")
+
+  return(PLAD_results)
+}
+
 # args
 set.seed(SRJPEmodel::forecast_seed)
 water_year_forecast <- 2 # TODO confirm this with Josh, will this change? this represents the element # to use for forecast year (e.g., iwy=1 for critical, iwy=2 for D/BN/AN, iwy=3 for W)
@@ -38,15 +51,16 @@ survival_posterior <- as.data.frame(survival_fit,
   mutate(across(size_class:reach, as.numeric))
 
 
-n_sims <- dim(survival_param_matrix)[1]
+n_sims <- dim(as.data.frame(survival_fit,
+                            pars = c("SurvForecastSz","TribSurvForecastSz")))[1]
 
 n_survival_locations <- 3 # Types of survival predictions from CJS model (mainstem, butte, feather)
 trib_type_lookup <- c(1, 1, 1, 1, 2, 3) # ubc, ucc, mill, deer = 1, butte = 2, and eventually feather = 3
 
 # Read in CJS forecasted survival posteriors
 n_size_classes <- 25 # TODO confirm if this will change
-size_covariate  <- seq(from = 10, to = 130, length.out = n_size_classes)
-survival_posterior <- array(dim = c(n_sims, n_size_classes, n_survival_locations))
+size_covariate  <- tibble("size_class_bin" = seq(from = 10, to = 130, length.out = n_size_classes),
+                          "size_class_index" = 1:n_size_classes)
 
 survival_statistics <- survival_posterior |>
   mutate(location = ifelse(parameter == "SurvForecastSz", "mainstem", "tributary")) |>
@@ -55,7 +69,9 @@ survival_statistics <- survival_posterior |>
             `10` = quantile(estimate, 0.1),
             `50` = quantile(estimate, 0.5),
             `90` = quantile(estimate, 0.9)) |>
-  ungroup()
+  ungroup() |>
+  left_join(size_covariate, by = c("size_class" = "size_class_index")) |>
+  relocate(size_class_bin, .after = size_class)
 
 # set up weights
 Fl_mu=vector(length=Ntribs)#pRun-weighted average forklength in forecast year
@@ -67,46 +83,38 @@ DS_surv_mu=vector(length=Ntribs);
 DS_surv_sd=DS_surv_mu
 
 # extract PLAD results
-plad_results <- purrr::pmap(list(site = SRJPEmodel::forecast_sites),
+plad_fl_results <- purrr::pmap(list(site = SRJPEmodel::forecast_sites),
                             read_plad_csv) |>
   reduce(bind_rows)
-# TODO we need julian_week,
 
+# TODO update this function call so you can filter by site, model name, etc. in call
+cumulative_proportions <- SRJPEmodel::get_most_recent_model_results(con) |>
+  filter(model_name == "inseason",
+         parameter == "For_cp",
+         statistic %in% c("mean")) |>
+  select(site, week_fit, value, statistic) |>
+  mutate(statistic = paste0("cp_", statistic)) |>
+  pivot_wider(names_from = "statistic", values_from = "value") |>
+  mutate(sort = ifelse(week_fit >= 36, 1, 2)) |>
+  arrange(site, sort, week_fit) |>
+  select(-sort)
 
-
-
-for(itrib in 1:Ntribs){
+# link forecasted cumulative proportion by week to PLAD results by week
+fl_cp_results <- cumulative_proportions |>
+  left_join(plad_fl_results, by = c("week_fit" = "week", "site"))
 
   # 1) Get across-year mean size of spring run by week from PLAD  #########
-  #First step is to load the PLAD sizes for each trib and week
-  fn_sz=paste0(PLADpath,"/SRforklength_",DoTrib[itrib],".csv")
-  dsz=read.csv(file=fn_sz,header=T)
-  Jwk=as.integer(rownames(dsz))
-  Nwks=length(Jwk)# # of wks where sizes are available from PLAT
 
   # 2) Get proportion of run passing trap for every week in year (Sep-Aug) ########
-  if(itrib==1){
-    pRun=matrix(nrow=Ntribs,ncol=Nwks)
-    Sz=pRun;  Surv=pRun
 
-    labwk=character(length=Nwks)#for plotting
-    for(iwk in 1:Nwks)labwk[iwk]=calwk[which(mwk==Jwk[iwk])]
-  }
-  Sz[itrib,1:Nwks]=dsz$X0.5# put size in a matrix for later plotting
-
-  #Load inseason outmigrant timing model to calculate proportion of run for each week
-  fnm=paste0(InseasDir,DoTrib[itrib],"_null.Rdata")
-  load(file=fnm)
-  dcp=as.data.frame(fit, pars = c("For_cp"))
-
-  iwk=1;imwk=which(mwk==Jwk[iwk])#identify the inseaon model week for the Julian week designation in PLAD
-  pRun[itrib,iwk]=mean(dcp[,imwk],na.rm=T)
-  for(iwk in 2:Nwks){
-    imwk=which(mwk==Jwk[iwk])
-    pRun[itrib,iwk]=mean(dcp[,imwk],na.rm=T)-sum(pRun[itrib,1:(iwk-1)])
-  }
-  pRun[itrib,]=pRun[itrib,]/sum(pRun[itrib,])#Make sure it sums to one to avoid any discretization error
-
+  cp_proportions <- cumulative_proportions |>
+    right_join(plad_fl_results, by = c("week_fit" = "week", "site")) |>
+    select(-c(plad_0.5:plad_0.975)) |>
+    group_by(site) |>
+    mutate(weekly_added = cp_mean - lag(cp_mean),
+           weekly_added = ifelse(is.na(weekly_added), cp_mean, weekly_added),
+           total = sum(weekly_added),
+           weekly_added_std = weekly_added / total)
 
   #3) Get pRun-weighted size and survival rate for outmigrant run ################
 
@@ -119,7 +127,8 @@ for(itrib in 1:Ntribs){
     jtrib=3
   }
 
-  Surv_mu_check[itrib]=0;Fl_mu[itrib=0]
+  Surv_mu_check[itrib]=0;
+  Fl_mu[itrib=0]
   #Set of samples to grab from posterior sample of CJS survival for size class associated with following weeks
   if(itrib==1) isamps=sample(1:n_sims,size=500,replace=F) #to keep comp_post to reasonable size, sample 100 posterior survival values from each size class (wk)
   for(iwk in 1:Nwks){
@@ -158,85 +167,3 @@ for(itrib in 1:Ntribs){
   #sim_surv used to see if composite posterior (comp_post) is accurately modelled by DS_surv_mu and DS_surv_sd and JPE.stan approap
   #For plotting (if PlotType==2) or text output on different plot type (if PlotType==1)
   sim_surv=inv_logit(rnorm(n=5000,mean=DS_surv_mu[itrib],sd=DS_surv_sd[itrib]))
-
-  if(PlotType==1){
-    #Plot proportion of run and size by week with weighted survival mean and other stats printed on each panel
-    plot(1:Nwks,pRun[itrib,],type='l',bty='n',main=DoTrib[itrib],xlab="",ylab="",axes=F)
-    axis(2);axis(1,at=1:Nwks,labels=labwk,las=3)
-    mu1=mean(sim_surv); sd1=sd(sim_surv)
-    #text(x=1,y=max(pRun[itrib,])*0.9, labels=paste0("Wgt'd mean FL ",round(Fl_mu[itrib],digits=2)),pos=4)
-    #text(x=1,y=max(pRun[itrib,])*0.85, labels=paste0("Wgt'd mean Surv (Surv_mu_check) ",round(Surv_mu_check[itrib],digits=2)),pos=4)
-    #text(x=1,y=max(pRun[itrib,])*0.8, labels=paste0("Mean Surv from comp_post (Surv_mu) ",round(Surv_mu[itrib],digits=2)),pos=4)
-    #text(x=1,y=max(pRun[itrib,])*0.75, labels=paste0("mean of tranformed DSsurv ",round(mu1,digits=2)),pos=4)
-    #text(x=1,y=max(pRun[itrib,])*0.7, labels=paste0("sd Surv from comp_post ",round(sd(comp_post),digits=2)),pos=4)
-    #text(x=1,y=max(pRun[itrib,])*0.65, labels=paste0("sd of sim surv's from DSsurv_mu and _sd ",round(sd1,digits=2)),pos=4)
-
-
-    par(new=T)
-    plot(1:Nwks,Sz[itrib,],type='l',bty='n',col="red",xlab="",ylab="",axes=F)
-    axis(4)
-    if(itrib==Ntribs){
-      legend("bottom",legend=c("proportion","forklength"),lty=c(1,1),col=c("black","red"),bty='n')
-      mtext("Date",side=1, las=1,line=-1,outer=T,cex=1.3,font=2)
-      mtext("Proportion of Outmigrant Run Passing Trap",side=2, las=3,line=-1,outer=T,cex=1.3,font=2)
-      mtext("Median Forklength of Spring Run Outmigrants (mm)",side=4, las=3,line=-1,outer=T,cex=1.3,font=2,col="red")
-    }
-
-  } else if (PlotType==2){
-    Pr=density(sim_surv)
-    Po=hist(comp_post,plot=F)
-    ymax=max(c(max(Po$density),max(Pr$y)))
-
-    hist(comp_post,ylim=c(0,ymax),xlab="",ylab="",main=DoTrib[itrib],freq=F,axes=F)
-    axis(1);lines(density(sim_surv),lty=2)
-
-    if(itrib==Ntribs){
-      legend("topright",legend=c("pRun-weighted composite posterior","JPE.stan simulated posterior"),lty=c(NA,2),pch=c(22,NA),pt.bg=c("gray","NA"),bty='n')
-      mtext("Downstream Survival Rate",side=1, las=1,line=-1,outer=T,cex=1.3,font=2)
-      mtext("Frequency",side=2, las=3,line=-1,outer=T,cex=1.3,font=2)
-    }
-
-  }
-}#next itrib
-
-
-#Plot survival stats from CJS model and overlay stats that will be used in JPE.stan based on pRun-weighted mean size. Should be close
-par(mfrow=c(2,2),xaxs="i",mai=c(.8,.7,.5,.5), omi=c(0.25,0.25,0.5,0.25),cex.axis=0.9)
-xcol=c("black","blue","red","green")#multiple tribs use the same mainstem survival relationship
-for(jtrib in 1:3){
-  xmain=switch(jtrib,"ubc/ucc/mill/deer","Butte","Feather")
-  plot(size_covariate,survival_statistics[jtrib,,2],type='l',bty='n',ylim=c(0,max(survival_statistics[jtrib,,3])),xlab="",ylab="",main=xmain)
-  polygon(x = c(rev(size_covariate), size_covariate), y = c(rev(survival_statistics[jtrib,,1]), survival_statistics[jtrib,,3]), col = alpha("grey", 0.25), border = NA)
-
-  #check to see if simulated survival going into stan model (based on DS_surv_mu and DS_surv_sd
-  #is reproducing what is coming out of CJS model
-  if(jtrib<=2){ #exclude feather for now
-    trib_type_lookup=c(1,1,1,1,2,3)
-    itribs=which(trib_type_lookup==jtrib)
-
-    for(j in 1:length(itribs)){
-
-      y1=inv_logit(rnorm(n=5000,mean=DS_surv_mu[itribs[j]],sd=DS_surv_sd[itribs[j]]))
-      dstats=as.double(quantile(y1,probs=CI));dstats[2]=mean(y1)
-
-      #For x-axis position, find the size_covariate index closes to FL_mu, the pRun-weighted mean size
-      irecs=which(size_covariate<=Fl_mu[itribs[j]])
-      if(length(irecs)==0){size_class_mu=1} else{size_class_mu=max(irecs)}
-      #points(size_covariate[size_class_mu],dstats[2],pch=19,cex=1.2,col=xcol[j])
-      #lines(x=c(size_covariate[size_class_mu],size_covariate[size_class_mu]),y=c(dstats[1],dstats[3]),col=xcol[j])
-    }
-  }
-  #if(jtrib==1) legend("topright",legend=c(DoTrib[1:4]),col=xcol,pch=rep(19,4),bty='n')
-}
-mtext("Forklength (mm)",side=1, las=1,line=-1,outer=T,cex=1.3,font=2)
-mtext("Survival Rate to Delta",side=2, las=3,line=-1,outer=T,cex=1.3,font=2)
-
-
-
-read_plad_csv <- function(site) {
-  PLAD_results <- read_csv(paste0(here::here("data-raw", "PLAD", "PLAD_results"),
-                                  "SR_forklength_", site, ".csv")) |>
-    mutate(site = site)
-
-  return(PLAD_results)
-}
