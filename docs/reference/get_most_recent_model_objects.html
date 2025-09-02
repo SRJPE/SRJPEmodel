@@ -37,7 +37,7 @@ the inputs used to fit the associated model object."><!-- mathjax --><script src
       <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
     </li>
     <li>
-      <a href="../articles/btspas_submodel_documentation.html">Juvenile Abundance Model (BTSPAS-X)</a>
+      <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
     </li>
   </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"><li>
@@ -70,7 +70,9 @@ the inputs used to fit the associated model object.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_most_recent_model_objects</span><span class="op">(</span></span>
 <span>  <span class="va">con</span>,</span>
 <span>  model_component <span class="op">=</span> <span class="st">"model_fit"</span>,</span>
-<span>  access_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AZ_CONTAINER_ACCESS_KEY"</span><span class="op">)</span></span>
+<span>  access_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AZ_CONTAINER_ACCESS_KEY"</span><span class="op">)</span>,</span>
+<span>  model_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  stream <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -84,6 +86,17 @@ the inputs used to fit the associated model object.</p>
 
 <dt id="arg-model-component">model_component<a class="anchor" aria-label="anchor" href="#arg-model-component"></a></dt>
 <dd><p>A choice of <code>model_fit</code>, <code>model_input</code> or <code>model_plot</code> to pull.</p></dd>
+
+
+<dt id="arg-model-name">model_name<a class="anchor" aria-label="anchor" href="#arg-model-name"></a></dt>
+<dd><p>Can be left empty. If provided, must be one of <code>pcap_all</code>, <code>bt_spas_x</code>,
+<code>pcap_mainstem</code>, <code>p2s</code>, <code>inseason</code>, or <code>stock_recruit</code></p></dd>
+
+
+<dt id="arg-stream">stream<a class="anchor" aria-label="anchor" href="#arg-stream"></a></dt>
+<dd><p>Can be left empty. If provided, must be one of <code>battle creek</code>,
+<code>clear creek</code>, <code>deer creek</code>, <code>mill creek</code>, <code>feather river</code>, <code>butte creek</code>,
+<code>sacramento river</code>, or <code>yuba river</code>.</p></dd>
 
 </dl></div>
     <div id="value">

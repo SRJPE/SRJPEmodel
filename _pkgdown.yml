@@ -57,6 +57,7 @@ reference:
   - prepare_inseason_inputs
   - fit_inseason_model
   - extract_inseason_estimates
+  - generate_results_plot_inseason
 - title: Model Data
   desc: Additional data beyons SRJPEdata needed to run model
 - contents:

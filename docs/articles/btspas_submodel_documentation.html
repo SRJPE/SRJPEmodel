@@ -53,7 +53,7 @@
       <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
     </li>
     <li>
-      <a href="../articles/btspas_submodel_documentation.html">Juvenile Abundance Model (BTSPAS-X)</a>
+      <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
     </li>
   </ul>
 </li>
@@ -113,18 +113,22 @@ model or a within season outmigrant forecast model. BT-SPAS-X was
 specifically designed to address the often-sparse trap efficiency data
 available to estimate abundance at any given RST site. Trap efficiency
 is predicted based on a hierarchical model that estimates site-specific
-means, site-specific flow effects, and unexplained error. Weekly
-abundance is estimated using a spline model that is fit to the weekly
-catch data given weekly estimates of trap efficiency. The spline model
-allows estimation of abundance in weeks when the trap was not
-operated.</p>
-<p>The input data for the model includes weekly catch (‘u’ in Figure x
-below, trap efficiency data (releases ‘R’ and recaptures ‘r’ ), and
-weekly average flow (Q’). The model output includes weekly estimates of
-abundance and uncertainty, and weekly estimates of trap efficiency and
-uncertainty. Length frequency data for each week is required if
-calculating abundance by run type in a post-processing step using the
-PLAD model.</p>
+means, site-specific flow effects, and process error. Weekly abundance
+is estimated using a spline model that is fit to the weekly catch data
+given weekly estimates of trap efficiency. The spline model allows
+estimation of abundance in weeks when the trap was not operated.</p>
+<p>The input data for the model includes weekly catch
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math>
+in Figure 2 below), trap efficiency data (releases
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math>
+and recaptures
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
+), and weekly average flow
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math>).
+The model outputs weekly estimates of abundance and uncertainty and
+weekly estimates of trap efficiency and uncertainty. Length frequency
+data for each week is required if calculating abundance by run type in a
+post-processing step using the PLAD model.</p>
 </div>
 <div class="section level3">
 <h3 id="conceptual-model">Conceptual model<a class="anchor" aria-label="anchor" href="#conceptual-model"></a>
@@ -133,7 +137,7 @@ PLAD model.</p>
 model or a within season outmigrant forecast model. See figure 1 below
 to see how it fits into the full JPE model system.</p>
 <p><em>Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model
-highlighted in red.</em></p>
+highlighted in yellow</em></p>
 <p><img src="images%2FBTSPASX%20jpe%20diagram.png"></p>
 </div>
 <div class="section level3">
@@ -144,14 +148,16 @@ abundance estimation (Figure 1). The trap efficiency component estimates
 parameters of a global trap efficiency model by fitting to data from
 more than 900 efficiency trials across all available tributary RST
 sites. This model is then used to estimate trap efficiency for each week
-in a run year (November 1-June 1) at the site the abundance model is run
-for. There are three levels for the trap efficiency model. The lowest
-level is where the predicted trap efficiency (P) for any site, year, and
-week with trap efficiency data is compared to the data. The next level
-is where site, year, and week-specific trap efficiencies are estimated.
-The highest level is represented by hyper-distributions which define the
-distributions where site specific parameters are estimated.</p>
-<p>Figure X.1. Directed acyclic diagram (DAG) showing the hierarchical
+in a run year (November 1-June 1) at the site for which the abundance
+model is run. There are three levels for the trap efficiency model. The
+lowest level is where the predicted trap efficiency
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>P</mi><annotation encoding="application/x-tex">P</annotation></semantics></math>)
+for any site, year, and week with trap efficiency data is compared to
+the data. The next level is where site, year, and week-specific trap
+efficiencies are estimated. The highest level is represented by
+hyper-distributions which define the distributions where site specific
+parameters are estimated.</p>
+<p><em>Figure 2. Directed acyclic diagram (DAG) showing the hierarchical
 structure of the trap efficiency component of BT-SPAS-X and how
 predictions of trap efficiency are by the abundance component of the
 model. Ovals denote stochastic nodes (variables that are estimated)
@@ -160,53 +166,58 @@ direction of influence. For example, the hyper parameters μS and σS
 define a normal distribution from which site specific intercepts β_S are
 drawn. The red triangle indicates that trap efficiency estimates
 contribute to estimates of abundance, but that abundance model
-parameters do not influence trap efficiency parameters.</p>
+parameters do not influence trap efficiency parameters.</em></p>
+<p><img src="images%2FDAG_diagram.png"></p>
 </div>
 <div class="section level2">
 <h2 id="model-inputs">Model inputs<a class="anchor" aria-label="anchor" href="#model-inputs"></a>
 </h2>
-<p>The model takes in two datasets:</p>
+<p>The model takes in a few datasets:</p>
 <ul>
 <li>
 <strong>Weekly Juvenile Abundance Model Data</strong> Weekly catch,
 efficiency, flow, and log normal priors needed to run the model. This is
-in the <code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_model_data</a></code> data
-object.</li>
+in the <code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_catch_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_catch_data</a></code> and
+<code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_efficiency_data</a></code> data
+objects.</li>
 <li>
 <strong>BTSPAS params</strong> Bayesian estimation specifications.
 <code><a href="../reference/bt_spas_x_bayes_params.html">SRJPEmodel::bt_spas_x_bayes_params</a></code>
 </li>
 </ul>
+<p>These datasets are prepared for STAN and BUGS models using the
+<code><a href="../reference/prepare_pCap_inputs.html">prepare_pCap_inputs()</a></code> &amp; the
+<code><a href="../reference/prepare_abundance_inputs.html">prepare_abundance_inputs()</a></code> functions (see example below for
+more details.</p>
 </div>
 <div class="section level2">
 <h2 id="running-btspas-x-submodel">Running BTSPAS-X submodel<a class="anchor" aria-label="anchor" href="#running-btspas-x-submodel"></a>
 </h2>
-<p>BTSPAS-X can be run in single run mode or multi run mode.</p>
-<p>In the single run mode, BTSPAS-X is run independently for each stream
-site and run year. Below is an example for the upper battle creek RST in
-2004.</p>
+<p>Below is an example for the upper battle creek RST in 2018.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bt_spas_x_results</span> <span class="op">&lt;-</span> <span class="fu">run_single_bt_spas_x</span><span class="op">(</span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="va"><a href="../reference/bt_spas_x_bayes_params.html">bt_spas_x_bayes_params</a></span>,</span>
-<span>                                         bt_spas_x_input_data <span class="op">=</span> <span class="va">updated_input</span>,</span>
-<span>                                         site <span class="op">=</span> <span class="st">"ubc"</span>,</span>
-<span>                                         run_year <span class="op">=</span> <span class="fl">2004</span>,</span>
-<span>                                         effort_adjust <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>                                         bugs_directory <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data-raw"</span>, <span class="st">"WinBUGS14"</span><span class="op">)</span>,</span>
-<span>                                         debug_mode <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>In the multi run mode, BTSPAS-X is run for all stream sites and run
-years at once. Below is an example of multi run mode.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="va">bt_spas_x_multiple_system_results</span> <span class="op">&lt;-</span> <span class="fu">run_multiple_bt_spas_x</span><span class="op">(</span>bt_spas_x_bayes_params <span class="op">=</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="va"><a href="../reference/bt_spas_x_bayes_params.html">bt_spas_x_bayes_params</a></span>,</span>
-<span>                                                            bt_spas_x_input_data <span class="op">=</span> <span class="fu">SRJPEdata</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">weekly_juvenile_abundance_model_data</a></span>,</span>
-<span>                                                            effort_adjust <span class="op">=</span> <span class="cn">T</span>, </span>
-<span>                                                            bugs_directory <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data-raw"</span>, <span class="st">"WinBUGS14"</span><span class="op">)</span>, </span>
-<span>                                                            debug_mode <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># bt-spas-x ---------------------------------------------------------------</span></span>
+<span><span class="co"># example for upper battle creek (ubc) 2018 (trib)</span></span>
+<span></span>
+<span><span class="co"># run pCap model</span></span>
+<span><span class="va">pCap_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_pCap_inputs.html">prepare_pCap_inputs</a></span><span class="op">(</span>mainstem <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">pCap</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_pCap_model.html">fit_pCap_model</a></span><span class="op">(</span><span class="va">pCap_inputs</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># run abundance model</span></span>
+<span><span class="va">abundance_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_abundance_inputs.html">prepare_abundance_inputs</a></span><span class="op">(</span><span class="st">"ubc"</span>, <span class="fl">2018</span>, effort_adjust <span class="op">=</span> <span class="cn">T</span>, <span class="va">pCap</span><span class="op">)</span></span>
+<span><span class="va">abundance</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_abundance_model_BUGS.html">fit_abundance_model_BUGS</a></span><span class="op">(</span><span class="va">abundance_inputs</span>,</span>
+<span>                                      <span class="co"># point towards where you store the .bug model</span></span>
+<span>                                      <span class="st">"C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug"</span>,</span>
+<span>                                      <span class="co"># point to where you have WinBUGS</span></span>
+<span>                                      <span class="st">"C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
 </h2>
-<p>TODO - code for model output</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">abundance_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_abundance_estimates.html">extract_abundance_estimates</a></span><span class="op">(</span><span class="st">"ubc"</span>, <span class="fl">2018</span>, <span class="va">abundance_inputs</span>, <span class="va">abundance</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/generate_diagnostic_plot_juv.html">generate_diagnostic_plot_juv</a></span><span class="op">(</span>inputs <span class="op">=</span> <span class="va">abundance_inputs</span>, results_df <span class="op">=</span> <span class="va">abundance_table</span><span class="op">)</span></span></code></pre></div>
+<p><img src="btspas_submodel_documentation_files/figure-html/unnamed-chunk-4-1.png" width="672"></p>
 </div>
 <div class="section level2">
 <h2 id="resources">Resources<a class="anchor" aria-label="anchor" href="#resources"></a>

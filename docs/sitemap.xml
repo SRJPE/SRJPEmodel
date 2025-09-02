@@ -3,8 +3,11 @@
 <url><loc>https://SRJPE.github.io/SRJPEmodel/LICENSE-text.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/LICENSE.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html</loc></url>
+<url><loc>https://SRJPE.github.io/SRJPEmodel/articles/in_season_model_documentation.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/articles/index.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html</loc></url>
+<url><loc>https://SRJPE.github.io/SRJPEmodel/articles/plad_submodel_documentation.html</loc></url>
+<url><loc>https://SRJPE.github.io/SRJPEmodel/articles/stock_recruit_model_documentation.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/articles/survival_submodel_documentation.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/authors.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/index.html</loc></url>
@@ -35,6 +38,7 @@
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_diagnostic_plot_sr.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_diagnostic_plot_sr_covar.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_lt_pCap_Us.html</loc></url>
+<url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_results_plot_inseason.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_results_plot_p2s.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_results_plot_sr.html</loc></url>
 <url><loc>https://SRJPE.github.io/SRJPEmodel/reference/generate_survival_rate_plot.html</loc></url>
