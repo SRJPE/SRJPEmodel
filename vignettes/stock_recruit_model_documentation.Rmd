@@ -1,6 +1,6 @@
 ---
 title: "Stock Recruit Model"
-author: "Josh Kroman"
+author: "Josh Korman"
 output:
   html_document: default
   theme: flatly
@@ -29,12 +29,11 @@ library(SRJPEmodel)
 
 ## Overview
 
-Freshwater stock-recruitment models with covariates will be used to estimate annual outmigrant abundance as a function of spawner abundance and covariates. The models will be fit to historical estimates of abundance and covariate conditions. These relationships will then be used to make forecasts of outmigrant abundance in the JPE model. 
+Freshwater stock-recruitment models with covariates estimate annual outmigrant abundance as a function of spawner abundance and covariates. The models are fit to historical estimates of abundance and covariate conditions. These relationships can then be used to make forecasts of outmigrant abundance in the JPE model. 
 
 ## Model Objective
 
-Spawner to recruit relationships will be used to make forecasts of outmigrant abundance in the JPE model. 
-
+Spawner to recruit relationships can be used to make forecasts of outmigrant abundance in the JPE model. 
 
 ## Conceptual model
 

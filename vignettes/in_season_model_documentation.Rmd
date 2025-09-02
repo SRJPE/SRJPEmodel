@@ -29,30 +29,30 @@ library(SRJPEmodel)
 
 ## Overview
 
-The in-season outmigrant abundance model aims to predict the Juvenile Production Estimate (JPE) in near-real time by leveraging historical relationships between partial season catch estimates and total seasonal outmigration. 
+The in season outmigrant abundance model aims to predict the Juvenile Production Estimate (JPE) in near-real time by leveraging historical relationships between partial season catch estimates and total seasonal outmigration. 
 
-Unlike the stock-recruit approach, which relies on adult spawner estimates, the in-season model allows forecasting within the same water year. Note: these forecasts become more reliable later in the season as more data are available.
+Unlike the stock-recruit approach, which relies on adult spawner estimates, the in season model allows forecasting within the same water year. Note: these forecasts become more reliable later in the season as more data are available.
 
 ## Model Objective
 
-To develop a predictive model that estimates total spring-run Chinook outmigrant abundance at Delta entry using partial in-season RST data.
+To develop a predictive model that estimates total spring-run Chinook outmigrant abundance at Delta entry using partial in season RST data.
 
 ## Conceptual model
 
 The framework fits historical timing curves to weekly BT‑SPAS‑X outputs (including uncertainty), then uses partial-season observations to forecast remaining weekly passage, total outmigrants, and downstream routing to the Delta.
 
-*Figure 1: Conceptual Diagram of SRJPE In - Season model.* 
+*Figure 1: Conceptual Diagram of SRJPE In Season model.* 
 
 ```{r}
 knitr::include_graphics(path = here::here("vignettes", "images", "inseason_conceptual_diagram.png")) 
 ```
 
 # Model Architecture
-The in-season model uses historical timing curves, BT-SPAS-X outputs from previous years, to fit probabilistic passage curves that describe weekly migration timing patterns at each trap.Weekly trap data are accumulated in-season and compared to historical timing to estimate the proportion of migration already observed.Based on the accumulated observed proportion and fitted timing distributions, the model forecasts the remaining passage for the season. Estimated route fractions (e.g., to Delta) are applied.
+The in season model uses historical timing curves, BT-SPAS-X outputs from previous years, to fit probabilistic passage curves that describe weekly migration timing patterns at each trap. Weekly trap data are accumulated in season and compared to historical timing to estimate the proportion of migration already observed.Based on the accumulated observed proportion and fitted timing distributions, the model forecasts the remaining passage for the season. Estimated route fractions (e.g., to Delta) are applied.
 
 # Model Inputs
 
-The model takes in one dataset produced by `prepare_inseason_inputs()` function. This function takes in a database connection to the model run database, a stream, a site, the covariate you would like to use to fit the model (see `?prepare_inseason_input()` for the full list of covariates), and a booleen value indicating if you would like to apply autocorrelation to the data.
+The model takes in one dataset produced by `prepare_inseason_inputs()` function. This function takes in a database connection to the model run database, a stream, a site, the covariate you would like to use to fit the model (see `?prepare_inseason_inputs()` for the full list of covariates), and a boolean value indicating if you would like to apply autocorrelation to the data.
 
 # Running stock recruit submodel
 
@@ -94,7 +94,7 @@ inseason_fit <-  get_most_recent_model_objects(con,
                                         model_component = "model_fit", 
                                         model_name = "inseason", 
                                         stream = "clear creek")
-inseason_fit_subset <- inseason_fit$`1024_inseason_lcc_clear creek_NA`
+inseason_fit_subset <- inseason_fit$`1433_inseason_lcc_clear creek_NA`
 ```
 
 # Model Output
@@ -108,7 +108,7 @@ inseason_estimates <- extract_inseason_estimates(inseason_inputs, inseason_fit_s
 knitr::kable(head(inseason_estimates, 10))
 ```
 
-The following plots show SR model results. 
+The following plots show in season model results. 
 
 ```{r, message = FALSE, warning = FALSE}
 SRJPEmodel::generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
