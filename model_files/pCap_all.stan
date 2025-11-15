@@ -46,15 +46,14 @@ model {
 
   // Tributary-specific parameters drawn from across-trib hyper-parameters normal distribution
   for(i in 1:Ntribs){
-    // remove selected tributaries from estimation of b0_pCap and b0_flow
+    // remove selected tributaries from estimation of b0_pCap
     if(use_trib_for_intercept[i] == 0) {
-      // TODO confirm with Josh that we need to set anything here
+      // TODO confirm the default
       b0_pCap[i] ~ normal(0, 1);
-      b_flow[i] ~ normal(0, 1);
     } else {
       b0_pCap[i] ~ normal(trib_mu_P, trib_sd_P); // should not include okie dam and steep riffle
-      b_flow[i] ~ normal(flow_mu_P, flow_sd_P); // can include okie dam and steep riffle
     }
+    b_flow[i] ~ normal(flow_mu_P, flow_sd_P); // can include okie dam and steep riffle
   }
 
   // Likelihood for MR data
