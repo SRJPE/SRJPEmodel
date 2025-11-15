@@ -10,7 +10,8 @@ library(RPostgres) # for stock-recruit
 # example for upper battle creek (ubc) 2018 (trib)
 
 # run pCap model
-pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE)
+pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE, drop_trib_sites = TRUE,
+                                   sites_to_drop = "okie dam")
 pCap <- fit_pCap_model(pCap_inputs)
 
 # run abundance model

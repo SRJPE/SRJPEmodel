@@ -1,6 +1,7 @@
 data {
   int Ntribs;                 // number of tributaries
   int Nmr;                    // number of MR experiments
+  array[Ntribs] int use_trib_for_intercept; // allows user to remove trib from hyper
   array[Nmr] int Releases; // number of releases in MR experiments
   array[Nmr] int Recaptures;// number of recaptures in MR experiments
   array[Nmr] real mr_flow;// flow data for MR experiments
@@ -45,8 +46,15 @@ model {
 
   // Tributary-specific parameters drawn from across-trib hyper-parameters normal distribution
   for(i in 1:Ntribs){
-    b0_pCap[i] ~ normal(trib_mu_P, trib_sd_P);
-    b_flow[i] ~ normal(flow_mu_P, flow_sd_P);
+    // remove selected tributaries from estimation of b0_pCap and b0_flow
+    if(use_trib_for_intercept[i] == 0) {
+      // TODO confirm with Josh that we need to set anything here
+      b0_pCap[i] ~ normal(0, 1);
+      b_flow[i] ~ normal(0, 1);
+    } else {
+      b0_pCap[i] ~ normal(trib_mu_P, trib_sd_P); // should not include okie dam and steep riffle
+      b_flow[i] ~ normal(flow_mu_P, flow_sd_P); // can include okie dam and steep riffle
+    }
   }
 
   // Likelihood for MR data

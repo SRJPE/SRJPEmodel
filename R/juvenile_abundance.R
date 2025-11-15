@@ -19,6 +19,8 @@
 #' @md
 prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                                 mainstem_site = NULL,
+                                drop_trib_sites = FALSE,
+                                sites_to_drop = NULL,
                                 input_catch_data = NULL,
                                 input_efficiency_data = NULL) {
 
@@ -28,6 +30,23 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
   if(missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
+  }
+
+  available_sites <- c("lbc", "ubc", "okie dam", "lcc", "ucc", "deer creek", "eye riffle",
+                       "gateway riffle", "herringer riffle", "live oak", "lower feather river",
+                       "steep riffle", "sunset pumps", "mill creek", "hallwood")
+
+  # allows you to drop certain tributary sites when preparing data
+  # argument checks
+  if(!drop_trib_sites & !is.null(sites_to_drop)) {
+    cli::cli_abort("If you wish to pass an argument for sites_to_drop, you must set drop_trib_sites to TRUE")
+  } else if(drop_trib_sites & is.null(sites_to_drop)) {
+    cli::cli_abort("If you wish to drop_trib_sites, you must provide site_to_drop.")
+  } else if(drop_trib_sites) {
+    if(!all(sites_to_drop %in% available_sites)) {
+      missing <- sites_to_drop[!sites_to_drop %in% available_sites]
+      cli::cli_abort("Invalid sites to drop: ", paste(missing, collapse = ", "))
+    }
   }
 
   cli::cli_bullets("Producing data for pCap model from efficiency dataset")
@@ -96,9 +115,12 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
 
+  # drop sites we don't want used in efficiency estimates
+  use_trib_for_intercept <- as.integer(!sites_fit %in% sites_to_drop)
   # build data list with ALL elements
   data <- list("Nmr" = number_efficiency_experiments,
                "Ntribs" = Ntribs,
+               "use_trib_for_intercept" = use_trib_for_intercept,
                "ind_trib" = mark_recapture_data$ID,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
@@ -162,6 +184,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
   return(list("inputs" = inputs,
               "sites_fit" = sites_fit,
+              "sites_dropped" = sites_to_drop,
               "location" = "tributary",
               "model_name" = "pcap_all"))
 
@@ -358,6 +381,7 @@ prepare_abundance_inputs <- function(site, run_year,
   # analyze efficiency trials for all relevant sites (do not filter to site)
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
   if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+    # drop sites from arguments and also remove mainstem
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
 
     # prepare "mark recapture" dataset - all mark-recap trials in the system
