@@ -5,6 +5,10 @@
 #' the mark recapture dataset will be filtered to exclude those mainstem sites.
 #' @param mainstem_site If you are fitting the model with `mainstem == TRUE`, you must supply a
 #' mainstem site for which to prepare inputs. Can be either `knights landing` or `tisdale`.
+#' @param drop_trib_sites Either `FALSE` or `TRUE` and defaults to `FALSE`. If `TRUE`, you can provide a
+#' specific site to `drop_trib_sites` to exclude that site from estimates of `b0_pCap` and `b_flow`.
+#' @param sites_to_drop A character vector of at least length 1. Must be one of the site names
+#' in `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`.
 #' @param input_catch_data Optional argument for weekly catch data.
 #' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
 #' passed in, structure of data frame must match that of the default.
