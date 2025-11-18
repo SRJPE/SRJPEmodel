@@ -15,7 +15,7 @@ pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE, drop_trib_sites = TRUE,
 pCap <- fit_pCap_model(pCap_inputs)
 
 # run abundance model
-abundance_inputs <- prepare_abundance_inputs("ubc", 2018, effort_adjust = T, pCap)
+abundance_inputs <- prepare_abundance_inputs("okie dam", 2022, effort_adjust = T, pCap)
 abundance <- fit_abundance_model_BUGS(abundance_inputs,
                                       # point towards where you store the .bug model
                                       "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
