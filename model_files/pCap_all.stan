@@ -14,7 +14,7 @@ parameters {
   real flow_mu_P; //
   real<lower=0.01> flow_tau_P; // Hyper-parameter precision for flow effect on pCap
   real<lower=0.01> pro_tau_P; // Process error precision
-  array[Ntribs] real b0_pCap;// tributary-specific pCap intercepts
+  array[Ntribs] real<lower = -10, upper = 10> b0_pCap;// tributary-specific pCap intercepts
   array[Ntribs] real b_flow;// tributary-specific flow effects
   array[Nmr] real pro_dev_P;               // process deviations for MR experiments
 }
@@ -49,7 +49,7 @@ model {
     // remove selected tributaries from estimation of b0_pCap
     if(use_trib_for_intercept[i] == 0) {
       // TODO confirm the default
-      b0_pCap[i] ~ normal(0, 1);
+      //b0_pCap[i] ~ normal(0, 1);
     } else {
       b0_pCap[i] ~ normal(trib_mu_P, trib_sd_P); // should not include okie dam and steep riffle
     }

@@ -11,7 +11,7 @@ library(RPostgres) # for stock-recruit
 
 # run pCap model
 pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE, drop_trib_sites = TRUE,
-                                   sites_to_drop = "okie dam")
+                                   sites_to_drop = c("okie dam", "steep riffle"))
 pCap <- fit_pCap_model(pCap_inputs)
 
 # run abundance model
