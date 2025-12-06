@@ -215,7 +215,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
               by = c("year", "week", "run_year", "stream", "site")) |>
     # or do we want to filter just no number released?
     dplyr::filter(site == mainstem_site & # mainstem model is only run on one site at a time
-                    !is.na(standardized_flow),
+                    !is.na(standardized_efficiency_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
@@ -245,7 +245,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   data <- list("Nmr" = number_efficiency_experiments,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = mark_recapture_data$standardized_flow)
+               "mr_flow" = mark_recapture_data$standardized_efficiency_flow)
 
 
   # check data list for NaNs and Infs
@@ -396,7 +396,7 @@ prepare_abundance_inputs <- function(site, run_year,
                 by = c("year", "week", "run_year", "stream", "site")) |>
       # or do we want to filter just no number released?
       dplyr::filter(!site %in% remove_sites &
-                      !is.na(standardized_flow),
+                      !is.na(standardized_efficiency_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
@@ -414,7 +414,7 @@ prepare_abundance_inputs <- function(site, run_year,
                 by = c("year", "week", "run_year", "stream", "site")) |>
       # or do we want to filter just no number released?
       dplyr::filter(site == !!site &
-                      !is.na(standardized_flow),
+                      !is.na(standardized_efficiency_flow),
                     !is.na(number_released) &
                       !is.na(number_recaptured)) |>
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
