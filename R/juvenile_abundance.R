@@ -121,6 +121,15 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
   # drop sites we don't want used in efficiency estimates
   use_trib_for_intercept <- as.integer(!sites_fit %in% sites_to_drop)
+
+  # test mr_flow replace
+  clean_mr_flow <- mark_recapture_data |>
+    group_by(site) |>
+    mutate(mean_eff_flow = mean(flow_cfs, na.rm = T),
+           sd_eff_flow = sd(flow_cfs, na.rm = T),
+           new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
+    ungroup()
+
   # build data list with ALL elements
   data <- list("Nmr" = number_efficiency_experiments,
                "Ntribs" = Ntribs,
@@ -128,7 +137,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                "ind_trib" = mark_recapture_data$ID,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = mark_recapture_data$standardized_efficiency_flow)
+               "mr_flow" = clean_mr_flow$new_mr_flow)
 
 
   # check data list for NaNs and Infs
