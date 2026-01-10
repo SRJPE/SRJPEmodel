@@ -11,8 +11,8 @@ RunpCapModel=T
 RunMainstem=F
 
 d0a=SRJPEdata::years_to_include_rst_data |>
-  mutate(exclude = case_when(site == "lbc" ~ TRUE,
-                             site == "mill creek" & run_year == 2025 ~ TRUE,
+  mutate(exclude = case_when(#site == "lbc" ~ TRUE,
+                             site == "hallwood" & run_year == 2022 ~ TRUE,
                              TRUE ~ FALSE)) |>
   filter(!exclude) |>
   select(-exclude)
