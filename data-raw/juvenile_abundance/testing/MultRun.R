@@ -10,12 +10,13 @@ setwd(here::here("data-raw", "juvenile_abundance", "testing"))
 RunpCapModel=T
 RunMainstem=F
 
-d0a=SRJPEdata::years_to_include_rst_data |>
-  mutate(exclude = case_when(#site == "lbc" ~ TRUE,
-                             site == "hallwood" & run_year == 2022 ~ TRUE,
-                             TRUE ~ FALSE)) |>
-  filter(!exclude) |>
-  select(-exclude)
+d0a=SRJPEdata::years_to_include_rst_data #|>
+  # TODO filter out if needed to test
+  # mutate(exclude = case_when(#site == "lbc" ~ TRUE,
+  #                            site == "hallwood" & run_year == 2022 ~ TRUE,
+  #                            TRUE ~ FALSE)) |>
+  # filter(!exclude) |>
+  # select(-exclude)
 
 if(RunMainstem==F){
   d0=subset(d0a,site!="knights landing"& site!="tisdale" & site!="red bluff diversion dam")
