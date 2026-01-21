@@ -25,5 +25,8 @@ A table with the format:
 Extract parameter estimates from the survival STAN model object
 }
 \details{
-This function extracts parameter estimates from the survival STAN model and returns them in a tidy data frame format.
+This function extracts parameter estimates from the survival STAN model,
+assuming that the model was run with water year type (either 2 or 3) and
+biological effect of fork length (based on current model structure). It returns them
+in a tidy data frame format.
 }

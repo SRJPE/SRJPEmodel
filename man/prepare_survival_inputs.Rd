@@ -4,14 +4,7 @@
 \alias{prepare_survival_inputs}
 \title{Prepare inputs for survival model}
 \usage{
-prepare_survival_inputs(number_of_water_year_types = NULL, effect = NULL)
-}
-\arguments{
-\item{number_of_water_year_types}{either \code{2}, \code{3}, or leave empty. If empty, the function will call a
-version of the survival with no covariate effect.}
-
-\item{effect}{one of \code{no_biological_effect}, \code{fork_length_effect}, \code{weight_effect}, or \code{condition}.
-If supplying an effect, you must supply an argument for \code{number_of_water_year_types}}
+prepare_survival_inputs()
 }
 \value{
 a named list containing the inputs to the \code{run_survival_model()} function:
@@ -26,7 +19,9 @@ Prepare inputs for survival model
 }
 \details{
 This function prepares the data, initial values, and parameter list needed to call the
-survival STAN model. It will prepare these data based on what model you want to run.
+survival STAN model. It will prepare these data based on what model you want to run. This
+iteration of the model code runs the model using \code{max_flow} and \code{fork_length} as covariates. A future
+version of the model code will allow for the full suite of covariates and biological effects.
 }
 \seealso{
 Other Prepare Model Inputs: 

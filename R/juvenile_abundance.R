@@ -123,6 +123,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   use_trib_for_intercept <- as.integer(!sites_fit %in% sites_to_drop)
 
   # test mr_flow replace
+  # TODO remove this after testing, but working for now so we'll keep
   clean_mr_flow <- mark_recapture_data |>
     group_by(site) |>
     mutate(mean_eff_flow = mean(flow_cfs, na.rm = T),
