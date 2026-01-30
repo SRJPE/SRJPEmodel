@@ -35,13 +35,14 @@ stock_recruit_model_code <- readr::read_file(here::here("model_files", "ricker_s
 usethis::use_data(stock_recruit_model_code, overwrite = T)
 
 # survival ----------------------------------------------------------------
-survival_CovWY <- readr::read_file(here::here("model_files", "survival_CovWY.stan"))
+survival_CovIndWY <- readr::read_file(here::here("model_files", "survival_CovIndWY.stan"))
+survival_CovIndCont <- readr::read_file(here::here("model_files", "survival_CovIndCont.stan"))
 survival_NoCov <- readr::read_file(here::here("model_files", "survival_NoCov.stan"))
 
-survival_model_code <- list(survival_CovWY = survival_CovWY,
+survival_model_code <- list(survival_CovIndWY = survival_CovIndWY,
+                            survival_CovIndCont = survival_CovIndCont,
                             survival_NoCov = survival_NoCov)
 usethis::use_data(survival_model_code, overwrite = T)
-
 
 # in-season ---------------------------------------------------------------
 
