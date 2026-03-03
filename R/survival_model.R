@@ -93,29 +93,25 @@ prepare_survival_inputs <- function(){
     "Xsz" = fb_data_list$x_sz,
     "NsX" = 25,
     # sac-specific travel time variables
-    "Nobs",
-    "ObsTT",
-    "TTind",
-    "ReachKM",
-    "ReachKM_ind",
+    "Nobs" = tt_data_list$Nobs,
+    "ObsTT" = tt_data_list$ObsTT,
+    "TTind" = tt_data_list$TTind,
+    "ReachKM" = tt_data_list$ReachKM,
+    "ReachKM_ind" = tt_data_list$ReachKM_ind,
     # feather-butte travel time variables
-    "NobsT",
-    "ObsTTT",
-    "TTindT",
-    "ReachKMT",
-    "ReachKMT_ind"
+    "NobsT" = tt_data_list$NobsT,
+    "ObsTTT" = tt_data_list$ObsTTT,
+    "TTindT" = tt_data_list$TTindT,
+    "ReachKMT" = tt_data_list$ReachKMT,
+    "ReachKMT_ind" = tt_data_list$ReachKMT_ind
   )
 
   inits <- list(inits, inits, inits)
 
   return(list("inputs" = list("data" = model_data,
                               "inits" = inits,
-                              "parameter" = parameters),
+                              "parameter" = par_save_list),
               "model_name" = model_name))
-
-  # prepare data list
-
-
 }
 
 # Create data list for Sacramento model
@@ -180,8 +176,8 @@ create_sac_survival_data <- function() {
 
     RmultSac = 0.43,
     RmultTis = 1.23,
-    ReachKMrst = c(124.9512976, 93.2391355490999,26.1273401272, 18.3412666561999),
-    Rmultrst = c(124.9512976, 93.2391355490999,26.1273401272, 18.3412666561999) / 100,
+    ReachKMrst = c(124.9512976, 93.2391355490999, 26.1273401272, 18.3412666561999),
+    Rmultrst = c(124.9512976, 93.2391355490999, 26.1273401272, 18.3412666561999) / 100,
     Nrst = 4,
 
     capture_history = sac_data |>
@@ -313,7 +309,7 @@ create_butte_feather_survival_data <- function(sac_data_list) {
     n_ind = nrow(feather_butte_data),
     n_tribs = 2,
     n_reaches = 2,
-    n_release_groups = 3,
+    n_release_groups = length(unique(feather_butte_data$study_id)),
     trib_ind = feather_butte_data$trib_ind,
 
     Nrst = 3,
@@ -358,6 +354,7 @@ create_butte_feather_survival_data <- function(sac_data_list) {
       dplyr::pull(index),
 
     release_group_flow_exceed_index = feather_butte_data |>
+      arrange(year) |>
       group_by(study_id) |>
       dplyr::reframe(ind = unique(exceedence),
                      year = unique(year)) |>
@@ -409,34 +406,23 @@ create_butte_feather_survival_data <- function(sac_data_list) {
 #' @md
 create_tt_data <- function() {
 
+  # create data
+  sac_data <- SRJPEdata::survival_model_inputs |>
+    filter(is.na(trib_ind))
+
+  fb_data <- SRJPEdata::survival_model_inputs |>
+    filter(!is.na(trib_ind))
+
   # sacramento
-  # TODO create sac and fb data
-  reach_km_ind <- data.frame(cbind(d_Sac_sort$dist_rlwoodson,
-                                  d_Sac_sort$dist_woodsonbutte,
-                                  d_Sac_sort$dist_buttesac,
-                                  d_Sac_sort$dist_sacdelta))
-  ReachKMrst <- dist_rstwoodson
+  reach_km_ind <- data.frame(cbind(sac_data$dist_rlwoodson,
+                                   sac_data$dist_woodsonbutte,
+                                   sac_data$dist_buttesac,
+                                   sac_data$dist_sacdelta))
 
   #identify records with one or more detections after release and get their FishID.
   #Fish not seen after release provide no data for travel time
-  # TODO clean up reading in these data
-
-  # liz code
-  detection_history <- read.csv(here("data-raw", "survival_model", "floras_code_2026", "Codes_JPESurvTT", 'data',"DetectionHistorySac.csv"),stringsAsFactors = F)    #detection history file with times of date/time of detection
-
-  TTfR <- detection_history |>
-    arrange(FishID)
-    pivot_wider(id_cols = FishID, names_from = GEN, values_from = min_time) |>
-    select(fish_id = FishID, release_time = Releasepoint,
-           butte_time = ButteBridge, woodson_time = WoodsonBridge,
-           sacramento_time = Sacramento, endpoint_time = Endpoint) |>
-    mutate(TTfR1 = as.numeric(difftime(woodson_time, release_time, units = "days")),
-           TTfR2 = as.numeric(difftime(butte_time, release_time, units = "days")),
-           TTfR3 = as.numeric(difftime(sacramento_time, release_time, units = "days")),
-           TTfR4 = as.numeric(difftime(endpoint_time, release_time, units = "days")),
-           TTfR4 = if_else(TTfR4 < 0, NA_real_, TTfR4)) |># Replace negative TTfR4 with NA, example fish SP2023-810
-    arrange(fish_id) |>
-    select(TTfR1, TTfR2, TTfR3, TTfR4)
+  TTfR <- SRJPEdata::detection_history_sacramento |>
+    select(-c(stream, fish_id))
 
   Nobs_df <- TTfR |>
     mutate(Obs = 4 - rowSums(is.na(across(everything()))))
@@ -458,25 +444,13 @@ create_tt_data <- function() {
     mutate(across(everything(), ~ replace_na(., 0)))
 
   # feather/butte
-  detection_history_fb <- read.csv(here("data-raw", "survival_model", "floras_code_2026", "Codes_JPESurvTT", 'data',"DetectionHistoryFea.csv"),stringsAsFactors = F) |>
-    bind_rows(read.csv(here("data-raw", "survival_model", "floras_code_2026", "Codes_JPESurvTT", 'data',"DetectionHistoryBut.csv"),stringsAsFactors = F)) |>
-    arrange(FishID)
+  ReachKMT <- data.frame(rbind(cbind(117, 110), cbind(92, 110)))
+  ReachKMT_ind <- data.frame(cbind(fb_data$dist_rlsac,
+                                   fb_data$dist_sacdelta))
+  ReachKMTrst <- c(201.583633469999,89.5817927391999, 131.0731)
 
-
-  ReachKMT <- data.frame(rbind(cbind(117,110),cbind(92,110)))
-  ReachKMT_ind <- data.frame(cbind(d_FeaBut_sort$dist_rlsac,
-                                   d_FeaBut_sort$dist_sacdelta))
-  ReachKMTrst <- dist_rstsac
-
-  TTfRT <- detection_history_fb |>
-    arrange(FishID) |>
-    pivot_wider(id_cols = FishID, names_from = GEN, values_from = min_time) |>
-    select(fish_id = FishID, sacramento_time = Sacramento, release_time = Releasepoint,
-           endpoint_time = Endpoint) |>
-    mutate(TTfR1 = as.numeric(difftime(sacramento_time, release_time, units = "days")),
-           TTfR2 = as.numeric(difftime(endpoint_time, release_time, units = "days"))) |>
-    arrange(fish_id) |>
-    select(TTfR1,TTfR2)
+  TTfRT <- SRJPEdata::detection_history_feather_butte |>
+    select(-c(stream, fish_id))
 
   NobsT_df <- TTfRT |>
     mutate(Obs = 2 - rowSums(is.na(across(everything()))))
@@ -503,13 +477,13 @@ create_tt_data <- function() {
     "ObsTT" = ObsTT,
     "TTind" = TTind,
     "ReachKM" = c(45, 88, 170, 110),
-    "ReachKM_ind" = NA, # TODO
+    "ReachKM_ind" = reach_km_ind,
     # feather-butte travel time variables
     "NobsT" = sum(NobsT_df$Obs),
     "ObsTTT" = ObsTTT,
     "TTindT" = TTindT,
-    "ReachKMT" = data.frame(rbind(cbind(117,110),cbind(92,110))),
-    "ReachKMT_ind" = NA # TODO
+    "ReachKMT" = data.frame(rbind(cbind(117, 110), cbind(92, 110))),
+    "ReachKMT_ind" = ReachKMT_ind
     )
 
     return(data_list)
@@ -525,8 +499,10 @@ create_tt_data <- function() {
 fit_survival_model <- function(survival_inputs) {
 
   # select model to run (either covariate or no covariate)
-  if(survival_inputs$model_name == "survival_cov_wy") {
-    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_CovWY"))
+  if(survival_inputs$model_name == "CovIndCont") {
+    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_CovIndCont"))
+  } else if(survival_inputs$model_name == "CovIndWY") {
+    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_CovIndWY"))
   } else {
     stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_NoCov"))
   }
