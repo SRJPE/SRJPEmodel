@@ -110,9 +110,19 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   sites_fit <- site_lookup |>
     dplyr::pull(site)
 
+  # year lookup
+  mr_year_lookup <- mark_recapture_data |>
+    dplyr::distinct(run_year) |>
+    mutate(run_year_id = row_number())
+
+  unique_years <- mark_recapture_data |>
+    dplyr::distinct(run_year) |>
+    pull(run_year)
+
   # assign the IDs to the sites in the mark-recapture dataset
   mark_recapture_data <- mark_recapture_data |>
-    left_join(site_lookup, by = "site")
+    left_join(site_lookup, by = "site") |>
+    left_join(mr_year_lookup, by = "run_year")
 
   # get indexing for "mark recap" dataset (pCap model)
   Ntribs <- length(sites_fit) # number of sites (for pCap calculations)
@@ -137,7 +147,9 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                "ind_trib" = mark_recapture_data$ID,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = clean_mr_flow$new_mr_flow)
+               "mr_flow" = clean_mr_flow$new_mr_flow,
+               "ind_yr" = mark_recapture_data$run_year_id,
+               "Nyrs" = length(unique_years))
 
 
   # check data list for NaNs and Infs
