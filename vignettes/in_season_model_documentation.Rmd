@@ -1,0 +1,119 @@
+---
+title: "In Season Model"
+author: "Josh Kroman"
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Stock Recruit Model} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+#output: word_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(wesanderson)
+library(SRJPEdata)
+library(SRJPEmodel)
+```
+
+## Overview
+
+The in season outmigrant abundance model aims to predict the Juvenile Production Estimate (JPE) in near-real time by leveraging historical relationships between partial season catch estimates and total seasonal outmigration. 
+
+Unlike the stock-recruit approach, which relies on adult spawner estimates, the in season model allows forecasting within the same water year. Note: these forecasts become more reliable later in the season as more data are available.
+
+## Model Objective
+
+To develop a predictive model that estimates total spring-run Chinook outmigrant abundance at Delta entry using partial in season RST data.
+
+## Conceptual model
+
+The framework fits historical timing curves to weekly BT‑SPAS‑X outputs (including uncertainty), then uses partial-season observations to forecast remaining weekly passage, total outmigrants, and downstream routing to the Delta.
+
+*Figure 1: Conceptual Diagram of SRJPE In Season model.* 
+
+```{r}
+knitr::include_graphics(path = here::here("vignettes", "images", "inseason_conceptual_diagram.png")) 
+```
+
+# Model Architecture
+The in season model uses historical timing curves, BT-SPAS-X outputs from previous years, to fit probabilistic passage curves that describe weekly migration timing patterns at each trap. Weekly trap data are accumulated in season and compared to historical timing to estimate the proportion of migration already observed.Based on the accumulated observed proportion and fitted timing distributions, the model forecasts the remaining passage for the season. Estimated route fractions (e.g., to Delta) are applied.
+
+# Model Inputs
+
+The model takes in one dataset produced by `prepare_inseason_inputs()` function. This function takes in a database connection to the model run database, a stream, a site, the covariate you would like to use to fit the model (see `?prepare_inseason_inputs()` for the full list of covariates), and a boolean value indicating if you would like to apply autocorrelation to the data.
+
+# Running stock recruit submodel
+
+The model is run for a given stream, adult data type, and environmental covariate.
+ 
+```{r, eval = FALSE, message = FALSE, warning = FALSE, results='hide'}
+# run the model for battle creek and water year type
+cfg <- config::get()
+
+con <- DBI::dbConnect(RPostgres::Postgres(),
+                      dbname = cfg$db_name,
+                      host = cfg$db_host,
+                      port = cfg$db_port,
+                      user = cfg$db_user,
+                      password = cfg$db_password)
+
+
+inseason_inputs <- prepare_inseason_inputs(con, "battle creek", "ubc",
+                                             covariate_effect = FALSE,
+                                             autocorrelation = FALSE)
+inseason_fit <- fit_inseason_model(inseason_inputs)
+```
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+cfg <- config::get()
+
+con <- DBI::dbConnect(RPostgres::Postgres(),
+                      dbname = cfg$db_name,
+                      host = cfg$db_host,
+                      port = cfg$db_port,
+                      user = cfg$db_user,
+                      password = cfg$db_password)
+
+
+inseason_inputs <- prepare_inseason_inputs(con, "clear creek", "lcc",
+                                             covariate_effect = FALSE,
+                                             autocorrelation = FALSE)
+inseason_fit <-  get_most_recent_model_objects(con, 
+                                        model_component = "model_fit", 
+                                        model_name = "inseason", 
+                                        stream = "clear creek")
+inseason_fit_subset <- inseason_fit$`1433_inseason_lcc_clear creek_NA`
+```
+
+# Model Output
+The Stock Recruit model produces a STAN fit object when run. You can extract parameter estimates from the model object with the function `extract_inseason_estimates()`. This produces a table.
+
+```{r, message = FALSE, warning = FALSE}
+inseason_estimates <- extract_inseason_estimates(inseason_inputs, inseason_fit_subset)
+```
+
+```{r, message = FALSE, warning = FALSE}
+knitr::kable(head(inseason_estimates, 10))
+```
+
+The following plots show in season model results. 
+
+```{r, message = FALSE, warning = FALSE}
+SRJPEmodel::generate_results_plot_inseason(inseason_inputs = inseason_inputs, con = con)
+
+generate_diagnostic_plot(inseason_inputs, inseason_fit_subset)
+```
+
+**Resources**

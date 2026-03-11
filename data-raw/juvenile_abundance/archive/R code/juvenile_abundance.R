@@ -27,7 +27,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
     site_run_year_combinations <- sites_to_run
   } else {
     site_run_year_combinations <- weekly_juvenile_abundance_catch_data |>
-      distinct(site, run_year, life_stage)
+      dplyr::distinct(site, run_year, life_stage)
   }
 
   all_results <- list()
@@ -68,7 +68,7 @@ run_multiple_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   non_errors <- all_results_df %>%
     filter(statistic != "error") %>%
-    distinct(life_stage, run_year, site) %>%
+    dplyr::distinct(life_stage, run_year, site) %>%
     nrow()
 
   cli::cli_bullets(paste0("Of ", nrow(site_run_year_combinations), " site, run year, and life stage
@@ -163,8 +163,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   } else {
     remove_sites <- weekly_juvenile_abundance_efficiency_data |>
       filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
-      distinct(site) |>
-      pull(site)
+      dplyr::distinct(site) |>
+      dplyr::pull(site)
   }
 
   # prepare "mark recapture" dataset - all mark-recap trials in the system
@@ -178,8 +178,8 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
                   !is.na(standardized_flow),
                   !is.na(number_released) &
                   !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   # bring together efficiency and catch data so that we can get the indices of
   # catch data (hence left join) that correspond to certain efficiency trial
@@ -203,7 +203,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   indices_site_mark_recapture <- mark_recapture_data |>
     group_by(site) |>
     mutate(ID = cur_group_id()) |>
-    pull(ID)   # indices (in mark-recap data) for each site
+    dplyr::pull(ID)   # indices (in mark-recap data) for each site
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
 
@@ -256,7 +256,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
-    distinct(site, run_year, week) |>
+    dplyr::distinct(site, run_year, week) |>
     filter(site == !!site) |>
     nrow()
 
@@ -316,7 +316,7 @@ run_single_bt_spas_x <- function(bt_spas_x_bayes_params,
   ini_lgN <- catch_data |>
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
            ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
-    pull(ini_lgN)
+    dplyr::pull(ini_lgN)
 
   pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
                                    sum(mark_recapture_data$number_released))
@@ -725,8 +725,8 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
   } else {
     remove_sites <- weekly_juvenile_abundance_efficiency_data |>
       filter(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) |>
-      distinct(site) |>
-      pull(site)
+      dplyr::distinct(site) |>
+      dplyr::pull(site)
   }
 
   # prepare "mark recapture" dataset - all mark-recap trials in the system
@@ -740,8 +740,8 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
                     !is.na(standardized_flow),
                   !is.na(number_released) &
                     !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do distinct()
-    distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
+    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
+    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE)
 
   # bring together efficiency and catch data so that we can get the indices of
   # catch data (hence left join) that correspond to certain efficiency trial
@@ -765,7 +765,7 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
   indices_site_mark_recapture <- mark_recapture_data |>
     group_by(site) |>
     mutate(ID = cur_group_id()) |>
-    pull(ID)   # indices (in mark-recap data) for each site
+    dplyr::pull(ID)   # indices (in mark-recap data) for each site
   number_weeks_with_mark_recapture <- length(indices_with_mark_recapture) # number of weeks (in mark-recap data) where effiency experiments were performed
   number_weeks_without_mark_recapture <- length(indices_without_mark_recapture)   # number of weeks (in mark-recap data) where effiency experiments were not performed
 
@@ -818,7 +818,7 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
 
   # use number of experiments at site to determine which model to call
   number_experiments_at_site <- mark_recapture_data |>
-    distinct(site, run_year, week) |>
+    dplyr::distinct(site, run_year, week) |>
     filter(site == !!site) |>
     nrow()
 
@@ -879,7 +879,7 @@ run_single_bt_spas_x_stan <- function(bt_spas_x_bayes_params,
     mutate(ini_lgN = log(catch_standardized_by_hours_fished / 1000 + 2),
            ini_lgN = ifelse(ini_lgN %in% c(NA, Inf), log(2 / 1000), ini_lgN)) |>
            #ini_lgN = ifelse(is.na(ini_lgN), log(2 / 1000), ini_lgN)) |>
-    pull(ini_lgN)
+    dplyr::pull(ini_lgN)
 
   pCap_mu_prior <- gtools::logit(sum(mark_recapture_data$number_recaptured) /
                                    sum(mark_recapture_data$number_released))

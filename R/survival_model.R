@@ -10,7 +10,9 @@
 #' * **data_inputs** a named list of data inputs for passing to the STAN model.
 #' * **inits** a list of initial values for passing to the STAN model.
 #' * **parameters** a vector of parameter names to save from calling the STAN model.
+#' @family Prepare Model Inputs
 #' @export
+#'
 #' @md
 prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                                     effect = NULL){
@@ -27,10 +29,11 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     cli::cli_bullets("No biological effect was supplied, running the no biological effect model")
   }
 
-  # TODO replace with updated SRJPEdata
-  # TODO ensure these are sorted, standardized, etc. per PrepData_flora.R
-  sac_data <- read.csv(here("data-raw", "survival_model", "Sac_data.csv"),  stringsAsFactors = F)
-  fb_data <-  read.csv(here("data-raw", "survival_model", "FeaBut_data.csv"),  stringsAsFactors = F)
+  sac_data <- SRJPEdata::survival_model_inputs |>
+    filter(is.na(trib_ind))
+
+  fb_data <- SRJPEdata::survival_model_inputs |>
+    filter(!is.na(trib_ind))
 
   sac_data_list <- get_survival_data_list("sacramento", sac_data, fb_data)
   fb_data_list <- get_survival_data_list("feather_butte", sac_data, fb_data)
@@ -60,6 +63,9 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
     SzT <- rep(0, fb_data_list$n_ind)
     Xsz <- rep(0, sac_data_list$n_size_classes)
 
+    # model name
+    model_name <- "survival_no_cov"
+
   } else {
 
     parameters <- c("P_b", "muPb", "sdPb", "S_bReach", "S_bTrib", "S_bCov", "S_bCovT", "S_bSz", "RE_sd",
@@ -75,6 +81,9 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
                   S_bReach = rep(0, 3),
                   S_RE = rep(-3, sac_data_list$n_release_groups),
                   RE_sd = 0.5)
+
+    # model name
+    model_name <- "survival_cov_wy"
 
     # now step through all possible covariate versions - water year type (either 2 or 3) and
     # effects (no effect, fork length, weight, and condition)
@@ -194,10 +203,10 @@ prepare_survival_inputs <- function(number_of_water_year_types = NULL,
 
   inits <- list(inits, inits, inits)
 
-  return(list("data_inputs" = model_data,
-              "inits" = inits,
-              "parameters" = parameters))
-
+  return(list("inputs" = list("data" = model_data,
+                              "inits" = inits,
+                              "parameter" = parameters),
+              "model_name" = model_name))
 
 }
 
@@ -222,7 +231,8 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
     n_detection_locations = 5
 
     Rmult <- data |>
-      select(dist_rlwoodson.z, dist_woodsonbutte.z, dist_buttesac.z, dist_sacdelta.z) |>
+      select(dist_rlwoodson_standardized, dist_woodsonbutte_standardized,
+             dist_buttesac_standardized, dist_sacdelta_standardized) |>
       as.matrix() |>
       unname()
 
@@ -250,7 +260,7 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
     n_detection_locations <- 3
     trib_ind <- data$trib_ind
 
-    Rmult <- data$dist_rlsac.z
+    Rmult <- data$dist_rlsac_standardized
 
     capture_history <- data |>
       separate_wider_position(ch, widths = c("1" = 1, "2" = 1, "3" = 1)) |>
@@ -261,34 +271,34 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 
     trib_index_for_release_groups <- data |>
       arrange(year) |>
-      distinct(StudyID, trib_ind) |>
-      pull(trib_ind)
+      dplyr::distinct(study_id, trib_ind) |>
+      dplyr::pull(trib_ind)
   }
 
   year_index <- data |>
     left_join(all_study_years, by = "year") |>
-    pull(year_index)
+    dplyr::pull(year_index)
 
   release_group_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
+    group_by(study_id) |>
     mutate(index = cur_group_id()) |>
     ungroup() |>
-    pull(index)
+    dplyr::pull(index)
 
   release_group_water_year_3_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
-    summarise(ind = unique(WY3)) |>
+    group_by(study_id) |>
+    summarise(ind = unique(wy_three_categories)) |>
     ungroup() |>
-    pull(ind)
+    dplyr::pull(ind)
 
   release_group_water_year_2_index <- data |>
     arrange(year) |>
-    group_by(StudyID) |>
-    summarise(ind = unique(WY2)) |>
+    group_by(study_id) |>
+    summarise(ind = unique(wy_two_categories)) |>
     ungroup() |>
-    pull(ind)
+    dplyr::pull(ind)
 
   fork_length <- data$fish_length
   weight <- data$fish_weight
@@ -301,12 +311,12 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
                     n_detection_locations = n_detection_locations,
                     n_size_classes = 25, # of size classes to plot size effect over
                     n_years = nrow(all_study_years), # all sac and tribs years combined
-                    release_group = unique(data$StudyID),
-                    n_release_groups = length(unique(data$StudyID)),
-                    first_capture = data$firstCap,
-                    last_capture = data$lastCap,
-                    water_year_2 = data$WY2,
-                    water_year_3 = data$WY3,
+                    release_group = unique(data$study_id),
+                    n_release_groups = length(unique(data$study_id)),
+                    first_capture = data$first_capture,
+                    last_capture = data$last_capture,
+                    water_year_2 = data$wy_two_categories,
+                    water_year_3 = data$wy_three_categories,
                     capture_history = capture_history,
                     Rmult = Rmult, # reach distances standardized per 100km
                     year_index = year_index,
@@ -326,32 +336,166 @@ get_survival_data_list <- function(version, sac_data, feather_butte_data) {
 #' @details This model calls a survival STAN model that estimates survival in the Sacramento and Feather/Butte systems.
 #' @param survival_inputs The named list object generated by running `prepare_survival_inputs()`.
 #' @returns a STANfit object with the survival model fit.
+#' @family Fit model
 #' @export
 #' @md
 fit_survival_model <- function(survival_inputs) {
 
-  # check which model we're running by checking NS_bCov, which is 0 for the no covariate model
-  if(survival_inputs$data_inputs$NS_bCov == 0) {
-    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_NoCov"))
-    cli::cli_bullets("Running NoCov survival model")
-  } else {
+  # select model to run (either covariate or no covariate)
+  if(survival_inputs$model_name == "survival_cov_wy") {
     stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_CovWY"))
-    cli::cli_bullets("Running CovWY survival model")
+  } else {
+    stan_model <- eval(parse(text = "SRJPEmodel::survival_model_code$survival_NoCov"))
   }
+
 
   options(mc.cores = parallel::detectCores())
 
   cli::cli_process_start("Fitting STAN survival model")
   fit <- rstan::stan(model_code = stan_model,
-                     data = survival_inputs$data_inputs,
-                     init = survival_inputs$inits,
+                     data = survival_inputs$inputs$data,
+                     init = survival_inputs$inputs$inits,
                      chains = 3,
                      iter = 2000,
                      include = T,
-                     pars = survival_inputs$parameters,
-                     seed=1234)
+                     pars = survival_inputs$inputs$parameter,
+                     seed = 1234)
   cli::cli_process_done("STAN survival model fitting complete")
 
-  return("fit" = fit)
+  return(fit)
 }
 
+#' Extract parameter estimates from the survival STAN model object
+#' @details This function extracts parameter estimates from the survival STAN model and returns them in a tidy data frame format.
+#' @param model_object the STAN object produced by running `fit_survival_model()`.
+#' @returns A table with the format:
+#' * **parameter**
+#' * **year**
+#' * **reach_name**
+#' * **release_group**
+#' * **statistic**
+#' * **value**
+#' * **srjpedata_version**
+#' @export
+#' @md
+extract_survival_estimates <- function(model_object) {
+  # get year lookup
+  year_lookup <- tibble(year = unique(SRJPEdata::survival_model_inputs$year) |>
+                          sort()) |>  # all sac and tribs years combined
+    mutate(year_index = row_number())
+
+  # get reach lookup - hard-coded
+  reach_lookup_sac <- tibble("sac_reach_index" = 1:4,
+                             "reach_name_sac" = c("Woodson", "Butte", "Sacramento", "Delta")) # hard-coded in GetData_flora.R
+
+  reach_lookup_trib <- tibble("trib_reach_index" = 1:2,
+                              "reach_name_trib" = c("Sacramento", "Delta"))# taken from powerpoint in sharepoint
+
+  # release group lookup
+  release_group_lookup_sac <- SRJPEdata::survival_model_inputs |>
+    filter(is.na(trib_ind)) |>
+    arrange(year) |>
+    group_by(study_id) |>
+    mutate(release_group_index_sac = cur_group_id()) |>
+    ungroup() |>
+    dplyr::distinct(release_group_sac = study_id, release_group_index_sac)
+
+  release_group_lookup_trib <- SRJPEdata::survival_model_inputs |>
+    filter(!is.na(trib_ind)) |>
+    arrange(year) |>
+    group_by(study_id) |>
+    mutate(release_group_index_trib = cur_group_id()) |>
+    ungroup() |>
+    dplyr::distinct(release_group_trib = study_id, release_group_index_trib)
+
+  # get release group lookup
+
+  formatted_table <- rstan::summary(model_object)$summary |>
+    as.data.frame() |>
+    tibble::rownames_to_column("parameter") |>
+    # get indices to match to year, reach, etc. for parameters
+    separate_wider_delim(parameter, delim = "[", names = c("parameter", "indices"),
+                         too_few = "align_start") |>
+    mutate(indices = str_remove_all(indices, "\\]")) |>
+    separate_wider_delim(indices, ",", names = c("index_1", "index_2", "index_3"),
+                         too_few = "align_start") |>
+    mutate(across(index_1:index_3, as.numeric),
+           # year-structured parameters
+           year_index = ifelse(parameter %in% c("P_b", "pred_pcap"), index_1, NA),
+           # TODO water_year_type can be any covariate, not just water year type per Flora
+           water_year_type = ifelse(parameter %in% c("SurvRelSacSz", "SurvWoodSacSz", "SurvForecastSz",
+                                                     "pred_SurvTSz"), index_2, NA),
+           environmental_covarariate_dimension = ifelse(parameter %in% c("S_bCov", "s_bCovT"), index_1, NA),
+           forecast_index = ifelse(parameter == "SurvForecast", index_1, NA), # TODO this is "covariate dimension" per Flora
+           # reach-structured parameters
+           sac_reach_index = case_when(parameter == "P_b" ~ index_2,
+                                       parameter %in% c("muPb", "sdPb", "S_bReach") ~ index_1,
+                                       parameter %in% c("pred_surv", "pred_pcap") ~ index_2,
+                                       TRUE ~ NA),
+           # trib-structured parameters
+           trib_reach_index = case_when(parameter == "S_bTrib" ~ index_1,
+                                        parameter == "pred_survT" ~ index_2,
+                                        parameter %in% c("TribSurvForecastSz", "pred_SurvTSz") ~ index_3,
+                                        TRUE ~ NA),
+           # release group structured parameters
+           # TODO SurvRelSac is release group OR individual depending on covariate used
+           # TODO pred_surv is release group OR individual depending on covariate used
+           release_group_index_sac = ifelse(parameter %in% c("SurvRelSac", "pred_surv",
+                                                             "S_RE"), index_1, NA),
+           # TODO pred_survT is release group OR individual depending on covariate used
+           release_group_index_trib = ifelse(parameter %in% c("S_REt", "pred_survT", "SurvWoodSac"), index_1, NA),
+           pred_forecast_index_trib = ifelse(parameter == "TribSurvForecast", index_1, NA),
+           size_class_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz",
+                                                      "SurvRelSacSz", "SurvWoodSacSz",
+                                                      "SurvForecastSz", "pred_SurvTSz"), index_1, NA),
+           covariate_dimension_index = ifelse(parameter %in% c("pred_survTSz", "TribSurvForecastSz"), index_2 - 1, NA)) |>
+    # now join in lookups
+    left_join(year_lookup, by = "year_index") |>
+    left_join(reach_lookup_sac, by = "sac_reach_index") |>
+    left_join(reach_lookup_trib, by = "trib_reach_index") |>
+    left_join(release_group_lookup_sac, by = "release_group_index_sac") |>
+    left_join(release_group_lookup_trib, by = "release_group_index_trib") |>
+    # now combine reach lookups into one column
+    mutate(reach_name = ifelse(is.na(reach_name_trib), reach_name_sac, reach_name_trib),
+           release_group = ifelse(is.na(release_group_trib), release_group_sac, release_group_trib),
+           parameter = ifelse(parameter == "TribSurvForecast",
+                              paste0(parameter, "_", pred_forecast_index_trib),
+                              parameter)) |>
+    select(-c(year_index, sac_reach_index, trib_reach_index, release_group_index_sac,
+              release_group_index_trib, reach_name_sac, reach_name_trib, release_group_sac,
+              release_group_trib, pred_forecast_index_trib, index_1, index_2, index_3)) |>
+    pivot_longer(mean:Rhat,
+                 values_to = "value",
+                 names_to = "statistic") |>
+    mutate(srjpedata_version = as.character(packageVersion("SRJPEdata")))
+
+  return(formatted_table)
+}
+
+#' Plot smolt survival rate
+#' @details This function produces a plot showing the parameter estimates for `SurvRelSac` and `SurvWoodSac`, which
+#' are survival rates for Release to Woodson Bridge and Woodson Bridge to Sacramento.
+#' @param survival_estimates A table that is produced from running `extract_survival_estimates()`.
+#' @returns A plot.
+#' @export
+#' @md
+generate_survival_rate_plot <- function(survival_estimates) {
+  # TODO this should be the parameter "surv", which right now is not reported...or is it correct?
+  survival_estimates |>
+    filter(parameter %in% c("SurvRelSac", "SurvWoodSac")) |>
+    mutate(Reach = ifelse(parameter == "SurvRelSac",
+                          "Release to Woodson Bridge",
+                          "Woodson Bridge to Sacramento")) |>
+    pivot_wider(names_from = "statistic",
+                values_from = "value") |>
+    ggplot() +
+    geom_errorbar(aes(x = release_group, ymin = `2.5%`, ymax = `97.5%`),
+                  color = "blue", width = 0.2) +
+    geom_point(aes(x = release_group, y = `50%`), size = 2) +
+    facet_wrap(~Reach, scales = "free_x") +
+    labs(x = "Release Group",
+         y = "Median Survival Rate") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.9, hjust=1))
+
+}

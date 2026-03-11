@@ -8,6 +8,7 @@ prepare_abundance_inputs(
   site,
   run_year,
   effort_adjust = c(T, F),
+  pcap_model_object,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
@@ -33,8 +34,12 @@ a list:
 \item \strong{abundance_inputs} a list of data and inits for input into the abundance model.
 \item \strong{model_name} The version of the pCap logic to use for generating lt_pCap_U values. Either
 \code{all_mark_recap}, \code{missing_mark_recap}, \code{no_mark_recap}, or \code{no_mark_recap_no_trib}.
+\item \strong{site} The site run.
+\item \strong{run_year} The run year.
 \item \strong{weeks_fit} The weeks fit for the abundance model
 \item \strong{weeks_date} Associated dates for the weeks fit for the abundance model.
+\item \strong{lt_pCap_Us} A list containing output of \code{generate_lt_pCap_Us}: containing values of
+length \code{Nstrata} for \code{lt_pCap_mu} and \code{lt_pCap_sd}.
 }
 }
 \description{

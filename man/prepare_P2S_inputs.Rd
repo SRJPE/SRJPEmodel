@@ -15,7 +15,6 @@ present are used.}
 
 \item{selected_covariate:}{The environmental covariate you'd like to run the model for. Can be
 either \code{wy_type} (water year type), \code{max_flow_std} (maximum flow), \code{gdd_std} (growing degree days),
-\code{passage_index} (total upstream passage), \code{median_passage_timing_std} (median passage timing),
 or \code{null_covar} (no environmental covariate).}
 }
 \value{
@@ -24,3 +23,11 @@ a list containing data elements required to run the STAN passage to spawner mode
 \description{
 This function prepares data for running P2S on a single stream and covariate. It is called in \code{fit_passage_to_spawner_model()}.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_pCap_inputs}()},
+\code{\link{prepare_stock_recruit_inputs}()},
+\code{\link{prepare_survival_inputs}()}
+}
+\concept{Prepare Model Inputs}

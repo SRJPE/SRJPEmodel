@@ -22,32 +22,33 @@ calculate_ss_tot <- function(data) {
 #' `battle creek`, `clear creek`, `deer creek`, `mill creek`, or (draft form) `butte creek`.
 #' @param selected_covariate: The environmental covariate you'd like to run the model for. Can be
 #' either `wy_type` (water year type), `max_flow_std` (maximum flow), `gdd_std` (growing degree days),
-#' `passage_index` (total upstream passage), `median_passage_timing_std` (median passage timing),
 #' or `null_covar` (no environmental covariate).
 #' @param truncate_dataset a TRUE/FALSE value. If TRUE, will truncate the dataset so that only years where all covariate values are
 #' present are used.
 #' @returns a list containing data elements required to run the STAN passage to spawner model
+#' @family Prepare Model Inputs
 #' @export
 #' @md
 prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FALSE) {
   stream <- tolower(stream)
 
   # combine observed counts and covariates and pivot wider
-  data <- SRJPEdata::observed_adult_input |>
+  data <- SRJPEdata::annual_adult |>
     group_by(year, stream, data_type) |>
     summarise(count = sum(count, na.rm = T)) |> # count adipose clipped, run together
     ungroup() |>
     full_join(SRJPEdata::p2s_model_covariates_standard,
               by = c("year", "stream")) |>
     filter(!is.na(data_type)) |>
-    pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std,
-                            median_passage_timing_std, passage_index),
+    pivot_wider(id_cols = c(year, stream, wy_type, max_flow_std, gdd_std),
                 names_from = data_type,
                 values_from = count) |>
-    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding_count,
+    mutate(observed_spawners = case_when(stream == "deer creek" ~ holding,
                                          stream == "butte creek" ~ carcass_estimate,
-                                         TRUE ~ redd_count)) |>
+                                         stream == "feather river" ~ broodstock_tag,
+                                         TRUE ~ redd)) |>
     filter(upstream_estimate > 0,
+           observed_spawners > 0,
            stream == !!stream) |>
     # null covariate
     mutate(null_covar = 0)
@@ -65,7 +66,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
       cli::cli_bullet("Butte Creek Passage to Spawner model is still in development and these results have not been tested or verified and should not be used for further analysis.")
     }
   }
-  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "passage_index", "median_passage_timing_std", "null_covar")){
+  if(!selected_covariate %in% c("wy_type", "max_flow_std", "gdd_std", "null_covar")){
     cli::cli_abort("Incorrect/Unavailable environmental covariate. Please pass an approved covariate name.")
   }
 
@@ -75,7 +76,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   if(truncate_dataset) {
     truncated_data <- stream_data |>
       # truncate dataset for all
-      drop_na(wy_type, max_flow_std, gdd_std, passage_index, median_passage_timing_std, observed_spawners, upstream_estimate)
+      drop_na(wy_type, max_flow_std, gdd_std, observed_spawners, upstream_estimate)
   } else {
     # just drop the NAs for the selected covariate
     truncated_data <- stream_data  |>
@@ -83,16 +84,20 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
   }
 
   covar <- truncated_data |>
-    pull(all_of(selected_covariate))
+    dplyr::pull(all_of(selected_covariate))
 
-  stream_data_list <- list("N" = length(unique(truncated_data$year)),
-                           "input_years" = unique(truncated_data$year),
-                           "observed_passage" = truncated_data$upstream_estimate,
-                           "observed_spawners" = truncated_data$observed_spawners,
-                           "percent_female" = percent_female,
-                           "environmental_covar" = covar,
-                           "ss_total" = calculate_ss_tot(truncated_data),
-                           "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE))
+  data <- list("N" = length(unique(truncated_data$year)),
+               "input_years" = unique(truncated_data$year),
+               "observed_passage" = truncated_data$upstream_estimate,
+               "observed_spawners" = truncated_data$observed_spawners,
+               "percent_female" = percent_female,
+               "environmental_covar" = covar,
+               "ss_total" = calculate_ss_tot(truncated_data),
+               "average_upstream_passage" = mean(truncated_data$upstream_estimate, na.rm = TRUE))
+
+  stream_data_list <- list("inputs" = list("data" = data),
+                           "stream" = stream,
+                           "model_name" = "p2s")
 
   return(stream_data_list)
 }
@@ -113,7 +118,7 @@ prepare_P2S_inputs <- function(stream, selected_covariate, truncate_dataset = FA
 #' * **average_upstream_passage** average upstream passage across all years, used to forecast.
 #' @returns a STANfit model object (see [details](https://mc-stan.org/rstan/reference/stanfit-class.html))
 #' @export
-#' @family passage_to_spawner
+#' @family Fit model
 #' @md
 fit_passage_to_spawner_model <- function(data_inputs) {
 
@@ -121,8 +126,8 @@ fit_passage_to_spawner_model <- function(data_inputs) {
 
   cli::cli_process_start("Fitting P2S STAN model")
   p2s_model <- rstan::stan(model_code = p2s_model,
-                           data = data_inputs,
-                           chains = 3, iter = 20000*2, seed = 84735)
+                           data = data_inputs$inputs$data,
+                           chains = 3, iter = 2000, seed = 84735)
 
   cli::cli_process_done("P2S STAN model fitting complete")
 
@@ -149,7 +154,8 @@ fit_passage_to_spawner_model <- function(data_inputs) {
 #' @export
 #' @family passage_to_spawner
 #' @md
-extract_P2S_estimates <- function(passage_to_spawner_model_object){
+extract_P2S_estimates <- function(p2s_inputs,
+                                  passage_to_spawner_model_object){
 
   # get parameter estimates
   summary_table <- rstan::summary(passage_to_spawner_model_object)$summary |>
@@ -186,9 +192,9 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
     mutate(model_name = "p2s",
            site = NA,
            week_fit = NA,
-           location_fit = NA,
+           stream = p2s_inputs$stream,
            srjpedata_version = as.character(packageVersion("SRJPEdata"))) |>
-    select(model_name, site, year, week_fit, location_fit,
+    select(model_name, site, stream, year, week_fit,
            parameter, statistic, value, srjpedata_version)
 
   return(table_with_years_long)
@@ -215,14 +221,12 @@ extract_P2S_estimates <- function(passage_to_spawner_model_object){
 #' * **Rhat** Split Rhats for a parameter
 #' * **year** Year observed data came from
 #' @export
-#' @family passage_to_spawner
 #' @md
 compare_P2S_model_covariates <- function(stream) {
 
   cli::cli_alert(paste0("Fitting Passage to Spawner (P2S) model to all covariates for", stream))
 
-  approved_covariates <- c("wy_type", "max_flow_std", "gdd_std",
-                           "median_passage_timing_std", "passage_index")
+  approved_covariates <- c("wy_type", "max_flow_std", "gdd_std")
 
   inputs <- purrr::pmap(list(stream,
                              approved_covariates,
@@ -245,3 +249,39 @@ compare_P2S_model_covariates <- function(stream) {
 
 }
 
+#' P2S results plots
+#' @details This function produces a plot with predicted spawners with uncertainty.
+#' for simple comparison.
+#' @param p2s_inputs inputs for the fit model, created by running `prepare_P2S_inputs()`
+#' @param con a connection to the database.
+#' @returns A plot showing observed and predicted spawners by year.
+#' @export
+#' @md
+generate_results_plot_p2s <- function(p2s_inputs, con) {
+
+  dark_JPE <- c("#F5CAC2", "#6E9881", "#9A8723", "#2D4755", "#869AA0")
+
+  params <- get_most_recent_model_results(con) |>
+    filter(model_name == "p2s",
+           stream == p2s_inputs$stream) |>
+    select(-c(id, week_fit, model_run_id, site, model_name))
+
+  obsv_spawners <- tibble("year" = p2s_inputs$inputs$data$input_years,
+                          "obsv_spawners" = p2s_inputs$inputs$data$observed_spawners)
+
+  plot <- params |>
+    pivot_wider(names_from = "statistic", values_from = "value") |>
+    filter(parameter == "predicted_spawners") |>
+    left_join(obsv_spawners, by = "year") |>
+    mutate(year = factor(year)) |>
+    ggplot() +
+    geom_ribbon(aes(x = year, ymin = `2.5`, ymax = `97.5`, group = 1), alpha = 0.4, fill = dark_JPE[5]) +
+    geom_line(aes(x = year, y = `50`, group = 1)) +
+    geom_point(aes(x = year, y = obsv_spawners), size = 2, color = dark_JPE[2]) +
+    theme_minimal() +
+    labs(x = "Year",
+         y = "Predicted spawners",
+         title = paste0(str_to_title(p2s_inputs$stream)))
+
+  return(plot)
+}

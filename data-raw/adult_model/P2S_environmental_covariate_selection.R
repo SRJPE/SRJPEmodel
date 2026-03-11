@@ -218,7 +218,7 @@ cors <- function(data, stream_arg) {
     pivot_longer(-`Variable 1`, names_to = "Variable 2", values_to = "Pearson Correlation") |>
     mutate(`Variable 2` = str_replace_all(`Variable 2`, "\\.", " ")) |>
     filter(`Pearson Correlation` != 1) |>
-    distinct(`Pearson Correlation`, .keep_all = TRUE) |>
+    dplyr::distinct(`Pearson Correlation`, .keep_all = TRUE) |>
     arrange(desc(`Pearson Correlation`))
 
   return(cors)

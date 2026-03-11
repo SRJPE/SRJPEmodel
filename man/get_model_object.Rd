@@ -6,17 +6,20 @@
 \usage{
 get_model_object(
   con,
-  keyword = NULL,
+  model_component = "model_fit",
   model_run_id = NULL,
+  keyword = NULL,
   access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
 )
 }
 \arguments{
 \item{con}{A connection object to the database.}
 
-\item{keyword}{An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.}
+\item{model_component}{Select one of fit, input or plot object to pull.}
 
 \item{model_run_id}{An optional ID for a specific model run. If provided, it is used to find the corresponding blob URL. If neither \code{keyword} nor \code{model_run_id} is provided, the latest model run is used.}
+
+\item{keyword}{An optional string used to search for the model run description in the database. If provided, it is used to find the corresponding blob URL.}
 
 \item{access_key}{A string specifying the Azure storage access key with read permissions. By default, it retrieves from the environment variable \code{AZ_CONTAINER_ACCESS_KEY}.}
 }
@@ -24,10 +27,10 @@ get_model_object(
 The model object retrieved from the Azure Blob Storage.
 #' @examples
 \dontrun{
-model_object <- get_model_object(con = db_connection, keyword = "model description")
+model_plot_object <- get_model_object(con = db_connection, model_component = "plot", keyword = "model description")
 
 # Example: Get a model object from Azure Blob Storage using a model run ID
-model_object <- get_model_object(con = db_connection, model_run_id = 12)
+model_input_object <- get_model_object(con = db_connection, model_component = "input", model_run_id = 12)
 
 print(model_object$model.file)
 }

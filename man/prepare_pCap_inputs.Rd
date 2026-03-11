@@ -7,6 +7,8 @@
 prepare_pCap_inputs(
   mainstem = c(FALSE, TRUE),
   mainstem_site = NULL,
+  drop_trib_sites = FALSE,
+  sites_to_drop = NULL,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
@@ -18,6 +20,12 @@ the mark recapture dataset will be filtered to exclude those mainstem sites.}
 
 \item{mainstem_site}{If you are fitting the model with \code{mainstem == TRUE}, you must supply a
 mainstem site for which to prepare inputs. Can be either \verb{knights landing} or \code{tisdale}.}
+
+\item{drop_trib_sites}{Either \code{FALSE} or \code{TRUE} and defaults to \code{FALSE}. If \code{TRUE}, you can provide a
+specific site to \code{drop_trib_sites} to exclude that site from estimates of \code{b0_pCap} and \code{b_flow}.}
+
+\item{sites_to_drop}{A character vector of at least length 1. Must be one of the site names
+in \code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}.}
 
 \item{input_catch_data}{Optional argument for weekly catch data.
 Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If
@@ -40,3 +48,11 @@ Prepare inputs for pCap STAN model
 \details{
 This function prepares data for input into a pCap STAN model.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_stock_recruit_inputs}()},
+\code{\link{prepare_survival_inputs}()}
+}
+\concept{Prepare Model Inputs}

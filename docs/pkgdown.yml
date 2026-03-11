@@ -1,12 +1,14 @@
-pandoc: 3.1.1
-pkgdown: 2.0.7
+pandoc: '3.4'
+pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   btspas_submodel_documentation: btspas_submodel_documentation.html
+  in_season_model_documentation: in_season_model_documentation.html
   passage_to_spawner_submodel: passage_to_spawner_submodel.html
+  plad_submodel_documentation: plad_submodel_documentation.html
+  stock_recruit_model_documentation: stock_recruit_model_documentation.html
   survival_submodel_documentation: survival_submodel_documentation.html
-last_built: 2024-05-23T23:59Z
+last_built: 2025-09-02T16:55Z
 urls:
   reference: https://SRJPE.github.io/SRJPEmodel/reference
   article: https://SRJPE.github.io/SRJPEmodel/articles
-

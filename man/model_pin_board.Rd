@@ -4,7 +4,7 @@
 \alias{model_pin_board}
 \title{Model Data Pin Board}
 \usage{
-model_pin_board(storage_account, container, ...)
+model_pin_board(storage_account, container, model_name, ...)
 }
 \arguments{
 \item{storage_account}{The name of the Azure Storage account.}

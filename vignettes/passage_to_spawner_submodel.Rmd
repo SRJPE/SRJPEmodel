@@ -62,7 +62,7 @@ knitr::include_graphics(path = here::here("vignettes", "images", "P2S_for_dashbo
 
 The model takes in two datasets:
 
-* **Observed adult counts** or estimates from all methods (upstream passage, holding surveys, redd surveys, and carcass surveys) aggregated by year and stream. This is in the `SRJPEdata::observed_adult_input` data object.
+* **Observed adult counts** or estimates from all methods (upstream passage, holding surveys, redd surveys, and carcass surveys) aggregated by year and stream. This is in the `SRJPEdata::annual_adult` data object.
 * **Observed environmental covariates** aggregated by year within streams, and standardized (scaled to center on 0). This is in the `SRJPEdata::adult_model_covariates_standard` object.
 
 # Running the P2S submodel

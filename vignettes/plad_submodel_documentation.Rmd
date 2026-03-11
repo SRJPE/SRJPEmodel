@@ -1,0 +1,47 @@
+---
+title: "PLAD Model"
+author: "Noble Hendricks"
+output:
+  html_document: default
+  theme: flatly
+vignette: "%\\VignetteIndexEntry{Survival Model} %\\VignetteEngine{knitr::rmarkdown}
+  %\\VignetteEncoding{UTF-8}\n"
+#output: word_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(wesanderson)
+library(SRJPEdata)
+library(SRJPEmodel)
+```
+
+## Overview
+
+## Submodel Objective
+
+## Conceptual model
+
+# Model Input
+
+# Running survival submodel
+
+# Model Output
+
+**Table**
+
+**Plots**
+
+**Resources**
+

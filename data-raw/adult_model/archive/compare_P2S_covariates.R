@@ -130,7 +130,7 @@ compare_covars <- function(data, stream_name, truncate_data) {
     print(unique(stream_data$stream))
 
     covar <- stream_data |>
-      pull(all_of(selected_covariate))
+      dplyr::pull(all_of(selected_covariate))
 
     stream_data_list <- list("N" = length(unique(stream_data$year)),
                              "input_years" = unique(stream_data$year),
@@ -258,10 +258,10 @@ get_rankings <- function(results, stream_name) {
     arrange(mean_rank)
 
   best_covar <- results_with_rankings_wide[1, ] |>
-    pull(covar_considered)
+    dplyr::pull(covar_considered)
 
   second_best_covar <- results_with_rankings_wide[2, ] |>
-    pull(covar_considered)
+    dplyr::pull(covar_considered)
 
   return(list("best_model" = best_covar,
               "compare_rankings" = results_with_rankings_wide,

@@ -4,7 +4,7 @@
 \alias{extract_P2S_estimates}
 \title{Extract parameter estimates from P2S}
 \usage{
-extract_P2S_estimates(passage_to_spawner_model_object)
+extract_P2S_estimates(p2s_inputs, passage_to_spawner_model_object)
 }
 \value{
 a table with the following variables:
@@ -26,10 +26,5 @@ a table with the following variables:
 \description{
 This function takes in a STAN fit object produced by running \code{fit_passage_to_spawner_model()} and produces a formatted
 table of parameter estimates from the Passage to Spawner model.
-}
-\seealso{
-Other passage_to_spawner: 
-\code{\link{compare_P2S_model_covariates}()},
-\code{\link{fit_passage_to_spawner_model}()}
 }
 \concept{passage_to_spawner}

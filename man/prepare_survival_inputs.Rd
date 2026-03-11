@@ -28,3 +28,11 @@ Prepare inputs for survival model
 This function prepares the data, initial values, and parameter list needed to call the
 survival STAN model. It will prepare these data based on what model you want to run.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_pCap_inputs}()},
+\code{\link{prepare_stock_recruit_inputs}()}
+}
+\concept{Prepare Model Inputs}

@@ -4,15 +4,12 @@
 \alias{generate_lt_pCap_Us}
 \title{Generate lt_pCap_U values from the pCap model object}
 \usage{
-generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
+generate_lt_pCap_Us(abundance_inputs, pcap_model_object)
 }
 \arguments{
 \item{abundance_inputs}{A list containing the inputs for the site-specific abundance model including
 \code{model_name}, \code{Nstrata}, \code{catch_flow}, \code{use_trib}, \code{Ntribs}, \code{Nmr}, \code{Nwmr}, \code{Nwomr}, \code{Uind_wMR}, \code{Uind_woMR},
 \code{ind_pCap}. This is created by calling \code{prepare_abundance_inputs()}.}
-
-\item{pCap_model_object}{A STANfit object with the output of the pCap hierarchical model. This is created
-by calling \code{fit_pCap_model()}.}
 }
 \value{
 a named list with the simulated \code{lt_pCap_mu} and \code{lt_pCap_sd} values for

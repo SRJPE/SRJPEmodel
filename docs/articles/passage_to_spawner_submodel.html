@@ -53,7 +53,7 @@
       <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
     </li>
     <li>
-      <a href="../articles/btspas_submodel_documentation.html">Juvenile Abundance Model (BTSPAS-X)</a>
+      <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
     </li>
   </ul>
 </li>
@@ -144,7 +144,7 @@ more information, see documentation.</p>
 <strong>Observed adult counts</strong> or estimates from all methods
 (upstream passage, holding surveys, redd surveys, and carcass surveys)
 aggregated by year and stream. This is in the
-<code><a href="https://rdrr.io/pkg/SRJPEdata/man/observed_adult_input.html" class="external-link">SRJPEdata::observed_adult_input</a></code> data object.</li>
+<code><a href="https://rdrr.io/pkg/SRJPEdata/man/upstream_passage_estimates.html" class="external-link">SRJPEdata::annual_adult</a></code> data object.</li>
 <li>
 <strong>Observed environmental covariates</strong> aggregated by
 year within streams, and standardized (scaled to center on 0). This is
@@ -169,7 +169,7 @@ object.</li>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># run the model for battle creek and water year type</span></span>
 <span><span class="va">battle_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_P2S_inputs.html">prepare_P2S_inputs</a></span><span class="op">(</span><span class="st">"battle creek"</span>, <span class="st">"wy_type"</span><span class="op">)</span></span>
-<span><span class="va">battle_P2S_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_passage_to_spawner_model.html">run_passage_to_spawner_model</a></span><span class="op">(</span><span class="va">battle_inputs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">battle_P2S_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_passage_to_spawner_model.html">fit_passage_to_spawner_model</a></span><span class="op">(</span><span class="va">battle_inputs</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="for-all-covariates-within-a-stream">For all covariates within a stream<a class="anchor" aria-label="anchor" href="#for-all-covariates-within-a-stream"></a>

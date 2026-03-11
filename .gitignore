@@ -17,3 +17,4 @@ config.json
 *.out
 *.res
 *.vcv
+config.yml
