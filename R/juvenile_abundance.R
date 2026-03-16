@@ -110,11 +110,13 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   sites_fit <- site_lookup |>
     dplyr::pull(site)
 
-  # year lookup
+    # year lookup
   mr_year_lookup <- mark_recapture_data |>
     arrange(site, run_year) |>
     distinct(site, run_year) |>
     mutate(site_run_year_id = row_number())
+
+  site_year_fit=unique(mr_year_lookup[c("site", "run_year")])
 
   # assign the IDs to the sites in the mark-recapture dataset
   mark_recapture_data <- mark_recapture_data |>
@@ -137,6 +139,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
            new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
     ungroup()
 
+  dss=read.csv(file="sd_yr_ind.csv",header=T)
   # build data list with ALL elements
   data <- list("Nmr" = number_efficiency_experiments,
                "Ntribs" = Ntribs,
@@ -146,7 +149,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                "Recaptures" = mark_recapture_data$number_recaptured,
                "mr_flow" = clean_mr_flow$new_mr_flow,
                "ind_yr" = mark_recapture_data$site_run_year_id,
-               "Nyrs" = length(unique(mark_recapture_data$site_run_year_id)))
+               "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
+               "sd_yr_ind"=dss$sd_yr_ind)
 
 
   # check data list for NaNs and Infs
@@ -184,7 +188,9 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     b_flow = rep(0, Ntribs),
                     trib_tau_P = 1,
                     flow_tau_P = 1,
-                    pro_tau_P = 1)
+                    pro_tau_P = 1,
+                    yr_tau_P=rep(1,Ntribs))
+
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
@@ -204,10 +210,12 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                  inits = inits,
                  parameters = pCap_parameters)
 
+
   return(list("inputs" = inputs,
               "sites_fit" = sites_fit,
               "sites_dropped" = sites_to_drop,
               "location" = "tributary",
+              "site_year_fit" = site_year_fit,
               "model_name" = "pcap_all"))
 
 }
@@ -254,6 +262,19 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
       dplyr::filter(number_recaptured <= number_released)
   }
 
+  mr_year_lookup <- mark_recapture_data |>
+    arrange(run_year) |>
+    distinct(run_year) |>
+    mutate(run_year_id = row_number())
+
+  # assign the IDs to the  mark-recapture dataset
+   mark_recapture_data <- mark_recapture_data |>
+      left_join(mr_year_lookup, by = c("run_year"))
+
+
+   years_fit <- mr_year_lookup |>
+     dplyr::pull(run_year)
+
 
   # get indexing for "mark recap" dataset (pCap model)
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
@@ -263,7 +284,9 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   data <- list("Nmr" = number_efficiency_experiments,
                "Releases" = mark_recapture_data$number_released,
                "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = mark_recapture_data$standardized_efficiency_flow)
+               "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
+               "ind_yr" = mark_recapture_data$run_year_id,
+               "Nyr_re" = length(unique(mark_recapture_data$run_year_id)))
 
 
   # check data list for NaNs and Infs
@@ -277,7 +300,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("pro_sd_P", "b0_pCap", "b_flow")
+  pCap_parameters <-  c( "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re")
 
   # initial parameter values
   ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
@@ -289,7 +312,8 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 
   init_list <- list(b0_pCap = ini_b0_pCap,
                     b_flow = 0,
-                    pro_tau_P = 1)
+                    pro_tau_P = 1,
+                    sd_tau_P = 1)
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
@@ -311,6 +335,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 
   return(list("inputs" = inputs,
               "sites_fit" = mainstem_site,
+              "years_fit" = years_fit,
               "location" = mainstem_site,
               "model_name" = "pcap_mainstem"))
 
