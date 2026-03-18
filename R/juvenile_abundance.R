@@ -766,21 +766,27 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
     # extract from pCap model fit object
 
-    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
+    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_re","yr_sd_P"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
     pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+    run_year = abundance_inputs$run_year
+
+    #run_year_id =lookup run_year in mr_year_lookup table for KL or Tis and return run_year_id
+    yr_re<-samples$yr_re[run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
+    yr_sd_P<-samples$yr_sd_P
 
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
     sim_pro_dev=vector(length=Ntrials)
     lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
     lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+    sim_yr_dev=vector(length=Ntrials)
 
-    if(ModelName=="all_mark_recap" ){
+    if(ModelName=="all_mark_recap" ){#stays as is
 
       for(i in 1:Nstrata){
         lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
@@ -795,7 +801,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
         for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + yr_re
       }
 
     } else if (ModelName=="no_mark_recap"){
@@ -814,9 +820,12 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       # }
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
+        for(itrial in 1:Ntrials) {
+          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
+          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
+        }
         #lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];B
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
       }
 
     }#end if on ModelName
@@ -845,7 +854,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     # extract from pCap model fit object
 
     samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                                                          "flow_mu_P", "flow_sd_P"),
+                                                          "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
@@ -857,11 +866,21 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
     flow_sd_P <- samples$flow_sd_P # flow_sd_P[1:Ntrials] #hyper sd for b_flow
 
+    site = abundance_inputs$site
+    run_year = abundance_inputs$run_year
+
+    #run_year_id =lookup run_year in mr_year_lookup table given site and run year above return run_year_id
+    yr_re<-samples$yr_re[run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
+
+    #get sd_yr ind from mr_year_lookup based on site and run_year
+    yr_sd_P<-samples$yr_sd_P[sd_yr_ind]
+
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
     sim_pro_dev=vector(length=Ntrials)
     lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
     lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+    sim_yr_dev=vector(length=Ntrials)
 
     if(ModelName=="all_mark_recap" ){
 
@@ -878,14 +897,17 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
         for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + yr_re[1:Ntrials]
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+        for(itrial in 1:Ntrials) {
+          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
+          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
+        }
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
