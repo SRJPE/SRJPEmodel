@@ -117,6 +117,11 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
     mutate(site_run_year_id = row_number())
 
   site_year_fit=unique(mr_year_lookup[c("site", "run_year")])
+  sd_yr_ind <- site_year_fit |>
+    group_by(site) |>
+    mutate(sd_yr_ind = cur_group_id()) |>
+    ungroup() |>
+    pull(sd_yr_ind)
 
   # assign the IDs to the sites in the mark-recapture dataset
   mark_recapture_data <- mark_recapture_data |>
@@ -139,7 +144,6 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
            new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
     ungroup()
 
-  dss=read.csv(file="sd_yr_ind.csv",header=T)
   # build data list with ALL elements
   data <- list("Nmr" = number_efficiency_experiments,
                "Ntribs" = Ntribs,
@@ -150,7 +154,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                "mr_flow" = clean_mr_flow$new_mr_flow,
                "ind_yr" = mark_recapture_data$site_run_year_id,
                "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
-               "sd_yr_ind"=dss$sd_yr_ind)
+               "sd_yr_ind"=sd_yr_ind) # liz updated to use dplyr to create
 
 
   # check data list for NaNs and Infs
@@ -631,6 +635,21 @@ prepare_abundance_inputs <- function(site, run_year,
   weeks_fit <- tibble("Jwk" = catch_data$week) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = "Jwk")
 
+  # run_year_id to index for yr_re
+  # and year_sd_id to index for yr_sd_P
+  run_year_id_lookup <- mark_recapture_data |>
+    arrange(site, run_year) |>
+    distinct(site, run_year) |>
+    group_by(site, run_year) |>
+    mutate(site_run_year_id = cur_group_id()) |>
+    ungroup() |>
+    group_by(site) |>
+    mutate(year_sd_id = cur_group_id()) |>
+    ungroup()
+
+  run_year_id <- run_year_id_lookup$site_run_year_id[which(run_year_id_lookup$site == site & run_year_id_lookup$run_year == run_year)]
+  year_sd_id <- unique(run_year_id_lookup$year_sd_id)
+
   abundance_inputs <- list("inputs" = inputs_for_abundance,
                            "lt_pCap_U_data" = lt_pCap_U_data,
                            "model_name" = model_name,
@@ -640,7 +659,9 @@ prepare_abundance_inputs <- function(site, run_year,
                            "mr_flow_raw" = mark_recapture_data$flow_cfs,
                            "weeks_fit" = weeks_fit$Jwk,
                            "week_date" = weeks_fit$date,
-                           "sites_fit" = sites_fit)
+                           "sites_fit" = sites_fit,
+                           "run_year_id" = run_year_id,
+                           "year_sd_id" = year_sd_id)
 
   # generate lt pcap Us based on inputs
   lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pcap_model_object)
@@ -749,7 +770,6 @@ fit_pCap_model <- function(input) {
 #' @md
 generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
-
   # if mainstem
   if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
 
@@ -773,11 +793,11 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
     pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
-    run_year = abundance_inputs$run_year
+    run_year <- abundance_inputs$run_year
 
     #run_year_id =lookup run_year in mr_year_lookup table for KL or Tis and return run_year_id
-    yr_re<-samples$yr_re[run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
-    yr_sd_P<-samples$yr_sd_P
+    yr_re <- samples$yr_re[, abundance_inputs$run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
+    yr_sd_P <- samples$yr_sd_P[, abundance_inputs$year_sd_id]
 
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
@@ -870,10 +890,10 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     run_year = abundance_inputs$run_year
 
     #run_year_id =lookup run_year in mr_year_lookup table given site and run year above return run_year_id
-    yr_re<-samples$yr_re[run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
+    yr_re <- samples$yr_re[, abundance_inputs$run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
 
     #get sd_yr ind from mr_year_lookup based on site and run_year
-    yr_sd_P<-samples$yr_sd_P[sd_yr_ind]
+    yr_sd_P <- samples$yr_sd_P[, abundance_inputs$year_sd_id]
 
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
