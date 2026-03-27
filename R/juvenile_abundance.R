@@ -648,7 +648,7 @@ prepare_abundance_inputs <- function(site, run_year,
     ungroup()
 
   run_year_id <- run_year_id_lookup$site_run_year_id[which(run_year_id_lookup$site == site & run_year_id_lookup$run_year == run_year)]
-  year_sd_id <- unique(run_year_id_lookup$year_sd_id)
+  year_sd_id <- unique(run_year_id_lookup$year_sd_id)[which(unique(run_year_id_lookup$site) == site)]
 
   abundance_inputs <- list("inputs" = inputs_for_abundance,
                            "lt_pCap_U_data" = lt_pCap_U_data,
@@ -827,8 +827,11 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials]
+        for(itrial in 1:Ntrials) {
+          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
+          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
+        }
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
