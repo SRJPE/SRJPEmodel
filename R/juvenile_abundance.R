@@ -190,10 +190,10 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     b0_pCap = ini_b0_pCap,
                     flow_mu_P = 0,
                     b_flow = rep(0, Ntribs),
-                    trib_tau_P = 1,
-                    flow_tau_P = 1,
-                    pro_tau_P = 1,
-                    yr_tau_P=rep(1,Ntribs))
+                    trib_sd_P = 1,
+                    flow_sd_P = 1,
+                    pro_sd_P = rep(1,Ntribs),
+                    yr_sd_P=rep(1,Ntribs))
 
 
 
@@ -316,8 +316,8 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 
   init_list <- list(b0_pCap = ini_b0_pCap,
                     b_flow = 0,
-                    pro_tau_P = 1,
-                    sd_tau_P = 1)
+                    pro_sd_P = 1,
+                    yr_sd_P = 1)#sd_tau_P=1 was wrong. This is not a parameter. Chaged to yr_tau_P
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
