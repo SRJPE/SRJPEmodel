@@ -168,8 +168,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
-                        "b0_pCap", "b_flow")
+  pCap_parameters <-  c("logit_pCap","trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
+                        "b0_pCap", "b_flow","yr_sd_P","yr_re")
 
   # initial parameter values
   ini_b0_pCap <- rep(NA, Ntribs)
@@ -304,7 +304,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c( "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re")
+  pCap_parameters <-  c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re")
 
   # initial parameter values
   ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
@@ -317,7 +317,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   init_list <- list(b0_pCap = ini_b0_pCap,
                     b_flow = 0,
                     pro_sd_P = 1,
-                    yr_sd_P = 1)#sd_tau_P=1 was wrong. This is not a parameter. Chaged to yr_tau_P
+                    yr_sd_P = 1)
 
 
   # cli::cli_process_start("Checking init inputs for pCap model",
@@ -729,11 +729,11 @@ fit_pCap_model <- function(input) {
                         model_code = stan_model,
                         data = input$inputs$data,
                         init = input$inputs$inits,
-                        # do not save logit_pCap or pro_dev_P (way too big)
-                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P"),
+                        pars = input$inputs$parameters,
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
-                        seed = 84735)
+                        iter = SRJPEmodel::10000,
+                        seed = 84735,
+                        control = list(max_treedepth = 15))
 
     return(pcap)
 
@@ -748,11 +748,11 @@ fit_pCap_model <- function(input) {
                         data = input$inputs$data,
                         init = input$inputs$inits,
                         # do not save logit_pCap or pro_dev_P (way too big)
-                        pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                                 "flow_mu_P", "flow_sd_P"), # for new efficient model
+                        pars = input$inputs$parameters,
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
-                        seed = 84735)
+                        iter = SRJPEmodel::30000,
+                        seed = 84735,
+                        control = list(max_treedepth = 15))
 
     return(pcap)
 
@@ -786,13 +786,14 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
     # extract from pCap model fit object
 
-    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_re","yr_sd_P"),
+    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_re","yr_sd_P","alpha"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
     pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+    alpha <- samples$alpha
     run_year <- abundance_inputs$run_year
 
     #run_year_id =lookup run_year in mr_year_lookup table for KL or Tis and return run_year_id
@@ -820,18 +821,17 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + yr_re
+        #for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
+        sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) {
-          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
-          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
-        }
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
+          sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+          sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)
+          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
@@ -843,12 +843,11 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       # }
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) {
-          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
-          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
-        }
+        sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
+
         #lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];B
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
 
     }#end if on ModelName
@@ -858,8 +857,6 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     for(i in 1:Nstrata){
       lt_pCap_mu[i,]=mean(lt_pCap_U[,i])
       lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
-      # lt_pCap_mu[,i]=mean(lt_pCap_U[i])
-      # lt_pCap_sd[,i]=sd(lt_pCap_U[i])
     }
 
   } else {
@@ -883,7 +880,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
-    pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
+    pro_sd_P <- samples$pro_sd_P[, abundance_inputs$year_sd_id] #process error (sd)
     trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
     trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
     flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
@@ -919,31 +916,30 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + yr_re[1:Ntrials]
+        sim_pro_dev = rnorm(n=Nsims, mean=0,sd=pro_sd_P);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) {
-          sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial])
-          sim_yr_dev[itrial] = rnorm(n=1, mean=0, sd=yr_sd_P[itrial])
-        }
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
+        sim_pro_dev = rnorm(n=Nsims, mean=0, sd=pro_sd_P)
+        sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)
+
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
 
       logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
-      for(itrial in 1:Ntrials){
-        logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
-        logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
-      }
+
+      logit_b0 = rnorm(n=Nsims, mean=trib_mu_P, sd=trib_sd_P)
+      logit_bflow = rnorm(n=Nsims, mean=flow_mu_P, sd=flow_sd_P)
+
 
       for (i in 1:Nwomr) {
-        for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0, sd=pro_sd_P[itrial]);
-        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];
+        sim_pro_dev = rnorm(n=Nsims, mean=0, sd=pro_sd_);
+        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev
       }
 
     }#end if on ModelName
