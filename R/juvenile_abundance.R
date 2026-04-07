@@ -750,7 +750,7 @@ fit_pCap_model <- function(input) {
                         # do not save logit_pCap or pro_dev_P (way too big)
                         pars = input$inputs$parameters,
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = SRJPEmodel::30000,
+                        iter = 30000,
                         seed = 84735,
                         control = list(max_treedepth = 15))
 
@@ -798,14 +798,13 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
     #run_year_id =lookup run_year in mr_year_lookup table for KL or Tis and return run_year_id
     yr_re <- samples$yr_re[, abundance_inputs$run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
-    yr_sd_P <- samples$yr_sd_P[, abundance_inputs$year_sd_id]
+    yr_sd_P <- samples$yr_sd_P
 
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
-    sim_pro_dev=vector(length=Ntrials)
     lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
     lt_pCap_sd=lt_pCap_mu                        #function needs to return this
-    sim_yr_dev=vector(length=Ntrials)
+
 
     if(ModelName=="all_mark_recap" ){#stays as is
 
@@ -822,31 +821,27 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
         #for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-          sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
-          sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)
-          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials] + sim_yr_dev[1:Ntrials]
+          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+          sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
+          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
 
-      # logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
-      # for(itrial in 1:Ntrials){
-      #   logit_b0[itrial] = rnorm(n=1, mean=trib_mu_P[itrial], sd=trib_sd_P[itrial])
-      #   logit_bflow[itrial] = rnorm(n=1, mean=flow_mu_P[itrial], sd=flow_sd_P[itrial])
-      # }
+       logit_b0 = rnorm(n=Ntrials, mean=trib_mu_P, sd=trib_sd_P)
+       logit_bflow = rnorm(n=Ntrials, mean=flow_mu_P, sd=flow_sd_P)
+
 
       for (i in 1:Nwomr) {
-        sim_pro_dev=rskew_normal(n=Nsims, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
-        sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
-
-        #lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev[1:Ntrials];B
+        sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
 
@@ -880,7 +875,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
-    pro_sd_P <- samples$pro_sd_P[, abundance_inputs$year_sd_id] #process error (sd)
+    pro_sd_P <- samples$pro_sd_P #process error (sd)
     trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
     trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
     flow_mu_P <- samples$flow_mu_P # flow_mu_P[1:Ntrials] #hyper mean for b_flow
@@ -893,7 +888,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     yr_re <- samples$yr_re[, abundance_inputs$run_year_id]#need to know the year abundance model running for and determine which element of yr_re it represents
 
     #get sd_yr ind from mr_year_lookup based on site and run_year
-    yr_sd_P <- samples$yr_sd_P[, abundance_inputs$year_sd_id]
+    yr_sd_P <- samples$yr_sd_P
 
     # calculations
     lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
@@ -916,30 +911,29 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        sim_pro_dev = rnorm(n=Nsims, mean=0,sd=pro_sd_P);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
+        sim_pro_dev = rnorm(n=Nsims, mean=0,sd=pro_sd_P[,use_trib]);
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + yr_re + sim_pro_dev
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        sim_pro_dev = rnorm(n=Nsims, mean=0, sd=pro_sd_P)
-        sim_yr_dev = rnorm(n=Nsims, mean=0, sd=yr_sd_P)
+        sim_pro_dev = rnorm(n=Ntrials, mean=0, sd=pro_sd_P[,use_trib])
+        sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P[,use_trib])
 
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
 
-      logit_b0=vector(length=Ntrials); logit_bflow=logit_b0
-
-      logit_b0 = rnorm(n=Nsims, mean=trib_mu_P, sd=trib_sd_P)
-      logit_bflow = rnorm(n=Nsims, mean=flow_mu_P, sd=flow_sd_P)
+      logit_b0 = rnorm(n=Ntrials, mean=trib_mu_P, sd=trib_sd_P)
+      logit_bflow = rnorm(n=Ntrials, mean=flow_mu_P, sd=flow_sd_P)
 
 
       for (i in 1:Nwomr) {
-        sim_pro_dev = rnorm(n=Nsims, mean=0, sd=pro_sd_);
-        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_pro_dev
+        sim_pro_dev = rnorm(n=Ntrials, mean=0, sd=rowMeans(pro_sd_P))
+        sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=rowMeans(yr_sd_P))
+        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev
       }
 
     }#end if on ModelName
