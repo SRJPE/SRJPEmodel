@@ -761,7 +761,7 @@ fit_pCap_model <- function(input) {
                         # do not save logit_pCap or pro_dev_P (way too big)
                         pars = input$inputs$parameters,
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = 30000,
+                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
                         seed = 84735,
                         control = list(max_treedepth = 15))
 
