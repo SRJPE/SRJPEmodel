@@ -654,12 +654,9 @@ prepare_abundance_inputs <- function(site, run_year,
   run_year_id_lookup <- mark_recapture_data |>
     arrange(ns_order, run_year) |>
     distinct(site, run_year) |>
-    group_by(site, run_year) |>
-    mutate(site_run_year_id = cur_group_id()) |>
-    ungroup() |>
-    group_by(site) |>
-    mutate(year_sd_id = cur_group_id()) |>
-    ungroup()
+    mutate(site_run_year_id = as.integer(factor(paste(site, run_year),
+                                                levels = unique(paste(site, run_year)))),
+           year_sd_id = as.integer(factor(site, levels = unique(site))))
 
   run_year_id <- run_year_id_lookup$site_run_year_id[which(run_year_id_lookup$site == site & run_year_id_lookup$run_year == run_year)]
   year_sd_id <- unique(run_year_id_lookup$year_sd_id)[which(unique(run_year_id_lookup$site) == site)]
