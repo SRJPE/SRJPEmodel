@@ -3,13 +3,13 @@
 # bt-spas-x ----------------------------------------------------------
 
 # stan (pCap and abundance separate)
-pCap_all <- readr::read_file(here::here("model_files", "pCap_all.stan"))
-pCap_mainstem <- readr::read_file(here::here("model_files", "pCap_mainstem.stan"))
+pCap_trib <- readr::read_file(here::here("model_files", "pCap_trib.stan"))
+pCap_mainstem_skew_re <- readr::read_file(here::here("model_files", "pCap_mainstem_skew_re.stan"))
 abundance <- readr::read_file(here::here("model_files", "abundance_model.stan"))
 abundance_BUGS <- readr::read_file(here::here("model_files", "abundance_model.bug"))
 
-bt_spas_x_model_code <- list(pCap_all = pCap_all,
-                             pCap_mainstem = pCap_mainstem,
+bt_spas_x_model_code <- list(pCap_trib = pCap_trib,
+                             pCap_mainstem_skew_re = pCap_mainstem_skew_re,
                              abundance = abundance,
                              abundance_BUGS = abundance_BUGS)
 

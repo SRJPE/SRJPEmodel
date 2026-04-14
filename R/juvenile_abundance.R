@@ -83,8 +83,10 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
                     !is.na(number_recaptured)) |>
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
     dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+    # sort by site
     group_by(site) |>
-    arrange(year, week) |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order, year, week) |>
     ungroup()
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
@@ -112,15 +114,14 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
 
     # year lookup
   mr_year_lookup <- mark_recapture_data |>
-    arrange(site, run_year) |>
+    arrange(ns_order, run_year) |>
     distinct(site, run_year) |>
     mutate(site_run_year_id = row_number())
 
   site_year_fit=unique(mr_year_lookup[c("site", "run_year")])
+
   sd_yr_ind <- site_year_fit |>
-    group_by(site) |>
-    mutate(sd_yr_ind = cur_group_id()) |>
-    ungroup() |>
+    mutate(sd_yr_ind = as.integer(factor(site, levels = unique(site)))) |>
     pull(sd_yr_ind)
 
   # assign the IDs to the sites in the mark-recapture dataset
@@ -220,7 +221,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
               "sites_dropped" = sites_to_drop,
               "location" = "tributary",
               "site_year_fit" = site_year_fit,
-              "model_name" = "pcap_all"))
+              "model_name" = "pcap_trib"))
 
 }
 
@@ -251,7 +252,8 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
     dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
     group_by(site) |>
-    arrange(year, week) |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order, year, week) |>
     ungroup()
 
   if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
@@ -304,7 +306,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
   }))
   cli::cli_process_done()
 
-  pCap_parameters <-  c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re")
+  pCap_parameters <-  c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha")
 
   # initial parameter values
   ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
@@ -341,7 +343,7 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
               "sites_fit" = mainstem_site,
               "years_fit" = years_fit,
               "location" = mainstem_site,
-              "model_name" = "pcap_mainstem"))
+              "model_name" = "pCap_mainstem_skew_re"))
 
 }
 
@@ -397,6 +399,9 @@ prepare_abundance_inputs <- function(site, run_year,
               catch_standardized_by_hours_fished = if(all(is.na(catch_standardized_by_hours_fished))) NA_real_ else sum(catch_standardized_by_hours_fished, na.rm = TRUE),
               lgN_prior = mean(lgN_prior, na.rm = T)) |>
     ungroup() |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order) |>
+    select(-ns_order) |>
     mutate(count = round(count, 0),
            catch_standardized_by_hours_fished = round(catch_standardized_by_hours_fished, 0),
            # change all NaNs to NAs
@@ -419,6 +424,9 @@ prepare_abundance_inputs <- function(site, run_year,
            sampled = ifelse(is.na(count), FALSE, TRUE),
            efficiency_trial = ifelse(is.na(lincoln_peterson_efficiency), FALSE, TRUE)) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order) |>
+    select(-ns_order) |>
     mutate(year = ifelse(week >= 43, run_year - 1, run_year),
            date = factor(date, levels = date),
            week_index = row_number()) |>
@@ -449,7 +457,8 @@ prepare_abundance_inputs <- function(site, run_year,
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
       dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
       group_by(site) |>
-      arrange(year, week) |>
+      left_join(site_order_north_south, by = "site") |>
+      arrange(ns_order, year, week) |>
       ungroup()
 
   } else {
@@ -467,7 +476,8 @@ prepare_abundance_inputs <- function(site, run_year,
       # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
       dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
       group_by(site) |>
-      arrange(year, week) |>
+      left_join(site_order_north_south, by = "site") |>
+      arrange(ns_order, year, week) |>
       ungroup()
   }
 
@@ -478,7 +488,11 @@ prepare_abundance_inputs <- function(site, run_year,
   all_data_for_indexing <- left_join(catch_data, mark_recapture_data,
                                      by = c("year", "week", "stream",
                                             "site", "run_year", "flow_cfs",
-                                            "standardized_flow"))
+                                            "standardized_flow")) |>
+    select(-ns_order) |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order) |>
+    select(-ns_order)
 
   # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
@@ -638,7 +652,7 @@ prepare_abundance_inputs <- function(site, run_year,
   # run_year_id to index for yr_re
   # and year_sd_id to index for yr_sd_P
   run_year_id_lookup <- mark_recapture_data |>
-    arrange(site, run_year) |>
+    arrange(ns_order, run_year) |>
     distinct(site, run_year) |>
     group_by(site, run_year) |>
     mutate(site_run_year_id = cur_group_id()) |>
@@ -721,17 +735,17 @@ fit_pCap_model <- function(input) {
   # if mainstem
   if(mainstem) {
 
-    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_mainstem"))
+    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_mainstem_skew_re"))
 
     options(mc.cores=parallel::detectCores())
     cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_name = "pCap_mainstem",
+    pcap <- rstan::stan(model_name = "pCap_mainstem_skew_re",
                         model_code = stan_model,
                         data = input$inputs$data,
                         init = input$inputs$inits,
                         pars = input$inputs$parameters,
                         chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = SRJPEmodel::10000,
+                        iter = 10000,
                         seed = 84735,
                         control = list(max_treedepth = 15))
 
@@ -739,11 +753,11 @@ fit_pCap_model <- function(input) {
 
   } else {
 
-    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_all"))
+    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_trib"))
 
     options(mc.cores=parallel::detectCores())
     cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_name = "pCap_all",
+    pcap <- rstan::stan(model_name = "pCap_trib",
                         model_code = stan_model,
                         data = input$inputs$data,
                         init = input$inputs$inits,
@@ -821,7 +835,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
         #for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
@@ -911,7 +925,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        sim_pro_dev = rnorm(n=Nsims, mean=0,sd=pro_sd_P[,use_trib]);
+        sim_pro_dev = rnorm(n=Ntrials, mean=0,sd=pro_sd_P[,use_trib]);
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + yr_re + sim_pro_dev
       }
 
@@ -1095,7 +1109,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
            week_fit = NA) |> # this won't be reported for the pCap model
     select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
 
-  if(pCap_inputs$model_name == "pcap_mainstem") {
+  if(pCap_inputs$model_name == "pCap_mainstem_skew_re") {
     formatted_table <- formatted_table |>
       select(-c(site, stream)) |>
       mutate(site = pCap_inputs$site) |>
@@ -1317,6 +1331,9 @@ plot_juv_data <- function(site, run_year) {
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
            lincoln_peterson_efficiency = number_recaptured / number_released) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
+    left_join(site_order_north_south, by = "site") |>
+    arrange(ns_order) |>
+    select(-ns_order) |>
     mutate(date = factor(date, levels = date),
            week_index = row_number())
 
