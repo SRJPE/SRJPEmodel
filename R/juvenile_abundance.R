@@ -434,10 +434,15 @@ prepare_abundance_inputs <- function(site, run_year,
     select(week, count, lincoln_peterson_abundance:date, number_released, number_recaptured)
 
   min_pCap_new <- lp_data |>
-    filter(site == !!site) |>
-    filter(lincoln_peterson_efficiency > 0) |> # TODO we can eventually change this to be the lowest 2.5 quantile, etc.
-    pull(lincoln_peterson_efficiency) |>
-    min(na.rm = T)
+    filter(site == !!site,
+           lincoln_peterson_efficiency > 0)
+  if(nrow(min_pCap_new) == 0) {
+    min_pCap_new <- min_pCap
+  } else {
+    min_pCap_new <- min_pCap_new |>
+      pull(lincoln_peterson_efficiency) |>
+      min(na.rm = T)  # TODO we can eventually change this to be the lowest 2.5 quantile, etc.
+  }
 
   # get numbers for looping in BUGs code - abundance model
   number_weeks_catch <- nrow(catch_data) # for looping through the catch dataset
@@ -557,7 +562,7 @@ prepare_abundance_inputs <- function(site, run_year,
   # data input
   lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / min_pCap_new), number_weeks_catch)
   # initial value for lgN input
-  ini_lgN = rep(log(0.001 * (min(weekly_catch_data) + 1) / 0.025), number_weeks_catch)
+  ini_lgN = rep(log(0.001 * (min(weekly_catch_data,na.rm=T) + 1) / 0.025), number_weeks_catch)
 
   for(j in 1:number_weeks_with_catch){
     index_with_catch <- indices_with_catch[j]
