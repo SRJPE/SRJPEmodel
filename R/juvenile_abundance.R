@@ -374,7 +374,8 @@ prepare_abundance_inputs <- function(site, run_year,
                                      effort_adjust = c(T, F),
                                      pcap_model_object,
                                      input_catch_data = NULL,
-                                     input_efficiency_data = NULL) {
+                                     input_efficiency_data = NULL,
+                                     min_pCap = 0.0005) {
 
   if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
@@ -431,6 +432,12 @@ prepare_abundance_inputs <- function(site, run_year,
            date = factor(date, levels = date),
            week_index = row_number()) |>
     select(week, count, lincoln_peterson_abundance:date, number_released, number_recaptured)
+
+  min_pCap_new <- lp_data |>
+    filter(site == !!site) |>
+    filter(lincoln_peterson_efficiency > 0) |> # TODO we can eventually change this to be the lowest 2.5 quantile, etc.
+    pull(lincoln_peterson_efficiency) |>
+    min(na.rm = T)
 
   # get numbers for looping in BUGs code - abundance model
   number_weeks_catch <- nrow(catch_data) # for looping through the catch dataset
@@ -548,15 +555,15 @@ prepare_abundance_inputs <- function(site, run_year,
   # set lgN priors, using josh's code from 12-11-2024
   # TODO iterative improvement: set the denominator to be the lower quantile just for lgN_max as an argument
   # data input
-  lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / 0.005), number_weeks_catch)
-
-  for(j in 1:number_weeks_with_catch){
-    if(is.na(weekly_catch_data[j]) == F) lgN_max[indices_with_catch[j]] = log(0.001 * (weekly_catch_data[j] + 1) / 0.005)
-  }
-
+  lgN_max = rep(log(0.001 * (mean(weekly_catch_data, na.rm=T) + 1) / min_pCap_new), number_weeks_catch)
   # initial value for lgN input
   ini_lgN = rep(log(0.001 * (min(weekly_catch_data) + 1) / 0.025), number_weeks_catch)
-  for(i in 1:number_weeks_with_catch) ini_lgN[indices_with_catch[i]] = log(0.001 * (weekly_catch_data[i] + 1) / 0.025)
+
+  for(j in 1:number_weeks_with_catch){
+    index_with_catch <- indices_with_catch[j]
+    if(is.na(weekly_catch_data[index_with_catch]) == F) lgN_max[index_with_catch] = log(0.001 * (weekly_catch_data[index_with_catch] + 1) / min_pCap_new)
+    ini_lgN[index_with_catch] = log(0.001 * (weekly_catch_data[index_with_catch] + 1) / 0.025)
+  }
 
   # build data list
   data <- list("Nstrata" = number_weeks_catch,
