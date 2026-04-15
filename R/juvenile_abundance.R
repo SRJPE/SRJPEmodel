@@ -410,8 +410,14 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # flag if no data are available
   if(nrow(catch_data) == 0) {
-    cli::cli_abort(paste0("There is no catch data for site ", site,
+    cli::cli_warn(paste0("There is no catch data for site ", site,
                           " and run year ", run_year, ". Please try with a different combination of site and year."))
+    return(invisible(NULL))
+  }
+  # flag if all counts are NA
+  if(all(is.na(catch_data$count))) {
+    cli::cli_warn("All count values are NA for site {site} and run year {run_year}. Skipping.")
+    return(invisible(NULL))
   }
 
   # Calculate lincoln peterson abundance
