@@ -439,8 +439,13 @@ prepare_abundance_inputs <- function(site, run_year,
            week_index = row_number()) |>
     select(week, count, lincoln_peterson_abundance:date, number_released, number_recaptured)
 
-  min_pCap_new <- lp_data |>
-    filter(site == !!site,
+  min_pCap_new <- input_catch_data |>
+    filter(site == !!site) |>
+    left_join(input_efficiency_data |>
+                select(-flow_cfs),
+              by = c("year", "run_year", "week", "stream", "site")) |>
+    mutate(lincoln_peterson_efficiency = number_recaptured / number_released) |>
+    filter(!is.na(lincoln_peterson_efficiency),
            lincoln_peterson_efficiency > 0)
   if(nrow(min_pCap_new) == 0) {
     min_pCap_new <- min_pCap
