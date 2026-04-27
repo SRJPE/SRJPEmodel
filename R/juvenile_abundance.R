@@ -1022,7 +1022,7 @@ fit_abundance_model_BUGS <- function(abundance_inputs,
 
   # Write model code from package object to a temp file
   model_file <- tempfile(fileext = ".bug")
-  writeLines(SRJPEmodel::btspas_x_model_code$abundance_BUGS, con = model_file)
+  writeLines(SRJPEmodel::bt_spas_x_model_code$abundance_BUGS, con = model_file)
   on.exit(unlink(model_file))
 
   abundance <- bugs(data,
