@@ -1008,44 +1008,42 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 #' Fit abundance model in BUGS.
 #' @details This function runs the BUGS abundance model.
 #' @param abundance_inputs the object produced by `prepare_abundance_inputs()`
-#' @param bugs_model_file the filepath pointing to where your BUGS abundance model file is
 #' @param bugs_directory the filepath pointing to where your WinBUGS14/ directory is
 #' @returns a BUGS object.
 #' @export
 #' @md
 fit_abundance_model_BUGS <- function(abundance_inputs,
-                                     bugs_model_file,
                                      bugs_directory) {
-
-  parameters <- c("lt_pCap_U", "pCap_U", "Usp","N", "Ntot", "sd.N", "sd.Ne", "lg_CumN")
+  parameters <- c("lt_pCap_U", "pCap_U", "Usp", "N", "Ntot", "sd.N", "sd.Ne", "lg_CumN")
   Nmcmc = 2000
   Nburnin = 500
   Nthin = 2
   Nchains = 3
 
-  # clean up later
   data <- abundance_inputs$inputs$data
   data$lt_pCap_mu <- abundance_inputs$lt_pCap_Us$lt_pCap_mu
   data$lt_pCap_tau <- 1/abundance_inputs$lt_pCap_Us$lt_pCap_sd^2
-
   inits_with_lt_pCap_U <- abundance_inputs$inputs$inits[[1]]
-
   inits_with_lt_pCap_U$lt_pCap_U <- data$lt_pCap_mu
   inits_with_lt_pCap_U$tau.N <- 1
   inits_with_lt_pCap_U$tau.Ne <- 1
-
   new_inits <- list(inits_with_lt_pCap_U,
                     inits_with_lt_pCap_U,
                     inits_with_lt_pCap_U)
 
+  # Write model code from package object to a temp file
+  model_file <- tempfile(fileext = ".bug")
+  writeLines(SRJPEmodel::bt_spas_x_model_code$abundance_BUGS, con = model_file)
+  on.exit(unlink(model_file))
+
   abundance <- bugs(data,
                     new_inits,
                     parameters,
-                    bugs_model_file, debug = F,
+                    model_file,
+                    debug = F,
                     n.chains = Nchains, n.burnin = Nburnin, n.thin = Nthin, n.iter = Nmcmc,
                     codaPkg = F, DIC = T, clearWD = T,
                     bugs.directory = bugs_directory)
-                    #bugs.directory = here::here("data-raw", "WinBUGS14"))
 
   return(abundance)
 }
