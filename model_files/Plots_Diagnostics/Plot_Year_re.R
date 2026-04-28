@@ -18,10 +18,10 @@ inv_logit<-function(x){exp(x)/(1+exp(x))}
 use_pdev=0 #exclude process error. Easier to see variation among years.
 
 
-IsMain=T
+IsMain=F
 #MainSite="tisdale"
-MainSite="knights landing"
-#IsMain=F;Mainsite=NA
+#MainSite="knights landing"
+IsMain=F;Mainsite=NA
 pCap_inputs <- prepare_pCap_inputs(mainstem=IsMain,mainstem_site=MainSite)
 
 if(IsMain==F){#The site and year associated with each site-year random effect

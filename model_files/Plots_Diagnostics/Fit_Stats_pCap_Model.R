@@ -40,11 +40,14 @@ for(ii in 1:3){
     load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_mainstem_skew_re_",MainSite,".Rdata"))
   }
   dp=as.data.frame(pcap,pars=c("b0_pCap","b_flow","yr_re","logit_pCap","pro_sd_P"))
+  Nsims=dim(dp)[1]
 
   print(c(rname,Nmr))
 
-  pred_pCap=vector(length=Nmr);obs_pCap=pred_pCap;pred_pCap_fixed=pred_pCap
+  pred_pCap=vector(length=Nmr);obs_pCap=pred_pCap;pred_pCap_fixed=pred_pCap;pred_pCap_fixed2=pred_pCap
   disc.obs=rep(0,Nmr);disc.sim=disc.obs
+  est_fe_re=matrix(nrow=Nsims,ncol=Nmr);est_re=est_fe_re
+
   for(i in 1:Nmr){
 
     vnm=paste0("logit_pCap[",i,"]");icol=which(names(dp)==vnm);logit_pCap=dp[,icol]
@@ -60,7 +63,7 @@ for(ii in 1:3){
     #for each efficiency trial i.
     disc.obs[i]=sum((sqrt(e.rec) - sqrt(obsRec[i]))^2) #sum the squared differences as in gemini example, what formula looks like, and description above
 
-    sim.rec=rbinom(n=length(pCap),size=obsRel[i],prob=pCap) #simulated discrepencies. replace observed with simulated
+    sim.rec=rbinom(n=Nsims,size=obsRel[i],prob=pCap) #simulated discrepencies. replace observed with simulated
 
     disc.sim[i]=sum((sqrt(e.rec) - sqrt(sim.rec))^2)
 
@@ -78,6 +81,12 @@ for(ii in 1:3){
       vnm=paste0("yr_re[",ind_yr[i],"]");icol3=which(names(dp)==vnm)
     }
     pred_pCap_fixed[i]=mean(inv_logit(dp[,icol1] + dp[,icol2]*flow[i] + dp[,icol3]))
+    pred_pCap_fixed2[i]=mean(inv_logit(dp[,icol1] + dp[,icol2]*flow[i]))
+
+    #For Gelman and Pardoe (2006) pR2 statistic
+    est_fe_re[,i]=logit_pCap #fixed + random effects
+    #backout prod_dev_P since it wasn't saved.  logit_pCap=fixed effects + pro_dev_P, so pro_dev_p = logit_pCap-fixed effects
+    est_re[,i]=logit_pCap-(dp[,icol1] + dp[,icol2]*flow[i] + dp[,icol3]) #random effects only
   }
 
   #Test statistic from simulated data at least as extreme as observed discrepancy
@@ -95,7 +104,23 @@ for(ii in 1:3){
     }
   }
 
-  r2=round(cor(pred_pCap,obs_pCap),digits=3)
-  r2_fixed=round(cor(prd_pCap_fixed,obs_pCap),digits=3)
-  print(c(rname, p.value, r2,r2_fixed))
+
+  #Complte multi-level r2 calcs
+  Var_fe_re=vector(length=Nsims);Var_re=Var_fe_re
+  mure=colMeans(est_re) #the mean of each random effect across posterior samples
+  Var_mure=var(mure) #the variance across the posterior means of each random effect
+
+  for(isim in 1:Nsims){
+    Var_fe_re[isim]=var(est_fe_re[isim,]) #the variance across logit-transformed survival, movement, or pCap for each posterior sample
+    Var_re[isim]=var(est_re[isim,])
+  }
+  pR2=round(1-mean(Var_re)/mean(Var_fe_re),digits=3) #eqn. 6 (proportion of variation in rate explained by fixed effects)
+  lambda=round(1-Var_mure/mean(Var_re),digits=3)     #eqn 7 (extent of pooling of residuals)
+
+  r2=round(cor(pred_pCap,obs_pCap)^2,digits=3)
+  r2_fixed=round(cor(pred_pCap_fixed,obs_pCap)^2,digits=3)
+  r2_fixed2=round(cor(pred_pCap_fixed2,obs_pCap)^2,digits=3)
+
+  print(c(rname, p.value, r2, r2_fixed ,r2_fixed2, pR2, lambda))
+
 }

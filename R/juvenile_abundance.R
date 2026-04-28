@@ -135,7 +135,7 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
 
   # drop sites we don't want used in efficiency estimates
-  use_trib_for_intercept <- as.integer(!sites_fit %in% sites_to_drop)
+  use_in_hyper <- as.integer(!sites_fit %in% sites_to_drop)
 
   # test mr_flow replace
   clean_mr_flow <- mark_recapture_data |>
@@ -373,10 +373,10 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 prepare_abundance_inputs <- function(site, run_year,
                                      effort_adjust = c(T, F),
                                      minPcapMult=1.0,
+                                     min_pCap = 0.0005,
                                      pcap_model_object,
                                      input_catch_data = NULL,
-                                     input_efficiency_data = NULL,
-                                     min_pCap = 0.0005) {
+                                     input_efficiency_data = NULL) {
 
   if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
@@ -836,7 +836,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
     pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
-    alpha <- samples$alpha
+    alpha <- samples$alpha #will be null if Skew==F
     run_year <- abundance_inputs$run_year
 
     #run_year_id =lookup run_year in mr_year_lookup table for KL or Tis and return run_year_id
@@ -863,15 +863,22 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        #for(itrial in 1:Ntrials) sim_pro_dev[itrial] = rnorm(n=1, mean=0,sd=pro_sd_P[itrial]);
-        sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        if(Skew==T){
+          sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        } else {
+          sim_pro_dev=rnorm(N=Ntrials, mu=0,sd=pro_sd_P)
+        }
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
     } else if (ModelName=="no_mark_recap"){
 
       for (i in 1:Nwomr) {
-          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+          if(Skew==T){
+            sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+          } else {
+            sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
+          }
           sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
           lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
@@ -883,7 +890,11 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
 
       for (i in 1:Nwomr) {
-        sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        if(Skew==T){
+          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        } else {
+          sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
+        }
         sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
