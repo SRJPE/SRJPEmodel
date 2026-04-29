@@ -26,19 +26,25 @@ for(isite in 1:Nsites){
   uniqyr=unique(sort(d1$run_year))
   Nyrs=length(uniqyr)
 
-  if(DoSite=="ucc"){ #load pcap fit object needed by prepare_abundance_inputs. Sites ordered by trib then mainstem so only load trib pcap object for first trib
-    load(file="C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_trib.rdata")
+  if(!DoSite %in% c("tisdale", "knights landing")){ #load pcap fit object needed by prepare_abundance_inputs. Sites ordered by trib then mainstem so only load trib pcap object for first trib
+    load(file="C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_all_sites.rdata")
+    model_type = "all_sites"
   } else if (DoSite=="tisdale" | DoSite=="knights landing"){
-    load(file=paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_mainstem_skew_re_",DoSite,".rdata"))
+    load(file=paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_one_site_skew_re_",DoSite,".rdata"))
+    model_type = "one_site_skew"
   }
 
   for(iyr in 1:Nyrs){#1:Nyrs
     DoYr=uniqyr[iyr]
 
-    abundance_inputs <- prepare_abundance_inputs(site = DoSite, run_year = DoYr, effort_adjust=T,minPcapMult=0.5, pcap_model_object = pcap)
+    abundance_inputs <- prepare_abundance_inputs(site = DoSite,
+                                                 run_year = DoYr,
+                                                 effort_adjust=T,
+                                                 pCap_model_type = model_type,
+                                                 min_pCap_mult = 0.5,
+                                                 pCap_model_object = pcap)
 
     abundance <- fit_abundance_model_BUGS(abundance_inputs,
-                                          "C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/abundance_model.bug",
                                           "C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/data-raw/WinBUGS14")
 
     save(abundance,file=paste0(OutDir,"/",DoSite,"_",DoYr,".Rdata"))

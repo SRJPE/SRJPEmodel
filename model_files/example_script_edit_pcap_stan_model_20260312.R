@@ -14,21 +14,25 @@ nchains=3;niter=10000
 
 for(ii in 1:3){#1:4
   if(ii==1){
-    pCap_inputs <- prepare_pCap_inputs(mainstem=F)
-    Mnm="pCap_trib"
+    pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
+    Mnm="pCap_all_sites"
     parlist=c("trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P","logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_sd_P","yr_re","log_lik")
     fnsave=paste0("model_files/Output/",Mnm,".Rdata")
 
   } else if(ii==2) {
-    Mnm="pCap_mainstem_skew_re"
+    Mnm="pCap_one_site_skew_re"
     parlist=c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_sd_P","yr_re","alpha","log_lik")
-    pCap_inputs <- prepare_pCap_inputs(mainstem=T,mainstem_site="knights landing")
+    pCap_inputs <- prepare_pCap_inputs(model_type = "one_site",
+                                       skew = T,
+                                       site_selection = "knights landing")
     fnsave=paste0("model_files/Output/",Mnm,"_knights landing.Rdata")
 
   } else if(ii==3) {
-    Mnm="pCap_mainstem_skew_re"
+    Mnm="pCap_one_site_skew_re"
     parlist=c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_sd_P","yr_re","alpha","log_lik")
-    pCap_inputs <- prepare_pCap_inputs(mainstem=T,mainstem_site="tisdale")
+    pCap_inputs <- prepare_pCap_inputs(model_type = "one_site",
+                                       skew = T,
+                                       site_selection = "tisdale")
     fnsave=paste0("model_files/Output/",Mnm,"_tisdale.Rdata")
   }
 
