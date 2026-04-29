@@ -4,7 +4,7 @@
 \alias{generate_lt_pCap_Us}
 \title{Generate lt_pCap_U values from the pCap model object}
 \usage{
-generate_lt_pCap_Us(abundance_inputs, pcap_model_object)
+generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
 }
 \arguments{
 \item{abundance_inputs}{A list containing the inputs for the site-specific abundance model including

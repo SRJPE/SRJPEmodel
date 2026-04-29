@@ -1,4 +1,3 @@
-
 # 3-27-2026
 # example script for making modifications to STAN pCap model in git workflow
 library(SRJPEdata)
@@ -46,6 +45,3 @@ for(isite in 1:Nsites){
 
   }
 }
-
-
-

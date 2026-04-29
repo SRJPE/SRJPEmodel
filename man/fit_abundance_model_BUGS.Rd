@@ -4,12 +4,10 @@
 \alias{fit_abundance_model_BUGS}
 \title{Fit abundance model in BUGS.}
 \usage{
-fit_abundance_model_BUGS(abundance_inputs, bugs_model_file, bugs_directory)
+fit_abundance_model_BUGS(abundance_inputs, bugs_directory)
 }
 \arguments{
 \item{abundance_inputs}{the object produced by \code{prepare_abundance_inputs()}}
-
-\item{bugs_model_file}{the filepath pointing to where your BUGS abundance model file is}
 
 \item{bugs_directory}{the filepath pointing to where your WinBUGS14/ directory is}
 }

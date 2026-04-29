@@ -1,14 +1,11 @@
 #' Prepare inputs for pCap STAN model
 #' @details This function prepares data for input into a pCap STAN model.
-#' @param mainstem Whether or not you want to evaluate efficiency trials for a mainstem site
-#' (`knights landing`, `tisdale`, and `red bluff diversion dam`) or for a tributary site. If `FALSE`,
-#' the mark recapture dataset will be filtered to exclude those mainstem sites.
-#' @param mainstem_site If you are fitting the model with `mainstem == TRUE`, you must supply a
-#' mainstem site for which to prepare inputs. Can be either `knights landing` or `tisdale`.
-#' @param drop_trib_sites Either `FALSE` or `TRUE` and defaults to `FALSE`. If `TRUE`, you can provide a
-#' specific site to `drop_trib_sites` to exclude that site from estimates of `b0_pCap` and `b_flow`.
-#' @param sites_to_drop A character vector of at least length 1. Must be one of the site names
-#' in `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`.
+#' @param model_type either `one_site` or `all_sites`
+#' @param skew either `TRUE` or `FALSE`. Only applies for `one_site` models.
+#' @param site_selection if fitting the `one_site` model, the tributary you want to fit.
+#' @param exclude_from_hyper a vector of sites you want to drop from being estimated in the hyper distribution
+#' parameters `b0_pCap` and `b_flow`. Default is NULL, meaning no sites are dropped. Must be site names
+#' in `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`
 #' @param input_catch_data Optional argument for weekly catch data.
 #' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
 #' passed in, structure of data frame must match that of the default.
@@ -21,68 +18,81 @@
 #' @family Prepare Model Inputs
 #' @export
 #' @md
-prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
-                                mainstem_site = NULL,
-                                drop_trib_sites = FALSE,
-                                sites_to_drop = NULL,
+prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
+                                skew = NULL,
+                                site_selection = NULL,
+                                exclude_from_hyper = NULL,
                                 input_catch_data = NULL,
                                 input_efficiency_data = NULL) {
 
+  # check arguments are logical
+  if(!is.null(skew) & model_type == "all_sites") {
+    cli::cli_warn("Skew model cannot be run for the all_sites model type.")
+    return(invisible(NULL))
+  }
+  if(any(!exclude_from_hyper %in% unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site))){
+    cli::cli_warn("Non-valid tributary passed to exclude_from_hyper.")
+    return(invisible(NULL))
+  }
+  if(model_type == "one_site" & length(site_selection) != 1){
+    cli::cli_warn("One site name must be passed if running one_site model type.")
+    return(invisible(NULL))
+  }
+  if(model_type == "one_site" & is.null(skew)){
+    cli::cli_warn("skew must be specified as TRUE/FALSE when running a one_site model type.")
+    return(invisible(NULL))
+  }
+
+  # default to the SRJPEdata objects
   if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
-
   if(missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
+  # available sites for fitting
   available_sites <- c("ubc", "okie dam", "lcc", "ucc", "deer creek", "eye riffle",
                        "gateway riffle", "herringer riffle", "live oak",
                        "steep riffle", "sunset pumps", "mill creek", "hallwood")
+  mainstem_sites <- c("red bluff diversion dam", "knights landing", "tisdale")
 
-  # allows you to drop certain tributary sites when preparing data
-  # argument checks
-  if(!drop_trib_sites & !is.null(sites_to_drop)) {
-    cli::cli_abort("If you wish to pass an argument for sites_to_drop, you must set drop_trib_sites to TRUE")
-  } else if(drop_trib_sites & is.null(sites_to_drop)) {
-    cli::cli_abort("If you wish to drop_trib_sites, you must provide site_to_drop.")
-  } else if(drop_trib_sites) {
-    if(!all(sites_to_drop %in% available_sites)) {
-      missing <- sites_to_drop[!sites_to_drop %in% available_sites]
-      cli::cli_abort("Invalid sites to drop: ", paste(missing, collapse = ", "))
+  # one_site data filtering and parameter names
+  if(model_type == "one_site") {
+    filtered_efficiency_data <- input_efficiency_data |>
+      filter(site == site_selection)
+    if(skew) {
+      # include alpha
+      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha")
+      model_name <- "pCap_one_site_skew"
+    } else {
+      # include alpha
+      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re")
+      model_name <- "pCap_one_site"
     }
-  }
 
-  cli::cli_bullets("Producing data for pCap model from efficiency dataset")
-
-  # analyze efficiency trials for all relevant sites (do not filter to site)
-  # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  if(!mainstem) {
-    remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
   } else {
-    if(missing(mainstem_site)) {
-      cli::cli_abort("If you are running a mainstem model, you must supply a mainstem site, either
-                     knights landing or tisdale.")
-    }
-
-    mainstem_inputs <- prepare_mainstem_pCap_data(mainstem_site)
-
-    return("mainstem_inputs" = mainstem_inputs)
+    # filter to tributary sites (can't include mainstem sites in this)
+    filtered_efficiency_data <- input_efficiency_data |>
+      filter(site %in% available_sites)
+    pCap_parameters <- c("logit_pCap","trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
+                         "b0_pCap", "b_flow","yr_sd_P","yr_re")
+    model_name <- "pCap_all_sites"
   }
 
-  # prepare "mark recapture" dataset - all mark-recap trials in the system
-  mark_recapture_data <- input_efficiency_data |>
+  # prepare efficiency dataset post-filtering
+  mark_recapture_data <- filtered_efficiency_data |>
     # grab standardized_flow
     left_join(input_catch_data |>
                 select(year, week, stream, site, run_year, standardized_flow),
               by = c("year", "week", "run_year", "stream", "site")) |>
     # or do we want to filter just no number released?
-    dplyr::filter(!site %in% remove_sites &
-                    !is.na(standardized_efficiency_flow),
-                  !is.na(number_released) &
-                    !is.na(number_recaptured)) |>
+    dplyr::filter(!is.na(standardized_efficiency_flow),
+                  !is.na(number_released),
+                  !is.na(number_recaptured)) |>
     # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
+    # TODO Check that we need this line
+    # dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
     # sort by site
     group_by(site) |>
     left_join(site_order_north_south, by = "site") |>
@@ -101,8 +111,8 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
       dplyr::filter(number_recaptured <= number_released)
   }
 
+  # now prepare indexes for use in the model
 
-  # get use_trib, sites_fit, and ind_trib indexing
   # first assign 1:Ntribs to the unique sites in the dataset
   site_lookup <- mark_recapture_data |>
     dplyr::distinct(site) |>
@@ -112,13 +122,15 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   sites_fit <- site_lookup |>
     dplyr::pull(site)
 
-    # year lookup
+  # year lookup
   mr_year_lookup <- mark_recapture_data |>
     arrange(ns_order, run_year) |>
     distinct(site, run_year) |>
     mutate(site_run_year_id = row_number())
 
-  site_year_fit=unique(mr_year_lookup[c("site", "run_year")])
+  site_year_fit <- unique(mr_year_lookup[c("site", "run_year")])
+  years_fit <- mr_year_lookup |>
+    dplyr::pull(run_year)
 
   sd_yr_ind <- site_year_fit |>
     mutate(sd_yr_ind = as.integer(factor(site, levels = unique(site)))) |>
@@ -134,9 +146,6 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
 
-  # drop sites we don't want used in efficiency estimates
-  use_in_hyper <- as.integer(!sites_fit %in% sites_to_drop)
-
   # test mr_flow replace
   clean_mr_flow <- mark_recapture_data |>
     group_by(site) |>
@@ -145,207 +154,99 @@ prepare_pCap_inputs <- function(mainstem = c(FALSE, TRUE),
            new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
     ungroup()
 
-  # build data list with ALL elements
-  data <- list("Nmr" = number_efficiency_experiments,
-               "Ntribs" = Ntribs,
-               "use_trib_for_intercept" = use_trib_for_intercept,
-               "ind_trib" = mark_recapture_data$ID,
-               "Releases" = mark_recapture_data$number_released,
-               "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = clean_mr_flow$new_mr_flow,
-               "ind_yr" = mark_recapture_data$site_run_year_id,
-               "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
-               "sd_yr_ind"=sd_yr_ind) # liz updated to use dplyr to create
+  # prepare data and inits for one_site and all_sites separately
+  if(model_type == "all_sites") {
+    # drop sites we don't want used in efficiency estimates
+    use_in_hyper <- as.integer(!sites_fit %in% exclude_from_hyper)
+
+    data <- list("Nmr" = number_efficiency_experiments,
+                 "Ntribs" = Ntribs,
+                 "use_in_hyper" = use_in_hyper,
+                 "ind_trib" = mark_recapture_data$ID,
+                 "Releases" = mark_recapture_data$number_released,
+                 "Recaptures" = mark_recapture_data$number_recaptured,
+                 "mr_flow" = clean_mr_flow$new_mr_flow,
+                 "ind_yr" = mark_recapture_data$site_run_year_id,
+                 "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
+                 "sd_yr_ind" = sd_yr_ind) # liz updated to use dplyr to create
+
+    # initial parameter values
+    # TODO Check this
+    ini_b0_pCap <- with(mark_recapture_data, {
+      recap_sums    <- tapply(number_recaptured, ID, sum)
+      released_sums <- tapply(number_released,  ID, sum)
+      p             <- qlogis(recap_sums / released_sums)
+      p[is.nan(p) | is.infinite(p)] <- -5
+      p
+    })
+
+    pCap_mu_prior <- qlogis(sum(mark_recapture_data$number_recaptured) /
+                              sum(mark_recapture_data$number_released))
+
+    init_list <- list(trib_mu_P = pCap_mu_prior,
+                      b0_pCap = ini_b0_pCap,
+                      flow_mu_P = 0,
+                      b_flow = rep(0, Ntribs),
+                      trib_sd_P = 1,
+                      flow_sd_P = 1,
+                      pro_sd_P = rep(1, Ntribs),
+                      yr_sd_P = rep(1, Ntribs))
+
+  } else {
+    # one_site
+    data <- list("Nmr" = number_efficiency_experiments,
+                 "Releases" = mark_recapture_data$number_released,
+                 "Recaptures" = mark_recapture_data$number_recaptured,
+                 "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
+                 "ind_yr" = mark_recapture_data$site_run_year_id,
+                 "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)))
+
+    # initial parameter values
+    ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
+                            sum(mark_recapture_data$number_released))
+
+    if(is.nan(ini_b0_pCap) | is.infinite(ini_b0_pCap)) {
+      # -Inf happens when number recaptured == 0, logit of 0 is -Inf
+      ini_b0_pCap <- -5
+    }
+
+    init_list <- list(b0_pCap = ini_b0_pCap,
+                      b_flow = 0,
+                      pro_sd_P = 1,
+                      yr_sd_P = 1)
+  }
 
 
   # check data list for NaNs and Infs
-  # cli::cli_process_start("Checking data inputs",
-  #                        msg_done = "Data checked",
-  #                        msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
-    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    if (any(is.nan(data[[x]])) || any(is.infinite(data[[x]]))) {
+      cli::cli_warn("NaNs or Infs detected in {.var {x}}. Please check your input data.")
+      return(invisible(NULL))
     }
   }))
-  cli::cli_process_done()
 
-  pCap_parameters <-  c("logit_pCap","trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
-                        "b0_pCap", "b_flow","yr_sd_P","yr_re")
-
-  # initial parameter values
-  ini_b0_pCap <- rep(NA, Ntribs)
-  for(i in 1:Ntribs) {
-    irows = which(mark_recapture_data$ID == i)
-    ini_b0_pCap[i] = qlogis(sum(mark_recapture_data$number_recaptured[irows]) /
-                              sum(mark_recapture_data$number_released[irows]))
-    if(is.nan(ini_b0_pCap[i]) | is.infinite(ini_b0_pCap[i])) {
-      # -Inf happens when number recaptured == 0, logit of 0 is -Inf
-      ini_b0_pCap[i] <- -5
-    }
-  }
-
-  pCap_mu_prior <- qlogis(sum(mark_recapture_data$number_recaptured) /
-                            sum(mark_recapture_data$number_released))
-
-  init_list <- list(trib_mu_P = pCap_mu_prior,
-                    b0_pCap = ini_b0_pCap,
-                    flow_mu_P = 0,
-                    b_flow = rep(0, Ntribs),
-                    trib_sd_P = 1,
-                    flow_sd_P = 1,
-                    pro_sd_P = rep(1,Ntribs),
-                    yr_sd_P=rep(1,Ntribs))
-
-
-
-  # cli::cli_process_start("Checking init inputs for pCap model",
-  #                        msg_done = "Inits checked",
-  #                        msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
     if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
     }
   }))
-  cli::cli_process_done()
 
   inits <- list(init_list, init_list, init_list)
 
-  # inputs for pCap model
+  # create list of inputs
   inputs <- list(data = data,
                  inits = inits,
                  parameters = pCap_parameters)
-
 
   return(list("inputs" = inputs,
               "sites_fit" = sites_fit,
-              "sites_dropped" = sites_to_drop,
-              "location" = "tributary",
-              "site_year_fit" = site_year_fit,
-              "model_name" = "pcap_trib"))
-
-}
-
-#' Prepare mainstem inputs for abundance model
-#' @details This function is called within `prepare_pCap_inputs()`
-#' @param mainstem_site site on the mainstem Sacramento River (either `knights landing`,
-#' `tisdale`, or `red bluff diversion dam`) for which you want to prepare inputs
-#' @returns a named list, with each element containing the inputs required for one of the three
-#' mainstem sites. In this named list are
-#' * **inputs** a list of data and inits for input into the abundance model.
-#' * **sites_fit** The site the inputs were prepared for (either `knights landing`,
-#' `tisdale`, or `red bluff diversion dam`).
-#' @export
-#' @md
-prepare_mainstem_pCap_data <- function(mainstem_site) {
-
-  # prepare "mark recapture" dataset - all mark-recap trials in the system
-  mark_recapture_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data |>
-    # grab standardized_flow
-    left_join(SRJPEdata::weekly_juvenile_abundance_catch_data |>
-                select(year, week, stream, site, run_year, standardized_flow),
-              by = c("year", "week", "run_year", "stream", "site")) |>
-    # or do we want to filter just no number released?
-    dplyr::filter(site == mainstem_site & # mainstem model is only run on one site at a time
-                    !is.na(standardized_efficiency_flow),
-                  !is.na(number_released) &
-                    !is.na(number_recaptured)) |>
-    # right now there's lifestage in the dataset, so we have to do dplyr::distinct()
-    dplyr::distinct(site, run_year, week, number_released, number_recaptured, .keep_all = TRUE) |>
-    group_by(site) |>
-    left_join(site_order_north_south, by = "site") |>
-    arrange(ns_order, year, week) |>
-    ungroup()
-
-  if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
-    problem_data <- mark_recapture_data |>
-      dplyr::filter(number_recaptured > number_released)
-
-    cli::cli_alert_danger(paste0(nrow(problem_data), "rows of your data have more Recaptures than Releases for
-                          a given week. Filtering out the problematic data for now.
-                          Please check your data."))
-
-    mark_recapture_data <- mark_recapture_data |>
-      dplyr::filter(number_recaptured <= number_released)
-  }
-
-  mr_year_lookup <- mark_recapture_data |>
-    arrange(run_year) |>
-    distinct(run_year) |>
-    mutate(run_year_id = row_number())
-
-  # assign the IDs to the  mark-recapture dataset
-   mark_recapture_data <- mark_recapture_data |>
-      left_join(mr_year_lookup, by = c("run_year"))
-
-
-   years_fit <- mr_year_lookup |>
-     dplyr::pull(run_year)
-
-
-  # get indexing for "mark recap" dataset (pCap model)
-  number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
-    nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
-
-  # build data list with ALL elements
-  data <- list("Nmr" = number_efficiency_experiments,
-               "Releases" = mark_recapture_data$number_released,
-               "Recaptures" = mark_recapture_data$number_recaptured,
-               "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
-               "ind_yr" = mark_recapture_data$run_year_id,
-               "Nyr_re" = length(unique(mark_recapture_data$run_year_id)))
-
-
-  # check data list for NaNs and Infs
-  # cli::cli_process_start("Checking data inputs",
-  #                        msg_done = "Data checked",
-  #                        msg_failed = "Data check failed")
-  invisible(lapply(names(data), function(x) {
-    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
-    }
-  }))
-  cli::cli_process_done()
-
-  pCap_parameters <-  c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha")
-
-  # initial parameter values
-  ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
-                          sum(mark_recapture_data$number_released))
-  if(is.nan(ini_b0_pCap) | is.infinite(ini_b0_pCap)) {
-    # -Inf happens when number recaptured == 0, logit of 0 is -Inf
-    ini_b0_pCap <- -5
-  }
-
-  init_list <- list(b0_pCap = ini_b0_pCap,
-                    b_flow = 0,
-                    pro_sd_P = 1,
-                    yr_sd_P = 1)
-
-
-  # cli::cli_process_start("Checking init inputs for pCap model",
-  #                        msg_done = "Inits checked",
-  #                        msg_failed = "Init check failed")
-  invisible(lapply(names(init_list), function(x) {
-    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
-    }
-  }))
-  cli::cli_process_done()
-
-  inits <- list(init_list, init_list, init_list)
-
-  # inputs for pCap model
-  inputs <- list(data = data,
-                 inits = inits,
-                 parameters = pCap_parameters)
-
-  return(list("inputs" = inputs,
-              "sites_fit" = mainstem_site,
               "years_fit" = years_fit,
-              "location" = mainstem_site,
-              "model_name" = "pCap_mainstem_skew_re"))
+              "sites_dropped" = exclude_from_hyper,
+              "site_year_fit" = site_year_fit,
+              "model_name" = model_name))
 
 }
+
 
 #' Prepare inputs for abundance model
 #' @details This function prepares data for input into an abundance model.
@@ -354,6 +255,16 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 #' @param effort_adjust whether or not you want to use catch adjusted by effort.
 #' @param input_catch_data Optional argument for weekly catch data.
 #' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
+#' passed in, structure of data frame must match that of the default.
+#' @param pCap_model_type One of `all_sites`, `one_site_skew`, or `one_site`. Describes your input
+#' for parameter `pCap_model_object`
+#' @param min_pCap a parameter that sets the minimum pCap value for setting maximum and initial
+#' values for abundance (N). Can be tweaked by min_pCap_mult. Default value is `0.0005`
+#' @param min_pCap_mult a parameter that lets you tweak the min pCap value for setting
+#' maximum and initial values for abundance (N). Gets multiplied by min_pCap. Default value is `1.0`
+#' @param pCap_model_object the STAN model file produced by running `prepare_pCap_inputs()`
+#' #' @param input_catch_data Optional argument for weekly catch data.
+#' Defaults to `SRJPEdata::SRJPEdata::weekly_juvenile_abundance_catch_data`. If
 #' passed in, structure of data frame must match that of the default.
 #' @param input_efficiency_data Optional argument for weekly efficiency data.
 #' Defaults to `SRJPEdata::SRJPEdata::weekly_juvenile_abundance_efficiency_data`. If
@@ -372,16 +283,16 @@ prepare_mainstem_pCap_data <- function(mainstem_site) {
 #' @md
 prepare_abundance_inputs <- function(site, run_year,
                                      effort_adjust = c(T, F),
-                                     minPcapMult=1.0,
+                                     pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
                                      min_pCap = 0.0005,
-                                     pcap_model_object,
+                                     min_pCap_mult = 1.0,
+                                     pCap_model_object,
                                      input_catch_data = NULL,
                                      input_efficiency_data = NULL) {
-
+  # checks and default
   if(missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
-
   if(missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
@@ -409,15 +320,16 @@ prepare_abundance_inputs <- function(site, run_year,
            # change all NaNs to NAs
            across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)))
 
-  # flag if no data are available
-  if(nrow(catch_data) == 0) {
-    cli::cli_warn(paste0("There is no catch data for site ", site,
-                          " and run year ", run_year, ". Please try with a different combination of site and year."))
-    return(invisible(NULL))
-  }
-  # flag if all counts are NA
-  if(all(is.na(catch_data$count))) {
-    cli::cli_warn("All count values are NA for site {site} and run year {run_year}. Skipping.")
+  # data checks
+  no_data <- nrow(catch_data) == 0
+  all_na <- !no_data && all(is.na(catch_data$count))
+
+  if (no_data || all_na) {
+    reason <- if (no_data) "no catch data" else "all count values are NA"
+    cli::cli_warn(c(
+      "Skipping site {.val {site}}, run year {.val {run_year}}:",
+      "i" = "{reason}"
+    ))
     return(invisible(NULL))
   }
 
@@ -440,6 +352,7 @@ prepare_abundance_inputs <- function(site, run_year,
            week_index = row_number()) |>
     select(week, count, lincoln_peterson_abundance:date, number_released, number_recaptured)
 
+  # min pCap calculations
   min_pCap_new <- input_catch_data |>
     filter(site == !!site) |>
     left_join(input_efficiency_data |>
@@ -457,10 +370,9 @@ prepare_abundance_inputs <- function(site, run_year,
       min(na.rm = T)
   }
 
-  min_pCap_new=min_pCap_new*minPcapMult #reduce by a 0-1 factor minPcapMult
+  min_pCap_new = min_pCap_new * min_pCap_mult #reduce by a 0-1 factor min_pCap_mult
 
-
-  # get numbers for looping in BUGs code - abundance model
+  # indexing values for BUGS code
   number_weeks_catch <- nrow(catch_data) # for looping through the catch dataset
   indices_with_catch <- which(!is.na(catch_data$count)) # indices of weeks with catch data
   number_weeks_with_catch <- length(indices_with_catch) # how many weeks actually have catch
@@ -559,9 +471,13 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # set up b-spline basis matrix
   # this corresponds to line 148-153 in josh_original_model_code.R
-  if(number_weeks_catch < 4) {
-    cli::cli_abort(paste0("There are fewer than 4 weeks with catch data for ",
-                          site, " and run year ", run_year, ". Spline parameters cannot function with fewer than 4 data points."))
+  if (number_weeks_catch < 4) {
+    cli::cli_warn(c(
+      "Skipping site {.val {site}}, run year {.val {run_year}}:",
+      "i" = "Fewer than 4 weeks of catch data available ({number_weeks_catch} found).",
+      "i" = "Spline parameters require at least 4 data points."
+    ))
+    return(invisible(NULL))
   }
 
   # spline parameter calculation
@@ -574,16 +490,16 @@ prepare_abundance_inputs <- function(site, run_year,
     weekly_catch_data <- catch_data$count[indices_with_catch]
   }
 
-  #Set prior for log N and ini values based on mean catch across wks trapped fish for all weeks
-  #This will provide values for weeks trap wasn't fith
+  # Set prior for log N and ini values based on mean catch across wks trapped fish for all weeks
+  # This will provide values for weeks trap wasn't fith
   lgN_max = rep(log(0.001 * (mean(weekly_catch_data) + 1) / min_pCap_new), number_weeks_catch)
-  ini_lgN = rep(log(0.001 * (min(weekly_catch_data) + 1) / (min_pCap_new*2)), number_weeks_catch)
+  ini_lgN = rep(log(0.001 * (min(weekly_catch_data) + 1) / (min_pCap_new * 2)), number_weeks_catch)
 
-  #Then overide these values for weeks trap fish based on the weekly catch
+  # Then overide these values for weeks trap fish based on the weekly catch
   for(j in 1:number_weeks_with_catch){
     index_with_catch <- indices_with_catch[j]
     lgN_max[index_with_catch] = log(0.001 * (weekly_catch_data[j] + 1) / min_pCap_new)
-    ini_lgN[index_with_catch] = log(0.001 * (weekly_catch_data[j] + 1) / (min_pCap_new*2))
+    ini_lgN[index_with_catch] = log(0.001 * (weekly_catch_data[j] + 1) / (min_pCap_new * 2))
   }
 
 
@@ -595,9 +511,6 @@ prepare_abundance_inputs <- function(site, run_year,
                "ZP" = spline_data$b_spline_matrix,
                "Uwc_ind" = indices_with_catch,
                "lgN_max" = lgN_max)
-                #"lt_min_pCap"=lt_min_pCap)
-
-
 
   # data needed for generating lt_pCap_Us
   # also plotting data needs (sorted) for Josh's code
@@ -607,7 +520,6 @@ prepare_abundance_inputs <- function(site, run_year,
                          "Nwomr" = number_weeks_without_mark_recapture,
                          "Uind_wMR" = indices_with_mark_recapture,
                          "Uind_woMR" = indices_without_mark_recapture,
-                         #"mr_week_order" = mark_recapture_data[indices_pCap, ]$week, # this is because we pull mr data ordered by julian week, and we need to modify it to be model week for bt spas x
                          "releases_sort" = efficiency_plotting_vectors$number_released, # this is for josh's plots
                          "recaptures_sort" = efficiency_plotting_vectors$number_recaptured, # for josh's plots
                          "ind_pCap" = indices_pCap)
@@ -618,12 +530,14 @@ prepare_abundance_inputs <- function(site, run_year,
     filter(site == !!site) |>
     nrow()
 
-  if(number_experiments_at_site == 1) {
-    # TODO issue will be the inter-trial variance, and maybe we need a better
-    # TODO informative prior
-    cli::cli_abort("There is only one experiment at the selected site, and no model
-                   is available yet for that case")
+  if (number_experiments_at_site == 1) {
+    cli::cli_abort(c(
+      "No model is available for sites with only one experiment.",
+      "i" = "Site {.val {site}} has {number_experiments_at_site} experiment recorded.",
+      "i" = "Multi-experiment inter-trial variance handling is not yet implemented."
+    ))
   }
+
   # if efficiency trials occurred in the site
   if(number_experiments_at_site > 1) {
     if(number_weeks_without_mark_recapture == 0) {
@@ -644,15 +558,15 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   # check data list for NaNs and Infs
-  # cli::cli_process_start("Checking data inputs",
-  #                        msg_done = "Data checked",
-  #                        msg_failed = "Data check failed")
   invisible(lapply(names(data), function(x) {
-    if(any(is.nan(data[[x]])) | any(is.infinite(data[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    if (any(is.nan(data[[x]])) || any(is.infinite(data[[x]]))) {
+      cli::cli_abort(c(
+        "Invalid values detected in {.var {x}}.",
+        "i" = "NaNs or infinite values cannot be used as initial values.",
+        "i" = "Please check your input data."
+      ))
     }
   }))
-  cli::cli_process_done()
 
   parameters <- c("tau_N", "tau_Ne", "b_sp", "lg_N", "lt_pCap_U",
                   "N", "Ntot", "lg_CumN")
@@ -660,16 +574,15 @@ prepare_abundance_inputs <- function(site, run_year,
   # inits
   init_list <- list(b_sp = rep(1, spline_data$K),lg_N = ini_lgN)
 
-
-  # cli::cli_process_start("Checking init inputs for abundance model",
-  #                        msg_done = "Inits checked",
-  #                        msg_failed = "Init check failed")
   invisible(lapply(names(init_list), function(x) {
-    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
-      cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
+    if (any(is.nan(init_list[[x]])) || any(is.infinite(init_list[[x]]))) {
+      cli::cli_abort(c(
+        "Invalid initial values detected in {.var {x}}.",
+        "i" = "NaNs or infinite values cannot be used as initial values.",
+        "i" = "Please check your input data."
+      ))
     }
   }))
-  cli::cli_process_done()
 
   inits <- list(init_list, init_list, init_list)
 
@@ -695,6 +608,7 @@ prepare_abundance_inputs <- function(site, run_year,
   abundance_inputs <- list("inputs" = inputs_for_abundance,
                            "lt_pCap_U_data" = lt_pCap_U_data,
                            "model_name" = model_name,
+                           "pCap_model_type" = pCap_model_type,
                            "site" = site,
                            "run_year" = run_year,
                            "catch_flow_raw" = catch_data$flow_cfs,
@@ -704,20 +618,18 @@ prepare_abundance_inputs <- function(site, run_year,
                            "sites_fit" = sites_fit,
                            "run_year_id" = run_year_id,
                            "year_sd_id" = year_sd_id,
-                           "min_pCap"=min_pCap_new)
+                           "min_pCap" = min_pCap_new)
 
   # generate lt pcap Us based on inputs
-  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pcap_model_object)
+  lt_pCap_Us <- generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
 
   final_abundance_inputs <- modifyList(abundance_inputs,
                                        list("lt_pCap_Us" = lt_pCap_Us,
                                             "lp_data" = lp_data))
-  #final_abundance_inputs$lt_pCap_U_data = NULL
 
   return(final_abundance_inputs)
 
 }
-
 
 
 #' Prepare spline parameters object for BT-SPAS-X model
@@ -754,52 +666,24 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #' @md
 fit_pCap_model <- function(input) {
 
-  if("trib_mu_P" %in% input$inputs$parameters) {
-    mainstem <- FALSE
-  } else {
-    mainstem <- TRUE
-  }
+  # call the correct model based on pCap_inputs model name (either one_site_skew, one_site, or all_sites)
+  stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", input$model_name)))
 
-  # check if it's trib or mainstem
-  # if mainstem
-  if(mainstem) {
+  # call model
+  options(mc.cores=parallel::detectCores())
 
-    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_mainstem_skew_re"))
+  pcap <- rstan::stan(model_name = input$model_name,
+                      model_code = stan_model,
+                      data = input$inputs$data,
+                      init = input$inputs$inits,
+                      pars = input$inputs$parameters,
+                      chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
+                      iter = 10000,
+                      seed = 84735,
+                      control = list(max_treedepth = 15))
 
-    options(mc.cores=parallel::detectCores())
-    cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_name = "pCap_mainstem_skew_re",
-                        model_code = stan_model,
-                        data = input$inputs$data,
-                        init = input$inputs$inits,
-                        pars = input$inputs$parameters,
-                        chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = 10000,
-                        seed = 84735,
-                        control = list(max_treedepth = 15))
+  return(pcap)
 
-    return(pcap)
-
-  } else {
-
-    stan_model <- eval(parse(text = "SRJPEmodel::bt_spas_x_model_code$pCap_trib"))
-
-    options(mc.cores=parallel::detectCores())
-    cli::cli_alert("running pCap model")
-    pcap <- rstan::stan(model_name = "pCap_trib",
-                        model_code = stan_model,
-                        data = input$inputs$data,
-                        init = input$inputs$inits,
-                        # do not save logit_pCap or pro_dev_P (way too big)
-                        pars = input$inputs$parameters,
-                        chains = SRJPEmodel::bt_spas_x_bayes_params$number_chains,
-                        iter = SRJPEmodel::bt_spas_x_bayes_params$number_mcmc,
-                        seed = 84735,
-                        control = list(max_treedepth = 15))
-
-    return(pcap)
-
-  }
 }
 
 #' Generate lt_pCap_U values from the pCap model object
@@ -811,11 +695,13 @@ fit_pCap_model <- function(input) {
 #' `Nstrata`.
 #' @export
 #' @md
-generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
+generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
-  # if mainstem
-  if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
+  pCap_model_type <- ifelse(abundance_inputs$pCap_model_type == "all_sites", "all_sites", "one_site")
+  skew <- ifelse(pCap_model_type == "one_site" & abundance_inputs$pCap_model_type == "one_site_skew", TRUE, FALSE)
 
+  # if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
+  if(pCap_model_type == "one_site") {
     # set up objects
     ModelName <- abundance_inputs$model_name
     Nstrata <- abundance_inputs$inputs$data$Nstrata
@@ -828,9 +714,14 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
 
     # extract from pCap model fit object
+    pars_to_extract <- c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "yr_re", "yr_sd_P")
+    if(skew) {
+      pars_to_extract <- c(pars_to_extract, "alpha")
+    }
 
-    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P","yr_re","yr_sd_P","alpha"),
+    samples <- rstan::extract(pCap_model_object, pars = pars_to_extract,
                               permuted = TRUE)
+
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
@@ -844,18 +735,17 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
     yr_sd_P <- samples$yr_sd_P
 
     # calculations
-    lt_pCap_U=matrix(nrow=Ntrials,ncol=Nstrata)
-    lt_pCap_mu=matrix(nrow=Nstrata,ncol=Ntrials) #function needs to return this
-    lt_pCap_sd=lt_pCap_mu                        #function needs to return this
+    lt_pCap_U = matrix(nrow = Ntrials, ncol = Nstrata)
+    lt_pCap_mu = matrix(nrow = Nstrata, ncol = Ntrials) #function needs to return this
+    lt_pCap_sd = lt_pCap_mu                        #function needs to return this
 
-
-    if(ModelName=="all_mark_recap" ){#stays as is
+    if(ModelName == "all_mark_recap" ){#stays as is
 
       for(i in 1:Nstrata){
         lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
       }
 
-    } else if (ModelName=="missing_mark_recap"){
+    } else if (ModelName == "missing_mark_recap"){
 
       for(i in 1:Nwmr){
         #Assign estimated pCaps for strata with efficiency data
@@ -863,7 +753,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        if(Skew==T){
+        if(skew){
           sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
           sim_pro_dev=rnorm(N=Ntrials, mu=0,sd=pro_sd_P)
@@ -871,10 +761,10 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re
       }
 
-    } else if (ModelName=="no_mark_recap"){
+    } else if (ModelName == "no_mark_recap"){
 
       for (i in 1:Nwomr) {
-          if(Skew==T){
+          if(skew){
             sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
           } else {
             sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
@@ -883,14 +773,14 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
           lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev
       }
 
-    } else if (ModelName=="no_mark_recap_no_trib"){
+    } else if (ModelName == "no_mark_recap_no_trib"){
 
        logit_b0 = rnorm(n=Ntrials, mean=trib_mu_P, sd=trib_sd_P)
        logit_bflow = rnorm(n=Ntrials, mean=flow_mu_P, sd=flow_sd_P)
 
 
       for (i in 1:Nwomr) {
-        if(Skew==T){
+        if(skew){
           sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
           sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
@@ -908,7 +798,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
       lt_pCap_sd[i,]=sd(lt_pCap_U[,i])
     }
 
-  } else {
+  } else { # if all_sites
     # set up objects
     ModelName <- abundance_inputs$model_name
     Nstrata <- abundance_inputs$inputs$data$Nstrata
@@ -922,7 +812,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pcap_model_object){
 
     # extract from pCap model fit object
 
-    samples <- rstan::extract(pcap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
+    samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
                                                           "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
