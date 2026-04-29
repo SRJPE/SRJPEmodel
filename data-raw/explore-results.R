@@ -10,12 +10,15 @@ library(RPostgres) # for stock-recruit
 # example for upper battle creek (ubc) 2018 (trib)
 
 # run pCap model
-pCap_inputs <- prepare_pCap_inputs(mainstem = FALSE, drop_trib_sites = TRUE,
-                                   sites_to_drop = c("okie dam", "steep riffle"))
+pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
 pCap <- fit_pCap_model(pCap_inputs)
 
 # run abundance model
-abundance_inputs <- prepare_abundance_inputs("okie dam", 2022, effort_adjust = T, pCap)
+abundance_inputs <- prepare_abundance_inputs(site = "ubc",
+                                             run_year = 2010,
+                                             effort_adjust = T,
+                                             pCap_model_type = "all_sites",
+                                             pCap_model_object = pCap)
 abundance <- fit_abundance_model_BUGS(abundance_inputs,
                                       # point towards where you store the .bug model
                                       "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
