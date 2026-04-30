@@ -30,7 +30,7 @@ model {
   for(i in 1:Nstrata_wc){
       #u[i]~dbin(pCap_U[Uwc_ind[i]],N[Uwc_ind[i]])
 
-      predN[i]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]]
+      predN[i]<-pCap_U[Uwc_ind[i]]*N[Uwc_ind[i]] #had effort[i]
       u[i]~dpois(predN[i])
   }
 
