@@ -39,7 +39,6 @@ for(isite in 1:Nsites){
 
     abundance_inputs <- prepare_abundance_inputs(site = DoSite,
                                                  run_year = DoYr,
-                                                 effort_adjust=T,
                                                  pCap_model_type = model_type,
                                                  min_pCap_mult = 0.5,
                                                  pCap_model_object = pcap)
