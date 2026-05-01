@@ -28,15 +28,16 @@ plot_juv_data("ubc", 2018)
 generate_diagnostic_plot_juv("ubc", 2018, abundance_table)
 
 # example for a mainstem site (tisdale)
-tis_inputs <- prepare_pCap_inputs(mainstem = TRUE,
-                                  "tisdale")
-tis_fit <- fit_pCap_model(tis_inputs$inputs)
-tis_abundance_inputs <- prepare_abundance_inputs("tisdale", 2017, effort_adjust = T)
-tis_lt_pCap_Us <- generate_lt_pCap_Us(tis_abundance_inputs, tis_fit)
+tis_inputs <- prepare_pCap_inputs(model_type = "one_site",
+                                  skew = T,
+                                  site_selection = "tisdale")
+tis_fit <- fit_pCap_model(tis_inputs)
+tis_abundance_inputs <- prepare_abundance_inputs(site = "tisdale",
+                                                 run_year = 2017,
+                                                 pCap_model_type = "one_site_skew",
+                                                 pCap_model_object = tis_fit)
 
-tis_abundance <- fit_abundance_model_BUGS(tis_abundance_inputs, tis_lt_pCap_Us,
-                                          # point towards where you store the .bug model
-                                          "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
+tis_abundance <- fit_abundance_model_BUGS(tis_abundance_inputs,
                                           # point to where you have WinBUGS
                                           "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
