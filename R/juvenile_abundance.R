@@ -816,12 +816,13 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     # extract from pCap model fit object
 
     samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                                                          "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P"),
+                                                          "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P", "b_eff"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
+    b_eff <- samples$b_eff # b_eff
     pro_sd_P <- samples$pro_sd_P #process error (sd)
     trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
     trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap

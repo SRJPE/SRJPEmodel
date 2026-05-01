@@ -7,7 +7,6 @@
 prepare_abundance_inputs(
   site,
   run_year,
-  effort_adjust = c(T, F),
   pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
   min_pCap = 5e-04,
   min_pCap_mult = 1,
@@ -20,8 +19,6 @@ prepare_abundance_inputs(
 \item{site}{site for which you want to fit the model}
 
 \item{run_year}{run year for which you want to fit the model}
-
-\item{effort_adjust}{whether or not you want to use catch adjusted by effort.}
 
 \item{pCap_model_type}{One of \code{all_sites}, \code{one_site_skew}, or \code{one_site}. Describes your input
 for parameter \code{pCap_model_object}}

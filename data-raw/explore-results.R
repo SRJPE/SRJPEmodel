@@ -16,12 +16,9 @@ pCap <- fit_pCap_model(pCap_inputs)
 # run abundance model
 abundance_inputs <- prepare_abundance_inputs(site = "ubc",
                                              run_year = 2010,
-                                             effort_adjust = T,
                                              pCap_model_type = "all_sites",
                                              pCap_model_object = pCap)
 abundance <- fit_abundance_model_BUGS(abundance_inputs,
-                                      # point towards where you store the .bug model
-                                      "C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug",
                                       # point to where you have WinBUGS
                                       "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14")
 
