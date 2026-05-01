@@ -927,6 +927,8 @@ fit_abundance_model_BUGS <- function(abundance_inputs,
                     inits_with_lt_pCap_U,
                     inits_with_lt_pCap_U)
 
+  data$effort <- NULL # not used in abundance.bug any more, can't be in data list if not called
+
   # Write model code from package object to a temp file
   model_file <- tempfile(fileext = ".bug")
   writeLines(SRJPEmodel::bt_spas_x_model_code$abundance_BUGS, con = model_file)
