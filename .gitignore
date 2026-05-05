@@ -18,3 +18,4 @@ config.json
 *.res
 *.vcv
 config.yml
+.positai
