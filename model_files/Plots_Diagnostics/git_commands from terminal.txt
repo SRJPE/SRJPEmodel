@@ -1,0 +1,29 @@
+# install.packages("remotes")
+remotes::install_github("SRJPE/SRJPEdata",force=T)
+remotes::install_github("SRJPE/SRJPEmodel")
+
+
+git stuff done from Terminal
+
+#after I make a coding change
+
+git status  #shows what files were changed
+
+git branch  #shows what branch you are working in
+git checkout btspasx_mods #make sure I am in the correct branch where changes were made
+
+#Steps to push code
+git add -u  #this will add all files that are changed except for new files
+git commit -m "add message describing what was changed"
+git push  #push changes into remote repository
+
+#to grab change from liz
+git pull
+
+
+#loads all of package functions and data objects to memory (in this from srJPEMODEL.) Avoids downloading in library
+#always do this in new sesion until srJPEModel bt-spas-x-mod is merged with main branch
+#ctrl + shift + b
+
+
+
