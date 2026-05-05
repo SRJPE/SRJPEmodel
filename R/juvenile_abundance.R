@@ -248,7 +248,9 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
               "years_fit" = years_fit,
               "sites_dropped" = exclude_from_hyper,
               "site_year_fit" = site_year_fit,
-              "model_name" = model_name))
+              "model_name" = model_name,
+              "skew" = skew,
+              "site_selection" = site_selection))
 
 }
 
