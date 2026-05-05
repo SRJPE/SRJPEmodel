@@ -7,8 +7,10 @@
 prepare_abundance_inputs(
   site,
   run_year,
-  effort_adjust = c(T, F),
-  pcap_model_object,
+  pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
+  min_pCap = 5e-04,
+  min_pCap_mult = 1,
+  pCap_model_object,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
@@ -18,7 +20,19 @@ prepare_abundance_inputs(
 
 \item{run_year}{run year for which you want to fit the model}
 
-\item{effort_adjust}{whether or not you want to use catch adjusted by effort.}
+\item{pCap_model_type}{One of \code{all_sites}, \code{one_site_skew}, or \code{one_site}. Describes your input
+for parameter \code{pCap_model_object}}
+
+\item{min_pCap}{a parameter that sets the minimum pCap value for setting maximum and initial
+values for abundance (N). Can be tweaked by min_pCap_mult. Default value is \code{0.0005}}
+
+\item{min_pCap_mult}{a parameter that lets you tweak the min pCap value for setting
+maximum and initial values for abundance (N). Gets multiplied by min_pCap. Default value is \code{1.0}}
+
+\item{pCap_model_object}{the STAN model file produced by running \code{prepare_pCap_inputs()}
+#' @param input_catch_data Optional argument for weekly catch data.
+Defaults to \verb{SRJPEdata::SRJPEdata::weekly_juvenile_abundance_catch_data}. If
+passed in, structure of data frame must match that of the default.}
 
 \item{input_catch_data}{Optional argument for weekly catch data.
 Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If

@@ -5,27 +5,24 @@
 \title{Prepare inputs for pCap STAN model}
 \usage{
 prepare_pCap_inputs(
-  mainstem = c(FALSE, TRUE),
-  mainstem_site = NULL,
-  drop_trib_sites = FALSE,
-  sites_to_drop = NULL,
+  model_type = c("all_sites", "one_site"),
+  skew = NULL,
+  site_selection = NULL,
+  exclude_from_hyper = NULL,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
 }
 \arguments{
-\item{mainstem}{Whether or not you want to evaluate efficiency trials for a mainstem site
-(\verb{knights landing}, \code{tisdale}, and \verb{red bluff diversion dam}) or for a tributary site. If \code{FALSE},
-the mark recapture dataset will be filtered to exclude those mainstem sites.}
+\item{model_type}{either \code{one_site} or \code{all_sites}}
 
-\item{mainstem_site}{If you are fitting the model with \code{mainstem == TRUE}, you must supply a
-mainstem site for which to prepare inputs. Can be either \verb{knights landing} or \code{tisdale}.}
+\item{skew}{either \code{TRUE} or \code{FALSE}. Only applies for \code{one_site} models.}
 
-\item{drop_trib_sites}{Either \code{FALSE} or \code{TRUE} and defaults to \code{FALSE}. If \code{TRUE}, you can provide a
-specific site to \code{drop_trib_sites} to exclude that site from estimates of \code{b0_pCap} and \code{b_flow}.}
+\item{site_selection}{if fitting the \code{one_site} model, the tributary you want to fit.}
 
-\item{sites_to_drop}{A character vector of at least length 1. Must be one of the site names
-in \code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}.}
+\item{exclude_from_hyper}{a vector of sites you want to drop from being estimated in the hyper distribution
+parameters \code{b0_pCap} and \code{b_flow}. Default is NULL, meaning no sites are dropped. Must be site names
+in \code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}}
 
 \item{input_catch_data}{Optional argument for weekly catch data.
 Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If
