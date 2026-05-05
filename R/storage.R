@@ -113,7 +113,7 @@
 #' abund_inputs <- prepare_abundance_inputs(site = "ubc", run_year = 2024,
 #'                                          pCap_model_type = "all_sites",
 #'                                          pCap_model_object = pCap_fit)
-#' abund_fit    <- fit_abundance_model_BUGS(abund_inputs, bugs_dir)
+#' abund_fit    <- fit_abundance_model_BUGS(abund_inputs, bugs_model_file, bugs_dir)
 #'
 #' store_model_fit(
 #'   con              = con,
@@ -133,13 +133,13 @@ store_model_fit <- function(con,
                             container_name  = "model-results",
                             access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
-  results_name <- model_inputs$model_name
+  results_name <- str_to_lower(model_inputs$model_name)
 
   # ── Validate results_name ──────────────────────────────────────────────────
   if (!results_name %in% .approved_model_names) {
     cli::cli_abort(c(
       "{.arg model_inputs$model_name} must be one of the approved model names.",
-      "i" = "Approved names: {.val {.approved_model_names}}",
+      "i" = "Approved names: {.val {(.approved_model_names)}}",
       "x" = "Got: {.val {results_name}}"
     ))
   }
@@ -245,7 +245,7 @@ get_model_fit <- function(results_name,
   if (!results_name %in% .approved_model_names) {
     cli::cli_abort(c(
       "{.arg results_name} must be one of the approved model names.",
-      "i" = "Approved names: {.val {.approved_model_names}}",
+      "i" = "Approved names: {.val {(.approved_model_names)}}",
       "x" = "Got: {.val {results_name}}"
     ))
   }
@@ -301,7 +301,7 @@ list_model_versions <- function(results_name,
   if (!results_name %in% .approved_model_names) {
     cli::cli_abort(c(
       "{.arg results_name} must be one of the approved model names.",
-      "i" = "Approved names: {.val {.approved_model_names}}",
+      "i" = "Approved names: {.val {(.approved_model_names)}}",
       "x" = "Got: {.val {results_name}}"
     ))
   }
@@ -387,36 +387,25 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
   sites_excluded <- model_inputs$sites_dropped
 
   # ── INSERT ─────────────────────────────────────────────────────────────────
-  # sites_excluded is passed as a native R vector; RPostgres handles TEXT[]
-  # serialisation automatically when the value is a character vector or NULL.
-  query <- glue::glue_sql(
-    "INSERT INTO model_run (
-       blob_fit_storage_url,
-       model_name_id,
-       srjpedata_version,
-       description,
-       site,
-       run_year,
-       skew,
-       site_selection,
-       sites_excluded,
-       updated_at
-     ) VALUES (
-       {blob_url},
-       {model_name_id},
-       {srjpedata_version},
-       {description},
-       {site},
-       {run_year},
-       {skew},
-       {site_selection},
-       {sites_excluded},
-       NOW()
-     )",
-    .con = con
+  # Use dbAppendTable() so RPostgres handles type serialisation natively —
+  # correctly maps NULL, BOOLEAN, INTEGER, and TEXT[] without glue_sql
+  # vector-length issues. sites_excluded is wrapped in list() so a character
+  # vector is stored as a single array value rather than expanding into rows.
+  new_row <- data.frame(
+    blob_fit_storage_url = blob_url,
+    model_name_id        = model_name_id,
+    srjpedata_version    = srjpedata_version,
+    description          = description %||% NA_character_,
+    site                 = site,
+    run_year             = run_year,
+    skew                 = skew,
+    site_selection       = site_selection,
+    updated_at           = Sys.time(),
+    stringsAsFactors     = FALSE
   )
+  new_row$sites_excluded <- list(sites_excluded)
 
-  rows_inserted <- DBI::dbExecute(con, query)
+  rows_inserted <- DBI::dbAppendTable(con, "model_run", new_row)
   invisible(rows_inserted)
 }
 

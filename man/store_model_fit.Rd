@@ -99,7 +99,7 @@ store_model_fit(
 abund_inputs <- prepare_abundance_inputs(site = "ubc", run_year = 2024,
                                          pCap_model_type = "all_sites",
                                          pCap_model_object = pCap_fit)
-abund_fit    <- fit_abundance_model_BUGS(abund_inputs, bugs_dir)
+abund_fit    <- fit_abundance_model_BUGS(abund_inputs, bugs_model_file, bugs_dir)
 
 store_model_fit(
   con              = con,

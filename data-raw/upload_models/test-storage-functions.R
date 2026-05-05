@@ -13,8 +13,7 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
 # ── File paths ─────────────────────────────────────────────────────────────────
-bugs_model_file <- "model_files/abundance_model.bug"
-bugs_directory  <- "" # e.g. "C:/Users/User/Documents/WinBUGS14"
+bugs_directory  <- "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"
 
 # ── Database connection ────────────────────────────────────────────────────────
 cfg <- config::get()
@@ -62,7 +61,6 @@ abundance_inputs <- prepare_abundance_inputs(
 
 abundance_fit <- fit_abundance_model_BUGS(
   abundance_inputs,
-  bugs_model_file,
   bugs_directory
 )
 
