@@ -6,6 +6,10 @@
 \usage{
 get_model_fit(
   results_name,
+  con = NULL,
+  site = NULL,
+  run_year = NULL,
+  site_selection = NULL,
   storage_account = "jpemodelresults",
   container_name = "model-results",
   access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
@@ -14,8 +18,19 @@ get_model_fit(
 }
 \arguments{
 \item{results_name}{The model type name used when the fit was stored. Must
-be one of \code{.approved_model_names} (e.g. \code{"pcap_all_sites"},
+be one of \code{.approved_model_names} (e.g. \code{"pcap_one_site"},
 \code{"all_mark_recap"}).}
+
+\item{con}{Optional. A database connection object (e.g. from
+\code{\link[DBI:dbConnect]{DBI::dbConnect()}}). Required when using \code{site}, \code{run_year}, or
+\code{site_selection} filters.}
+
+\item{site}{Optional. Site name to filter on (abundance models).}
+
+\item{run_year}{Optional. Run year to filter on (abundance models).}
+
+\item{site_selection}{Optional. Site name to filter on for pCap one_site
+models (matches the \code{site_selection} column in \code{model_run}).}
 
 \item{storage_account}{Azure storage account name. Defaults to
 \code{"jpemodelresults"}.}
@@ -27,26 +42,46 @@ be one of \code{.approved_model_names} (e.g. \code{"pcap_all_sites"},
 Defaults to the \code{AZ_CONTAINER_ACCESS_KEY} environment variable.}
 
 \item{version}{Optional. A specific version string as shown by
-\code{\link[=list_model_versions]{list_model_versions()}}. When \code{NULL} (default) the latest version is
-returned.}
+\code{\link[=list_model_versions]{list_model_versions()}}. Overrides DB-based resolution when supplied.}
 }
 \value{
 The model fit object (class \code{stanfit} or \code{bugs}).
 }
 \description{
-Downloads a model fit object from Azure Blob Storage. By default the
-\emph{most recent} version is returned; supply \code{version} to retrieve a specific
-historical fit (use \code{\link[=list_model_versions]{list_model_versions()}} to browse available versions).
+Downloads a model fit object from Azure Blob Storage.
+
+By default the most recent version is returned. For model types where
+multiple fits share the same \code{results_name} (e.g. \code{pcap_one_site} fits for
+different sites, or abundance fits for different site × run_year
+combinations), supply \code{con} along with the relevant filter arguments to
+resolve the correct fit via the database:
+\itemize{
+\item \strong{pCap one_site / one_site_skew} — supply \code{con} + \code{site_selection}
+\item \strong{Abundance models} — supply \code{con} + \code{site} + \code{run_year}
+\item \strong{pCap all_sites / other single fits} — no filters needed; omit \code{con}
+}
+
+When \code{con} and filters are provided the database is queried for the most
+recent matching \code{model_run} record and the blob URL stored there is used
+to resolve the exact version. The \code{version} argument can still be used to
+override this and pin down a specific historical fit.
 }
 \examples{
 \dontrun{
-# Latest pCap all-sites fit
-pCap_fit  <- get_model_fit("pcap_all_sites")
+# pCap all-sites — no filters needed
+pCap_fit <- get_model_fit("pcap_all_sites")
 
-# Latest abundance fit
-abund_fit <- get_model_fit("all_mark_recap")
+# pCap one-site — resolve by site_selection via DB
+tisdale_fit <- get_model_fit("pcap_one_site_skew", con = con,
+                              site_selection = "tisdale")
+kdl_fit     <- get_model_fit("pcap_one_site_skew", con = con,
+                              site_selection = "knights landing")
 
-# A specific historical version
-old_fit   <- get_model_fit("pcap_all_sites", version = "20240315T102233Z-abc12")
+# Abundance — resolve by site + run_year via DB
+abund_fit <- get_model_fit("all_mark_recap", con = con,
+                            site = "ubc", run_year = 2022)
+
+# A specific historical version (bypasses DB lookup)
+old_fit <- get_model_fit("pcap_all_sites", version = "20240315T102233Z-abc12")
 }
 }

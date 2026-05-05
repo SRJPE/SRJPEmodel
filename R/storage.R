@@ -133,7 +133,7 @@ store_model_fit <- function(con,
                             container_name  = "model-results",
                             access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
-  results_name <- str_to_lower(model_inputs$model_name)
+  results_name <- model_inputs$model_name
 
   # ── Validate results_name ──────────────────────────────────────────────────
   if (!results_name %in% .approved_model_names) {
@@ -205,13 +205,33 @@ store_model_fit <- function(con,
 
 #' @title Retrieve a Model Fit Object
 #' @description
-#' Downloads a model fit object from Azure Blob Storage. By default the
-#' *most recent* version is returned; supply `version` to retrieve a specific
-#' historical fit (use [list_model_versions()] to browse available versions).
+#' Downloads a model fit object from Azure Blob Storage.
+#'
+#' By default the most recent version is returned. For model types where
+#' multiple fits share the same `results_name` (e.g. `pcap_one_site` fits for
+#' different sites, or abundance fits for different site × run_year
+#' combinations), supply `con` along with the relevant filter arguments to
+#' resolve the correct fit via the database:
+#'
+#' * **pCap one_site / one_site_skew** — supply `con` + `site_selection`
+#' * **Abundance models** — supply `con` + `site` + `run_year`
+#' * **pCap all_sites / other single fits** — no filters needed; omit `con`
+#'
+#' When `con` and filters are provided the database is queried for the most
+#' recent matching `model_run` record and the blob URL stored there is used
+#' to resolve the exact version. The `version` argument can still be used to
+#' override this and pin down a specific historical fit.
 #'
 #' @param results_name The model type name used when the fit was stored. Must
-#'   be one of `.approved_model_names` (e.g. `"pcap_all_sites"`,
+#'   be one of `.approved_model_names` (e.g. `"pcap_one_site"`,
 #'   `"all_mark_recap"`).
+#' @param con Optional. A database connection object (e.g. from
+#'   [DBI::dbConnect()]). Required when using `site`, `run_year`, or
+#'   `site_selection` filters.
+#' @param site Optional. Site name to filter on (abundance models).
+#' @param run_year Optional. Run year to filter on (abundance models).
+#' @param site_selection Optional. Site name to filter on for pCap one_site
+#'   models (matches the `site_selection` column in `model_run`).
 #' @param storage_account Azure storage account name. Defaults to
 #'   `"jpemodelresults"`.
 #' @param container_name Azure blob container name. Defaults to
@@ -219,24 +239,34 @@ store_model_fit <- function(con,
 #' @param access_key Azure storage access key with **read** permissions.
 #'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
 #' @param version Optional. A specific version string as shown by
-#'   [list_model_versions()]. When `NULL` (default) the latest version is
-#'   returned.
+#'   [list_model_versions()]. Overrides DB-based resolution when supplied.
 #'
 #' @return The model fit object (class `stanfit` or `bugs`).
 #'
 #' @examples
 #' \dontrun{
-#' # Latest pCap all-sites fit
-#' pCap_fit  <- get_model_fit("pcap_all_sites")
+#' # pCap all-sites — no filters needed
+#' pCap_fit <- get_model_fit("pcap_all_sites")
 #'
-#' # Latest abundance fit
-#' abund_fit <- get_model_fit("all_mark_recap")
+#' # pCap one-site — resolve by site_selection via DB
+#' tisdale_fit <- get_model_fit("pcap_one_site_skew", con = con,
+#'                               site_selection = "tisdale")
+#' kdl_fit     <- get_model_fit("pcap_one_site_skew", con = con,
+#'                               site_selection = "knights landing")
 #'
-#' # A specific historical version
-#' old_fit   <- get_model_fit("pcap_all_sites", version = "20240315T102233Z-abc12")
+#' # Abundance — resolve by site + run_year via DB
+#' abund_fit <- get_model_fit("all_mark_recap", con = con,
+#'                             site = "ubc", run_year = 2022)
+#'
+#' # A specific historical version (bypasses DB lookup)
+#' old_fit <- get_model_fit("pcap_all_sites", version = "20240315T102233Z-abc12")
 #' }
 #' @export
 get_model_fit <- function(results_name,
+                          con             = NULL,
+                          site            = NULL,
+                          run_year        = NULL,
+                          site_selection  = NULL,
                           storage_account = "jpemodelresults",
                           container_name  = "model-results",
                           access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
@@ -250,19 +280,60 @@ get_model_fit <- function(results_name,
     ))
   }
 
+  # ── Validate filter usage ──────────────────────────────────────────────────
+  using_filters <- !is.null(site) || !is.null(run_year) || !is.null(site_selection)
+  if (using_filters && is.null(con)) {
+    cli::cli_abort(
+      "A database connection {.arg con} is required when using {.arg site}, \\
+       {.arg run_year}, or {.arg site_selection} filters."
+    )
+  }
+
   board <- model_pin_board(storage_account, container_name, results_name,
                            access_key = access_key)
 
+  # ── Resolve version ────────────────────────────────────────────────────────
   if (is.null(version)) {
-    version <- board |>
-      pins::pin_versions(results_name) |>
-      dplyr::arrange(dplyr::desc(created)) |>
-      dplyr::pull(version) |>
-      dplyr::first()
+    if (using_filters) {
+      # Query DB for the most recent matching model_run record
+      query <- dplyr::tbl(con, "model_run") |>
+        dplyr::inner_join(dplyr::tbl(con, "model_name"),
+                          by = c("model_name_id" = "id")) |>
+        dplyr::filter(name == results_name)
 
-    cli::cli_alert_info(
-      "No version specified — downloading latest: {.val {version}}"
-    )
+      if (!is.null(site))           query <- dplyr::filter(query, site           == !!site)
+      if (!is.null(run_year))       query <- dplyr::filter(query, run_year       == !!run_year)
+      if (!is.null(site_selection)) query <- dplyr::filter(query, site_selection == !!site_selection)
+
+      matched <- query |>
+        dplyr::arrange(dplyr::desc(created_at)) |>
+        dplyr::slice(1) |>
+        dplyr::select(blob_fit_storage_url, created_at) |>
+        dplyr::collect()
+
+      if (nrow(matched) == 0) {
+        cli::cli_abort(
+          "No model run found in the database matching the supplied filters."
+        )
+      }
+
+      # Parse version token from stored blob URL:
+      # .../model-fits/<model_name>/<model_name>/<version>/<model_name>.rds
+      version <- basename(dirname(matched$blob_fit_storage_url))
+      cli::cli_alert_info("Resolved version from database: {.val {version}}")
+
+    } else {
+      # No filters — fall back to most recent pin version
+      version <- board |>
+        pins::pin_versions(results_name) |>
+        dplyr::arrange(dplyr::desc(created)) |>
+        dplyr::pull(version) |>
+        dplyr::first()
+
+      cli::cli_alert_info(
+        "No filters supplied — downloading latest version: {.val {version}}"
+      )
+    }
   }
 
   model_object <- pins::pin_read(board, results_name, version = version)
@@ -312,6 +383,139 @@ list_model_versions <- function(results_name,
   board |>
     pins::pin_versions(results_name) |>
     dplyr::arrange(dplyr::desc(created))
+}
+
+
+# ── get_many_model_fits() ─────────────────────────────────────────────────────
+
+#' @title Retrieve Multiple Model Fit Objects
+#' @description
+#' Downloads the most recent model fit for each site × run_year combination,
+#' querying the database to identify which runs to fetch and then pulling each
+#' `.rds` from Azure Blob Storage. Results are returned as a named list keyed
+#' by `"<site>_<run_year>"`.
+#'
+#' All filter arguments are optional and combinable. With no filters the
+#' function returns the most recent fit for every site × run_year combination
+#' present in `model_run` for the given `model_name`.
+#'
+#' @param con A database connection object (e.g. from [DBI::dbConnect()]).
+#' @param model_name The model type to retrieve. Must be one of
+#'   `.approved_model_names` (e.g. `"all_mark_recap"`, `"no_mark_recap"`).
+#' @param sites Optional character vector of sites to include (e.g.
+#'   `c("ubc", "lcc")`). When `NULL` all sites are returned.
+#' @param run_years Optional integer vector of run years to include (e.g.
+#'   `2020:2024`). When `NULL` all run years are returned.
+#' @param storage_account Azure storage account name. Defaults to
+#'   `"jpemodelresults"`.
+#' @param container_name Azure blob container name. Defaults to
+#'   `"model-results"`.
+#' @param access_key Azure storage access key with **read** permissions.
+#'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
+#'
+#' @return A named list of model fit objects. Names are formatted as
+#'   `"<site>_<run_year>"` (e.g. `"ubc_2020"`, `"lcc_2021"`). Any site ×
+#'   run_year that fails to download is returned as `NULL` with a warning
+#'   rather than aborting the whole batch.
+#'
+#' @examples
+#' \dontrun{
+#' # All available abundance fits
+#' fits <- get_many_model_fits(con, model_name = "all_mark_recap")
+#'
+#' # Specific sites only
+#' fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+#'                             sites = c("ubc", "lcc", "mill creek"))
+#'
+#' # Specific run years only
+#' fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+#'                             run_years = 2020:2024)
+#'
+#' # Access a single result from the list
+#' fits[["ubc_2022"]]
+#' }
+#' @export
+get_many_model_fits <- function(con,
+                                model_name,
+                                sites           = NULL,
+                                run_years       = NULL,
+                                storage_account = "jpemodelresults",
+                                container_name  = "model-results",
+                                access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+
+  if (!model_name %in% .approved_model_names) {
+    cli::cli_abort(c(
+      "{.arg model_name} must be one of the approved model names.",
+      "i" = "Approved names: {.val {(.approved_model_names)}}",
+      "x" = "Got: {.val {model_name}}"
+    ))
+  }
+
+  # ── Query DB for the most recent run per site × run_year ───────────────────
+  runs <- dplyr::tbl(con, "model_run") |>
+    dplyr::inner_join(dplyr::tbl(con, "model_name"), by = c("model_name_id" = "id")) |>
+    dplyr::filter(name == model_name) |>
+    dplyr::filter(!is.na(site), !is.na(run_year))
+
+  if (!is.null(sites)) {
+    runs <- dplyr::filter(runs, site %in% !!sites)
+  }
+  if (!is.null(run_years)) {
+    runs <- dplyr::filter(runs, run_year %in% !!run_years)
+  }
+
+  # Keep only the most recent model_run record per site × run_year
+  runs <- runs |>
+    dplyr::group_by(site, run_year) |>
+    dplyr::slice_max(created_at, n = 1, with_ties = FALSE) |>
+    dplyr::ungroup() |>
+    dplyr::select(site, run_year, blob_fit_storage_url, created_at) |>
+    dplyr::arrange(site, run_year) |>
+    dplyr::collect()
+
+  if (nrow(runs) == 0) {
+    cli::cli_warn("No model runs found in the database matching the supplied filters.")
+    return(list())
+  }
+
+  cli::cli_alert_info(
+    "Downloading {nrow(runs)} fit{?s} for {.val {model_name}} from Azure Blob Storage."
+  )
+
+  # ── Download each fit from blob ────────────────────────────────────────────
+  board <- model_pin_board(storage_account, container_name, model_name,
+                           access_key = access_key)
+
+  fits <- vector("list", nrow(runs))
+  names(fits) <- paste0(runs$site, "_", runs$run_year)
+
+  for (i in seq_len(nrow(runs))) {
+    key <- names(fits)[i]
+
+    fits[[key]] <- tryCatch({
+      # Derive the pins version token from the blob URL:
+      # URL pattern: .../model-fits/<model_name>/<model_name>/<version>/<model_name>.rds
+      version <- basename(dirname(runs$blob_fit_storage_url[i]))
+      pins::pin_read(board, model_name, version = version)
+    }, error = function(e) {
+      cli::cli_warn("Failed to download {.val {key}}: {e$message}")
+      NULL
+    })
+
+    cli::cli_progress_message(
+      "  Downloaded {i}/{nrow(runs)}: {key}"
+    )
+  }
+
+  n_ok   <- sum(!vapply(fits, is.null, logical(1)))
+  n_fail <- nrow(runs) - n_ok
+
+  cli::cli_alert_success("Downloaded {n_ok}/{nrow(runs)} fit{?s} successfully.")
+  if (n_fail > 0) {
+    cli::cli_alert_warning("{n_fail} fit{?s} failed — returned as NULL in the list.")
+  }
+
+  fits
 }
 
 
