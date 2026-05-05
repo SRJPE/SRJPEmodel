@@ -2,67 +2,112 @@
 % Please edit documentation in R/storage.R
 \name{store_model_fit}
 \alias{store_model_fit}
-\title{Store Model Fits}
+\title{Store a Model Fit Object}
 \usage{
 store_model_fit(
   con,
-  storage_account = "jpemodelresults",
-  container_name = "model-results",
-  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY"),
   model_fit_object,
   model_inputs,
-  results_name,
-  description,
-  ...
+  description = NULL,
+  storage_account = "jpemodelresults",
+  container_name = "model-results",
+  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
 )
 }
 \arguments{
-\item{con}{A connection object to the database.}
+\item{con}{A database connection object (e.g. from \code{\link[DBI:dbConnect]{DBI::dbConnect()}}).}
 
-\item{storage_account}{A string specifying the Azure storage account name, typically \code{jpemodelresults}.}
+\item{model_fit_object}{The fitted model object to store. Must be of class
+\code{stanfit} (Stan models) or \code{bugs} (WinBUGS / OpenBUGS models).}
 
-\item{container_name}{A string specifying the container name in the Azure storage account, typically \code{model-results}.}
+\item{model_inputs}{The inputs list returned by the relevant
+\verb{prepare_*_inputs()} function.}
 
-\item{access_key}{A string specifying the Azure storage access key with write permissions. Default is stored in your R environment under \code{AZ_CONTAINER_ACCESS_KEY}.}
+\item{description}{A human-readable description of this model run (e.g.
+\code{"pCap all-sites fit, data through run-year 2024"}).}
 
-\item{model_fit_object}{The model result object that needs to be stored, of class \code{stanfit} or \code{bugs}.}
+\item{storage_account}{Azure storage account name. Defaults to
+\code{"jpemodelresults"}.}
 
-\item{model_inputs}{The inputs used to fit the \code{model_fit_object}.}
+\item{container_name}{Azure blob container name. Defaults to
+\code{"model-results"}.}
 
-\item{results_name}{A string specifying a name to identify the model results in Azure Blob Storage. One of \code{bt_spas_x},
-\code{pcap_all}, \code{pcap_mainstem}, \code{p2s}, \code{stock_recruit}, \code{inseason}, \code{survival}.}
-
-\item{description}{A description of the model fit you are uploading.}
-
-\item{...}{Additional named arguments to be passed as metadata to the blob storage.}
+\item{access_key}{Azure storage access key with \strong{write} permissions.
+Defaults to the \code{AZ_CONTAINER_ACCESS_KEY} environment variable.}
 }
 \value{
-A string representing the URL of the blob in Azure Blob Storage where the model fit object, diagnostic plots, and inputs are stored.
+Invisibly returns the blob URL of the stored \code{.rds} file.
 }
 \description{
-This function stores a model fit object in an Azure Blob Container and the data into JPE database.
-It uploads the model data to Azure Blob Storage and updates the database with relevant information about the model run and parameters.
+Uploads a model fit object as an \code{.rds} file to Azure Blob Storage and
+inserts a corresponding record into the \code{model_run} database table.
+Each call creates a new \emph{version} of the pin, so all historical fits are
+preserved and the latest is always the default when retrieving.
+
+Metadata is extracted automatically from \code{model_inputs}, so the same
+function works for pCap and abundance models without extra arguments.
+Fields that do not apply to a given model type (e.g. \code{skew} for abundance
+models) are stored as \code{NULL} in the database.
+
+The \code{model_inputs} list is expected to carry the following slots depending
+on model type:\tabular{lll}{
+   Slot \tab DB column \tab Model type \cr
+   \verb{$model_name} \tab — \tab All (required) \cr
+   \verb{$site} \tab \code{site} \tab Abundance \cr
+   \verb{$run_year} \tab \code{run_year} \tab Abundance \cr
+   \verb{$skew} \tab \code{skew} \tab pCap one_site \cr
+   \verb{$site_selection} \tab \code{site_selection} \tab pCap one_site \cr
+   \verb{$sites_dropped} \tab \code{sites_excluded} \tab pCap all_sites \cr
+   \verb{$srjpedata_version} \tab \code{srjpedata_version} \tab All (optional override) \cr
+}
+
+
+If \verb{$srjpedata_version} is not present on \code{model_inputs}, the installed
+version of \code{SRJPEdata} is used automatically.
 }
 \examples{
 \dontrun{
 con <- DBI::dbConnect(RPostgres::Postgres(),
-                       dbname = cfg$db_name,
-                       host = cfg$db_host,
-                       port = cfg$db_port,
-                       user = cfg$db_user,
-                       password = cfg$db_password)
+                      dbname = cfg$db_name, host = cfg$db_host,
+                      port = cfg$db_port, user = cfg$db_user,
+                      password = cfg$db_password)
 
-blob_url <- store_model_fit(con,
-                            storage_account = "my_storage_account",
-                            container_name = "my_container",
-                            access_key = "my_access_key",
-                            model_fit_object = model_results,
-                            model_inputs = model_inputs,
-                            results_name = "model_name",
-                            description = "model_description")
+# --- pCap all-sites (Stan) ---
+pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
+pCap_fit    <- fit_pCap_model(pCap_inputs)
 
-print(blob_url)
+store_model_fit(
+  con              = con,
+  model_fit_object = pCap_fit,
+  model_inputs     = pCap_inputs,
+  description      = "pCap all-sites fit, run-year 2024"
+)
 
-dbDisconnect(con)
+# --- pCap one-site with skew (Stan) ---
+pCap_inputs <- prepare_pCap_inputs(model_type = "one_site",
+                                   skew = TRUE, site_selection = "ubc")
+pCap_fit    <- fit_pCap_model(pCap_inputs)
+
+store_model_fit(
+  con              = con,
+  model_fit_object = pCap_fit,
+  model_inputs     = pCap_inputs,
+  description      = "pCap one-site skew fit for ubc, run-year 2024"
+)
+
+# --- Abundance (BUGS) ---
+abund_inputs <- prepare_abundance_inputs(site = "ubc", run_year = 2024,
+                                         pCap_model_type = "all_sites",
+                                         pCap_model_object = pCap_fit)
+abund_fit    <- fit_abundance_model_BUGS(abund_inputs, bugs_dir)
+
+store_model_fit(
+  con              = con,
+  model_fit_object = abund_fit,
+  model_inputs     = abund_inputs,
+  description      = "Abundance fit – ubc 2024"
+)
+
+DBI::dbDisconnect(con)
 }
 }
