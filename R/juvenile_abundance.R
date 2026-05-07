@@ -114,6 +114,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   # prepare effort
   effort <- mark_recapture_data$hours_fished / mark_recapture_data$average_hours_fished_during_efficiency_trials
   effort[effort == 0] <- 0.001
+  effort[is.na(effort)] <- 0.001
 
   # now prepare indexes for use in the model
 
@@ -492,6 +493,7 @@ prepare_abundance_inputs <- function(site, run_year,
   # should be same dimensions as catch_flow
   effort <- catch_data$effort  # TODO check should be all Nstrata, and if NA, that's okay because it won't be used but set to 0 for BUGS
   effort[effort == 0] <- 0.001 # catch for 0 values in effort
+  effort[is.na(effort)] <- 0.001
   # pass in catch
   weekly_catch_data <- catch_data$count[indices_with_catch]
 
