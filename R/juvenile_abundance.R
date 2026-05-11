@@ -315,15 +315,16 @@ prepare_abundance_inputs <- function(site, run_year,
               hours_fished = mean(hours_fished, na.rm = T),
               flow_cfs = mean(flow_cfs, na.rm = T),
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T),
-              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+              standardized_flow = mean(standardized_flow, na.rm = T)
+              #lgN_prior = mean(lgN_prior, na.rm = T)
+              ) |>
     ungroup() |>
     left_join(site_order_north_south, by = "site") |>
     arrange(ns_order) |>
     select(-ns_order) |>
     mutate(count = round(count, 0),
            # change all NaNs to NAs
-           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
+           # across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # calculate effort
            effort = hours_fished / average_hours_fished_during_efficiency_trials)
 
@@ -1259,14 +1260,15 @@ plot_juv_data <- function(site, run_year) {
               hours_fished = mean(hours_fished, na.rm = T),
               catch_flow_cfs = mean(flow_cfs, na.rm = T),
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T),
-              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+              standardized_flow = mean(standardized_flow, na.rm = T)
+              #lgN_prior = mean(lgN_prior, na.rm = T)
+              ) |>
     ungroup() |>
     left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(count = round(count, 0),
            # change all NaNs to NAs
-           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
+           # across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # plot things
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
            lincoln_peterson_efficiency = number_recaptured / number_released) |>
