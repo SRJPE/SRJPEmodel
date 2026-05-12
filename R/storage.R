@@ -12,25 +12,52 @@
 #   insert_model_run()           Write one model run record to the database.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Approved model name values — must match the `name` column of the `model_name`
-# table exactly. Extend this vector (and add a row to model_name) when adding
-# new model families.
+# ── Model name constants ───────────────────────────────────────────────────────
+# .approved_model_names: must match the `name` column of the `model_name` table.
+# .abundance_model_types / .pcap_one_site_model_types: the specific variants
+#   stored in the `model_type` column of `model_run`. These map to a single
+#   consolidated model_name in the DB ("abundance" and "pcap_one_site").
+# Extend these vectors (and update model_name / model_type accordingly) when
+# adding new model families.
+
 .approved_model_names <- c(
-  # juvenile abundance (BUGS)
-  "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib",
-  # pCap (Stan)
-  "pcap_all_sites", "pcap_one_site", "pcap_one_site_skew",
-  # other model families
+  "abundance",
+  "pcap_all_sites", "pcap_one_site",
   "p2s", "stock_recruit",
   "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
   "survival_cov_wy", "survival_no_cov"
 )
 
-.bugs_models <- c(
+# Abundance model type variants (stored in model_run.model_type)
+.abundance_model_types <- c(
   "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib"
 )
 
-.stan_models <- setdiff(.approved_model_names, .bugs_models)
+# pCap one-site model type variants (stored in model_run.model_type)
+.pcap_one_site_model_types <- c("standard", "skew")
+
+# Maps a model_inputs$model_name to the consolidated DB model_name
+.model_name_lookup <- c(
+  all_mark_recap        = "abundance",
+  no_mark_recap         = "abundance",
+  missing_mark_recap    = "abundance",
+  no_mark_recap_no_trib = "abundance",
+  pcap_one_site         = "pcap_one_site",
+  pcap_one_site_skew    = "pcap_one_site"
+)
+
+# All valid values for model_inputs$model_name (inputs-level names, pre-consolidation)
+.approved_input_model_names <- c(
+  .abundance_model_types,
+  "pcap_all_sites", "pcap_one_site", "pcap_one_site_skew",
+  "p2s", "stock_recruit",
+  "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
+  "survival_cov_wy", "survival_no_cov"
+)
+
+# Model class lookup for validation
+.bugs_input_models <- .abundance_model_types
+.stan_input_models <- setdiff(.approved_input_model_names, .bugs_input_models)
 
 
 # ── store_model_fit() ─────────────────────────────────────────────────────────
@@ -133,26 +160,30 @@ store_model_fit <- function(con,
                             container_name  = "model-results",
                             access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
-  results_name <- model_inputs$model_name
+  input_model_name <- str_to_lower(model_inputs$model_name)
 
-  # ── Validate results_name ──────────────────────────────────────────────────
-  if (!results_name %in% .approved_model_names) {
+  # ── Validate input model name ──────────────────────────────────────────────
+  if (!input_model_name %in% .approved_input_model_names) {
     cli::cli_abort(c(
-      "{.arg model_inputs$model_name} must be one of the approved model names.",
-      "i" = "Approved names: {.val {(.approved_model_names)}}",
-      "x" = "Got: {.val {results_name}}"
+      "{.arg model_inputs$model_name} must be one of the approved input model names.",
+      "i" = "Approved names: {.val {(.approved_input_model_names)}}",
+      "x" = "Got: {.val {input_model_name}}"
     ))
   }
 
+  # Resolve the consolidated DB model name (e.g. "all_mark_recap" -> "abundance")
+  results_name <- unname(.model_name_lookup[input_model_name])
+  if (is.na(results_name)) results_name <- input_model_name
+
   # ── Validate model object class ────────────────────────────────────────────
-  if (results_name %in% .bugs_models && !inherits(model_fit_object, "bugs")) {
+  if (input_model_name %in% .bugs_input_models && !inherits(model_fit_object, "bugs")) {
     cli::cli_abort(
-      "{.val {results_name}} expects a {.cls bugs} object; got {.cls {class(model_fit_object)}}."
+      "{.val {input_model_name}} expects a {.cls bugs} object; got {.cls {class(model_fit_object)}}."
     )
   }
-  if (results_name %in% .stan_models && !inherits(model_fit_object, "stanfit")) {
+  if (input_model_name %in% .stan_input_models && !inherits(model_fit_object, "stanfit")) {
     cli::cli_abort(
-      "{.val {results_name}} expects a {.cls stanfit} object; got {.cls {class(model_fit_object)}}."
+      "{.val {input_model_name}} expects a {.cls stanfit} object; got {.cls {class(model_fit_object)}}."
     )
   }
 
@@ -274,8 +305,9 @@ get_model_fit <- function(results_name,
 
   if (!results_name %in% .approved_model_names) {
     cli::cli_abort(c(
-      "{.arg results_name} must be one of the approved model names.",
+      "{.arg results_name} must be one of the approved DB model names.",
       "i" = "Approved names: {.val {(.approved_model_names)}}",
+      "i" = "For abundance fits use {.val {'abundance'}}; for pCap one-site use {.val {'pcap_one_site'}}.",
       "x" = "Got: {.val {results_name}}"
     ))
   }
@@ -418,17 +450,21 @@ list_model_versions <- function(results_name,
 #'   run_year that fails to download is returned as `NULL` with a warning
 #'   rather than aborting the whole batch.
 #'
+#' @param model_name The consolidated DB model name to retrieve. Must be one of
+#'   `.approved_model_names` (e.g. `"abundance"`, `"pcap_one_site"`). The
+#'   specific model variant used for each fit is stored in the `model_type`
+#'   column of `model_run` and is not used for filtering here.
+#'
 #' @examples
 #' \dontrun{
-#' # All available abundance fits
-#' fits <- get_many_model_fits(con, model_name = "all_mark_recap")
+#' # All abundance fits for every site × run_year
+#' fits <- get_many_model_fits(con, model_name = "abundance")
 #'
-#' # Specific sites only
-#' fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+#' # Filter to specific sites or run years
+#' fits <- get_many_model_fits(con, model_name = "abundance",
 #'                             sites = c("ubc", "lcc", "mill creek"))
 #'
-#' # Specific run years only
-#' fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+#' fits <- get_many_model_fits(con, model_name = "abundance",
 #'                             run_years = 2020:2024)
 #'
 #' # Access a single result from the list
@@ -443,6 +479,7 @@ get_many_model_fits <- function(con,
                                 container_name  = "model-results",
                                 access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
+  # ── Validate model name ────────────────────────────────────────────────────
   if (!model_name %in% .approved_model_names) {
     cli::cli_abort(c(
       "{.arg model_name} must be one of the approved model names.",
@@ -464,12 +501,14 @@ get_many_model_fits <- function(con,
     runs <- dplyr::filter(runs, run_year %in% !!run_years)
   }
 
-  # Keep only the most recent model_run record per site × run_year
+  # Keep the most recent model_run record per site × run_year, across all
+  # model types in the group (e.g. for a given site/year the best available
+  # model type is used, as determined by created_at)
   runs <- runs |>
     dplyr::group_by(site, run_year) |>
     dplyr::slice_max(created_at, n = 1, with_ties = FALSE) |>
     dplyr::ungroup() |>
-    dplyr::select(site, run_year, blob_fit_storage_url, created_at) |>
+    dplyr::select(site, run_year, name, blob_fit_storage_url, created_at) |>
     dplyr::arrange(site, run_year) |>
     dplyr::collect()
 
@@ -493,8 +532,6 @@ get_many_model_fits <- function(con,
     key <- names(fits)[i]
 
     fits[[key]] <- tryCatch({
-      # Derive the pins version token from the blob URL:
-      # URL pattern: .../model-fits/<model_name>/<model_name>/<version>/<model_name>.rds
       version <- basename(dirname(runs$blob_fit_storage_url[i]))
       pins::pin_read(board, model_name, version = version)
     }, error = function(e) {
@@ -502,9 +539,7 @@ get_many_model_fits <- function(con,
       NULL
     })
 
-    cli::cli_progress_message(
-      "  Downloaded {i}/{nrow(runs)}: {key}"
-    )
+    cli::cli_progress_message("  Downloaded {i}/{nrow(runs)}: {key}")
   }
 
   n_ok   <- sum(!vapply(fits, is.null, logical(1)))
@@ -553,7 +588,15 @@ get_many_model_fits <- function(con,
 #' @keywords internal
 insert_model_run <- function(con, blob_url, results_name, description, model_inputs) {
 
-  # ── Resolve model_name_id from lookup table ────────────────────────────────
+  # ── Resolve consolidated DB model_name and model_type ─────────────────────
+  # input_model_name is the specific variant (e.g. "all_mark_recap",
+  # "pcap_one_site_skew"). results_name is the consolidated DB name
+  # (e.g. "abundance", "pcap_one_site"). model_type stores the variant.
+  input_model_name <- str_to_lower(model_inputs$model_name)
+  results_name     <- unname(.model_name_lookup[input_model_name])
+  if (is.na(results_name)) results_name <- input_model_name
+  model_type       <- if (input_model_name != results_name) input_model_name else NA_character_
+
   model_name_id <- dplyr::tbl(con, "model_name") |>
     dplyr::filter(name == results_name) |>
     dplyr::pull(id)
@@ -598,6 +641,7 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
   new_row <- data.frame(
     blob_fit_storage_url = blob_url,
     model_name_id        = model_name_id,
+    model_type           = model_type,
     srjpedata_version    = srjpedata_version,
     description          = description %||% NA_character_,
     site                 = site,

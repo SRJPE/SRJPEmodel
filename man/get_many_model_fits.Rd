@@ -17,8 +17,10 @@ get_many_model_fits(
 \arguments{
 \item{con}{A database connection object (e.g. from \code{\link[DBI:dbConnect]{DBI::dbConnect()}}).}
 
-\item{model_name}{The model type to retrieve. Must be one of
-\code{.approved_model_names} (e.g. \code{"all_mark_recap"}, \code{"no_mark_recap"}).}
+\item{model_name}{The consolidated DB model name to retrieve. Must be one of
+\code{.approved_model_names} (e.g. \code{"abundance"}, \code{"pcap_one_site"}). The
+specific model variant used for each fit is stored in the \code{model_type}
+column of \code{model_run} and is not used for filtering here.}
 
 \item{sites}{Optional character vector of sites to include (e.g.
 \code{c("ubc", "lcc")}). When \code{NULL} all sites are returned.}
@@ -53,15 +55,14 @@ present in \code{model_run} for the given \code{model_name}.
 }
 \examples{
 \dontrun{
-# All available abundance fits
-fits <- get_many_model_fits(con, model_name = "all_mark_recap")
+# All abundance fits for every site × run_year
+fits <- get_many_model_fits(con, model_name = "abundance")
 
-# Specific sites only
-fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+# Filter to specific sites or run years
+fits <- get_many_model_fits(con, model_name = "abundance",
                             sites = c("ubc", "lcc", "mill creek"))
 
-# Specific run years only
-fits <- get_many_model_fits(con, model_name = "all_mark_recap",
+fits <- get_many_model_fits(con, model_name = "abundance",
                             run_years = 2020:2024)
 
 # Access a single result from the list

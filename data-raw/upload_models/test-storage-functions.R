@@ -8,14 +8,14 @@ library(SRJPEmodel)
 library(rstan)
 library(R2WinBUGS)
 
-# ── STAN options ───────────────────────────────────────────────────────────────
+# stan options
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
-# ── File paths ─────────────────────────────────────────────────────────────────
+# file path for bugs
 bugs_directory  <- "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"
 
-# ── Database connection ────────────────────────────────────────────────────────
+# connect to db
 cfg <- config::get()
 con <- DBI::dbConnect(
   RPostgres::Postgres(),
@@ -27,36 +27,30 @@ con <- DBI::dbConnect(
 )
 on.exit(DBI::dbDisconnect(con), add = TRUE)
 
-# ── Test site and year ─────────────────────────────────────────────────────────
-test_site     <- "ubc"
+
+# test fit, upload, download ----------------------------------------------
+
+test_site <- "ubc"
 test_run_year <- 2020
 
-# =============================================================================
-# UPLOAD
-# =============================================================================
-
-# ── 1. Fit and upload pCap all-sites ──────────────────────────────────────────
-message("── Fitting pCap all-sites ────────────────────────────────────────────────")
-
+# pcap
 pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
-pCap_fit    <- fit_pCap_model(pCap_inputs)
+pCap_fit <- fit_pCap_model(pCap_inputs)
 
 store_model_fit(
-  con              = con,
+  con = con,
   model_fit_object = pCap_fit,
-  model_inputs     = pCap_inputs,
-  description      = paste("TEST — pCap all-sites", Sys.Date())
+  model_inputs = pCap_inputs,
+  description = paste("TEST — pCap all-sites", Sys.Date())
 )
 
-# ── 2. Fit and upload one abundance model ─────────────────────────────────────
-message(glue::glue("── Fitting abundance: {test_site} {test_run_year} ────────────────────────────"))
-
+# abundance model
 abundance_inputs <- prepare_abundance_inputs(
-  site              = test_site,
-  run_year          = test_run_year,
-  pCap_model_type   = "all_sites",
+  site = test_site,
+  run_year = test_run_year,
+  pCap_model_type = "all_sites",
   pCap_model_object = pCap_fit,
-  min_pCap_mult     = 0.5
+  min_pCap_mult = 0.5
 )
 
 abundance_fit <- fit_abundance_model_BUGS(
@@ -71,35 +65,20 @@ store_model_fit(
   description      = paste("TEST —", test_site, test_run_year, "abundance", Sys.Date())
 )
 
-# =============================================================================
-# DOWNLOAD
-# =============================================================================
 
-# ── 3. Retrieve the pCap fit and check it came back as a stanfit ──────────────
-message("── Retrieving pCap all-sites fit ────────────────────────────────────────")
+# download ----------------------------------------------------------------
 
-pCap_retrieved <- get_model_fit("pcap_all_sites")
-stopifnot("stanfit" %in% class(pCap_retrieved))
-message("  pCap download OK — class: ", paste(class(pCap_retrieved), collapse = ", "))
+# pCap models (all sites, one site tisdale, one site knights landing)
+pCap_all_sites <- get_model_fit("pcap_all_sites")
+pCap_tisdale <- get_model_fit("pcap_one_site", con = con,
+                              site_selection = "tisdale")
+pCap_kdl <- get_model_fit("pcap_one_site", con = con,
+                          site_selection = "knights landing")
 
-# ── 4. Retrieve the abundance fit and check it came back as a bugs object ─────
-message(glue::glue("── Retrieving abundance fit: {test_site} {test_run_year} ──────────────────────"))
+# abundance - one fit
+abund_single <- get_model_fit("abundance", con = con,
+                              site = test_site, run_year = test_run_year)
 
-abundance_retrieved <- get_model_fit(abundance_inputs$model_name)
-stopifnot("bugs" %in% class(abundance_retrieved))
-message("  Abundance download OK — class: ", paste(class(abundance_retrieved), collapse = ", "))
+# abundance - all fits for each site/run year
+all_abundance_fits <- get_many_model_fits(con, model_name = "abundance")
 
-# ── 5. Check the model_run table recorded both entries ────────────────────────
-message("── Checking database records ─────────────────────────────────────────────")
-
-recent_runs <- DBI::dbGetQuery(con, "
-  SELECT mr.id, mn.name AS model_name, mr.site, mr.run_year,
-         mr.description, mr.created_at
-  FROM model_run mr
-  JOIN model_name mn ON mn.id = mr.model_name_id
-  ORDER BY mr.created_at DESC
-  LIMIT 5
-")
-print(recent_runs)
-
-message("── Test complete ─────────────────────────────────────────────────────────")
