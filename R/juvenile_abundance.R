@@ -761,7 +761,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
         if(skew){
           sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
-          sim_pro_dev=rnorm(N=Ntrials, mu=0,sd=pro_sd_P)
+          sim_pro_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
       }
@@ -772,7 +772,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
           if(skew){
             sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
           } else {
-            sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
+            sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
           }
           sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
           lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
@@ -788,7 +788,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
         if(skew){
           sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
-          sim_prod_dev=rnrmo(N=Ntrials, mu=0,sd=pro_sd_P)
+          sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
         sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
         lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
