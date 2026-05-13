@@ -83,7 +83,7 @@ for(i in nrow(combinations_to_fit)) {
     abundance_inputs <- prepare_abundance_inputs(
       site = site_to_fit,
       run_year = run_year_to_fit,
-      pCap_model_type = "pcap_one_site",
+      pCap_model_type = "one_site",
       pCap_model_object = pcap_knights_landing,
       min_pCap_mult = 0.5
     )
@@ -92,7 +92,7 @@ for(i in nrow(combinations_to_fit)) {
     abundance_inputs <- prepare_abundance_inputs(
       site = site_to_fit,
       run_year = run_year_to_fit,
-      pCap_model_type = "pcap_one_site",
+      pCap_model_type = "one_site",
       pCap_model_object = pcap_tisdale,
       min_pCap_mult = 0.5
     )
@@ -100,7 +100,7 @@ for(i in nrow(combinations_to_fit)) {
     abundance_inputs <- prepare_abundance_inputs(
       site = site_to_fit,
       run_year = run_year_to_fit,
-      pCap_model_type = "pcap_all_sites",
+      pCap_model_type = "all_sites",
       pCap_model_object = pcap_all_sites,
       min_pCap_mult = 0.5
     )
