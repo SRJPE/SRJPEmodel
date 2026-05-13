@@ -338,10 +338,10 @@ get_model_fit <- function(results_name,
       if (!is.null(site_selection)) query <- dplyr::filter(query, site_selection == !!site_selection)
 
       matched <- query |>
-        dplyr::arrange(dplyr::desc(created_at)) |>
-        dplyr::slice(1) |>
         dplyr::select(blob_fit_storage_url, created_at) |>
-        dplyr::collect()
+        dplyr::collect() |>
+        dplyr::arrange(dplyr::desc(created_at)) |>
+        dplyr::slice(1)
 
       if (nrow(matched) == 0) {
         cli::cli_abort(
