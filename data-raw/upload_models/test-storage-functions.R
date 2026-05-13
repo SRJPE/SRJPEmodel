@@ -78,8 +78,6 @@ pCap_kdl <- get_model_fit("pcap_one_site", con = con,
 # abundance - all fits for each site/run year
 all_abundance_fits <- get_many_model_fits(con, model_name = "abundance")
 
-
-
 # abundance - one fit
 abund_single <- get_model_fit("abundance", con = con,
                               site = test_site, run_year = test_run_year)
