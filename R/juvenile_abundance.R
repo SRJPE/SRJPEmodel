@@ -63,11 +63,11 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
       filter(site == site_selection)
     if(skew) {
       # include alpha
-      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha", "b_eff")
+      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha") #, "b_eff")
       model_name <- "pCap_one_site_skew"
     } else {
       # include alpha
-      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "b_eff")
+      pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re") #, "b_eff")
       model_name <- "pCap_one_site"
     }
 
@@ -76,7 +76,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
     filtered_efficiency_data <- input_efficiency_data |>
       filter(site %in% available_sites)
     pCap_parameters <- c("logit_pCap","trib_mu_P", "trib_sd_P", "flow_mu_P", "flow_sd_P", "pro_sd_P",
-                         "b0_pCap", "b_flow","yr_sd_P","yr_re", "b_eff")
+                         "b0_pCap", "b_flow","yr_sd_P","yr_re") # , "b_eff")
     model_name <- "pCap_all_sites"
   }
 
@@ -113,6 +113,8 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
 
   # prepare effort
   effort <- mark_recapture_data$hours_fished / mark_recapture_data$average_hours_fished_during_efficiency_trials
+  effort[effort == 0] <- 0.001
+  effort[is.na(effort)] <- 0.001
 
   # now prepare indexes for use in the model
 
@@ -313,15 +315,16 @@ prepare_abundance_inputs <- function(site, run_year,
               hours_fished = mean(hours_fished, na.rm = T),
               flow_cfs = mean(flow_cfs, na.rm = T),
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T),
-              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+              standardized_flow = mean(standardized_flow, na.rm = T)
+              #lgN_prior = mean(lgN_prior, na.rm = T)
+              ) |>
     ungroup() |>
     left_join(site_order_north_south, by = "site") |>
     arrange(ns_order) |>
     select(-ns_order) |>
     mutate(count = round(count, 0),
            # change all NaNs to NAs
-           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
+           # across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # calculate effort
            effort = hours_fished / average_hours_fished_during_efficiency_trials)
 
@@ -490,6 +493,8 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # should be same dimensions as catch_flow
   effort <- catch_data$effort  # TODO check should be all Nstrata, and if NA, that's okay because it won't be used but set to 0 for BUGS
+  effort[effort == 0] <- 0.001 # catch for 0 values in effort
+  effort[is.na(effort)] <- 0.001
   # pass in catch
   weekly_catch_data <- catch_data$count[indices_with_catch]
 
@@ -718,7 +723,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     ind_pCap <- abundance_inputs$lt_pCap_U_data$ind_pCap
 
     # extract from pCap model fit object
-    pars_to_extract <- c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "yr_re", "yr_sd_P", "b_eff")
+    pars_to_extract <- c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "yr_re", "yr_sd_P") # , "b_eff")
     if(skew) {
       pars_to_extract <- c(pars_to_extract, "alpha")
     }
@@ -730,7 +735,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1] #mean logit pCap for the mainstem site
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1] #flow effect for the mainstem site
-    b_eff <- samples$b_eff
+    # b_eff <- samples$b_eff
     pro_sd_P <- samples$pro_sd_P # pro_sd_P[1:Ntrials]        #process error (sd)
     alpha <- samples$alpha #will be null if Skew==F
     run_year <- abundance_inputs$run_year
@@ -763,7 +768,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
         } else {
           sim_pro_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + yr_re + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     } else if (ModelName == "no_mark_recap"){
@@ -775,7 +780,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
             sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
           }
           sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
-          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     } else if (ModelName == "no_mark_recap_no_trib"){
@@ -791,7 +796,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
           sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
         sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)#this won't work since we don't have yr_sd_P for a site with no mr data
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + b_eff * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     }#end if on ModelName
@@ -818,13 +823,13 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     # extract from pCap model fit object
 
     samples <- rstan::extract(pCap_model_object, pars = c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "trib_mu_P", "trib_sd_P",
-                                                          "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P", "b_eff"),
+                                                          "flow_mu_P", "flow_sd_P","yr_re","yr_sd_P"), #, "b_eff"),
                               permuted = TRUE)
     Ntrials <- dim(samples$logit_pCap)[1] # of saved posterior samples from pCap model in stan
     logit_pCap <- samples$logit_pCap # logit_pCap[1:Ntrials,1:Nmr] # The estimated logit pCap posterior for each efficiency trial
     b0_pCap <- samples$b0_pCap # b0_pCap[1:Ntrials,1:Ntribs] #mean logit pCap for each site (at mean discharge)
     b_flow <- samples$b_flow # b_flow[1:Ntrials,1:Ntribs] #flow effect for each site
-    b_eff <- samples$b_eff # b_eff
+    # b_eff <- samples$b_eff # b_eff
     pro_sd_P <- samples$pro_sd_P #process error (sd)
     trib_mu_P <- samples$trib_mu_P # trib_mu_P[1:Ntrials] #hyper mean for b0_pCap
     trib_sd_P <- samples$trib_sd_P # trib_sd_P[1:Ntrials] #hyper sd for b0_pCap
@@ -863,7 +868,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
         #for weeks without efficiency trials
         # need to account for effort for weeks without mark recap trials
         sim_pro_dev = rnorm(n=Ntrials, mean=0,sd=pro_sd_P[,use_trib]);
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + yr_re + sim_pro_dev + b_eff[,use_trib] * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + yr_re + sim_pro_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
         # b_eff[,use_trib] * abundance_inputs$inputs$data$effort[Uind_woMR[i]] TODO double check indexing
       }
 
@@ -873,7 +878,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
         sim_pro_dev = rnorm(n=Ntrials, mean=0, sd=pro_sd_P[,use_trib])
         sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P[,use_trib])
 
-        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev + b_eff[,use_trib] * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap[,use_trib] + b_flow[,use_trib] * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     } else if (ModelName=="no_mark_recap_no_trib"){
@@ -885,7 +890,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
       for (i in 1:Nwomr) {
         sim_pro_dev = rnorm(n=Ntrials, mean=0, sd=rowMeans(pro_sd_P))
         sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=rowMeans(yr_sd_P))
-        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev + b_eff[,use_trib] * abundance_inputs$inputs$data$effort[Uind_woMR[i]]
+        lt_pCap_U[,Uind_woMR[i]] = logit_b0 + logit_bflow * catch_flow[Uind_woMR[i]] + sim_yr_dev + sim_pro_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     }#end if on ModelName
@@ -1255,14 +1260,15 @@ plot_juv_data <- function(site, run_year) {
               hours_fished = mean(hours_fished, na.rm = T),
               catch_flow_cfs = mean(flow_cfs, na.rm = T),
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T),
-              lgN_prior = mean(lgN_prior, na.rm = T)) |>
+              standardized_flow = mean(standardized_flow, na.rm = T)
+              #lgN_prior = mean(lgN_prior, na.rm = T)
+              ) |>
     ungroup() |>
     left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(count = round(count, 0),
            # change all NaNs to NAs
-           across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
+           # across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
            # plot things
            lincoln_peterson_abundance = count * (number_released / number_recaptured),
            lincoln_peterson_efficiency = number_recaptured / number_released) |>
