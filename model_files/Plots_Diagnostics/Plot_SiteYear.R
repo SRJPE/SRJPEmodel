@@ -4,13 +4,14 @@ library(scales)
 library(dplyr)
 library(brms)
 library(SRJPEdata)
+library(SRJPEmodel)
 
 graphics.off()
 if(exists(".SavedPlots",where=1)==T){rm(.SavedPlots,pos=1)}
 windows(record=T,height=12,width=16);par(las=1)
 
 outdir="C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/0p5minP"
-pdf(file=paste0(outdir,"/SiteYear_0p5minP.pdf"))
+#pdf(file=paste0(outdir,"/SiteYear_0p5minP.pdf"))
 
 lb=0.025;ub=0.975	#0.975
 Nscale=0.001		#abundance is in units of '000s of fish
@@ -25,19 +26,19 @@ siteO=c("ucc","lcc","ubc","mill creek","deer creek","okie dam","steep riffle","g
 uniqsite=siteO
 Nsites=length(uniqsite)
 
-for(isite in 1:Nsites){
+for(isite in 1:Nsites){#Nsites
 
   d1=subset(d0,site==uniqsite[isite])
   DoSite=uniqsite[isite]
 
   if(DoSite=="ucc"){#load pcap fit object and pcap inputs
-    load(file="C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_trib.rdata")
-    RunMainstem=F
-    pCap_inputs <- prepare_pCap_inputs(mainstem=RunMainstem)
+    load(file="C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_all_sites.rdata")
+    model_type="all_sites"
+    if(isite==1) pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
   } else if (DoSite=="tisdale" | DoSite=="knights landing"){
-    load(file=paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_mainstem_skew_re_",DoSite,".rdata"))
-    RunMainstem=T
-    pCap_inputs <- prepare_pCap_inputs(mainstem=RunMainstem,mainstem_site=DoSite)
+    load(file=paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_one_site_skew_re_",DoSite,".rdata"))
+    model_type="one_site_skew"#_re
+    pCap_inputs <- prepare_pCap_inputs(model_type = "one_site_skew", skew = T, site_selection = DoSite)
 
   }
 
@@ -50,11 +51,12 @@ for(isite in 1:Nsites){
     DoYr=uniqyr[iyr]
     RunNm=paste(DoSite,DoYr,sep="-")
 
-
     abundance_inputs <- prepare_abundance_inputs(site = DoSite,
                                                  run_year = DoYr,
-                                                 effort_adjust=T,
-                                                 pcap_model_object = pcap)
+                                                 pCap_model_type = model_type,
+                                                 min_pCap_mult = 0.5,
+                                                 pCap_model_object = pcap)
+
 
     print(c(DoSite,DoYr,abundance_inputs$run_year,abundance_inputs$run_year_id))
 
@@ -115,7 +117,9 @@ for(isite in 1:Nsites){
         points(x[i],ylims[2]*0.9,pch=19,col="red",cex=0.8)#identify strata with no sampling (red bars may not show up if estimated abundance is very low)
       } else {
         k=k+1
-        par(srt=90);text(x=x[i],y=ylims[2]*0.9,labels=u[k],cex=0.7);par(srt=0)
+        par(srt=90);text(x=x[i],y=ylims[2]*0.9,labels=u[k],cex=0.7)
+        text(x=x[i],y=ylims[2]*0.7,labels=round(abundance_inputs$inputs$data$effort[i],digits=2),cex=0.7)
+        par(srt=0)
       }
     }
 
@@ -176,7 +180,7 @@ for(isite in 1:Nsites){
 
   }#iyr
 }#isite
-dev.off()#if writing plots to a file.
+#dev.off()#if writing plots to a file.
 
 
 

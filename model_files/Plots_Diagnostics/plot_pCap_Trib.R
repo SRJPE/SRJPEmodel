@@ -15,17 +15,13 @@ inv_logit<-function(x){
 
 lb=0.025;ub=0.975	#0.975
 
-
-#DoSite="knights landing"
-#load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_mainstem_skew_re_",DoSite,".Rdata"))
-
-pCap_inputs <- prepare_pCap_inputs(mainstem =F)
-load("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_trib.Rdata")
+pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
+load("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/Output/pCap_all_sites.Rdata")
 
 
 options(max.print=5000)
 parlist=c("b0_pCap","b_flow","pro_sd_P","yr_sd_P")#,"alpha")#,"yr_re")#,"alpha")
-print(summary(pcap,pars=parlist)$summary)
+#print(summary(pcap,pars=parlist)$summary)#this is slow
 #rhat = summary(pcap)$summary[,"Rhat"];ibad=which(rhat[1:length(rhat)-1]>1.05);print("# and vars with rhat>1.05");print(length(ibad));print(rhat[ibad])
 
 #Get rid of inputs_site after running model again
