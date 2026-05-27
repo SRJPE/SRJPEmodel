@@ -14,7 +14,7 @@ list_model_versions(
 \arguments{
 \item{results_name}{The model type name used when the fit was stored. Must
 be one of \code{.approved_model_names} (e.g. \code{"pcap_one_site"},
-\code{"all_mark_recap"}).}
+\code{"abundance"}).}
 
 \item{storage_account}{Azure storage account name. Defaults to
 \code{"jpemodelresults"}.}

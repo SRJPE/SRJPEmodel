@@ -19,7 +19,7 @@ get_model_fit(
 \arguments{
 \item{results_name}{The model type name used when the fit was stored. Must
 be one of \code{.approved_model_names} (e.g. \code{"pcap_one_site"},
-\code{"all_mark_recap"}).}
+\code{"abundance"}).}
 
 \item{con}{Optional. A database connection object (e.g. from
 \code{\link[DBI:dbConnect]{DBI::dbConnect()}}). Required when using \code{site}, \code{run_year}, or

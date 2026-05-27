@@ -69,12 +69,10 @@ reference:
   desc: Functions used as to generate model data / format model outputs / and interface with the database
 - contents:
   - compare_P2S_model_covariates
-  - get_model_object
-  - get_model_results_parameters
-  - get_most_recent_model_objects
+  - get_model_fit
+  - get_many_model_fits
   - get_most_recent_model_results
   - store_model_fit
-  - search_model_run
   - generate_diagnostic_plot
   - pin_model_data
 

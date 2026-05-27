@@ -255,7 +255,7 @@ store_model_fit <- function(con,
 #'
 #' @param results_name The model type name used when the fit was stored. Must
 #'   be one of `.approved_model_names` (e.g. `"pcap_one_site"`,
-#'   `"all_mark_recap"`).
+#'   `"abundance"`).
 #' @param con Optional. A database connection object (e.g. from
 #'   [DBI::dbConnect()]). Required when using `site`, `run_year`, or
 #'   `site_selection` filters.
@@ -432,8 +432,10 @@ list_model_versions <- function(results_name,
 #' present in `model_run` for the given `model_name`.
 #'
 #' @param con A database connection object (e.g. from [DBI::dbConnect()]).
-#' @param model_name The model type to retrieve. Must be one of
-#'   `.approved_model_names` (e.g. `"all_mark_recap"`, `"no_mark_recap"`).
+#' @param model_name The consolidated DB model name to retrieve. Must be one of
+#'   `.approved_model_names` (e.g. `"abundance"`, `"pcap_one_site"`). The
+#'   specific model variant used for each fit is stored in the `model_type`
+#'   column of `model_run` and is not used for filtering here.
 #' @param sites Optional character vector of sites to include (e.g.
 #'   `c("ubc", "lcc")`). When `NULL` all sites are returned.
 #' @param run_years Optional integer vector of run years to include (e.g.
@@ -449,11 +451,6 @@ list_model_versions <- function(results_name,
 #'   `"<site>_<run_year>"` (e.g. `"ubc_2020"`, `"lcc_2021"`). Any site ×
 #'   run_year that fails to download is returned as `NULL` with a warning
 #'   rather than aborting the whole batch.
-#'
-#' @param model_name The consolidated DB model name to retrieve. Must be one of
-#'   `.approved_model_names` (e.g. `"abundance"`, `"pcap_one_site"`). The
-#'   specific model variant used for each fit is stored in the `model_type`
-#'   column of `model_run` and is not used for filtering here.
 #'
 #' @examples
 #' \dontrun{
