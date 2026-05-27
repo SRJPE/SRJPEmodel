@@ -23,7 +23,11 @@ for(ii in 1:3){
   MainSite=switch(ii,NA,"knights landing","tisdale")
   rname=switch(ii,"Tributary Model","Knights Landing","Tisdale")
 
-  pCap_inputs <- prepare_pCap_inputs(mainstem=IsMain,mainstem_site=MainSite)
+  if(IsMain==F){
+    pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
+  } else {
+    pCap_inputs <- prepare_pCap_inputs(model_type = "one_site", skew = T, site_selection = MainSite)
+  }
 
   Nmr=pCap_inputs$inputs$data$Nmr
   obsRec=pCap_inputs$inputs$data$Recaptures
@@ -34,10 +38,10 @@ for(ii in 1:3){
 
   if(IsMain==F){
     ind_trib=pCap_inputs$inputs$data$ind_trib
-    load("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_trib.Rdata")
+    load("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_all_sites.Rdata")
   } else {
     ind_trib=rep(1,Nmr)
-    load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_mainstem_skew_re_",MainSite,".Rdata"))
+    load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_one_site_skew_re_",MainSite,".Rdata"))
   }
   dp=as.data.frame(pcap,pars=c("b0_pCap","b_flow","yr_re","logit_pCap","pro_sd_P"))
   Nsims=dim(dp)[1]

@@ -12,7 +12,7 @@ nchains=3;niter=10000
 
 #source("R/juvenile_abundance.R") # get functions
 
-for(ii in 1:3){#1:4
+for(ii in 1:1){#1:4
   if(ii==1){
     pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
     Mnm="pCap_all_sites"
