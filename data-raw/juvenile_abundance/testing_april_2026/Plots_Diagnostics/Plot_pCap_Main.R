@@ -24,13 +24,14 @@ for(isite in 1:Nsites){
   DoSite=uniqsite[isite]
 
   #observed trap efficiences for each trial
-  pCap_inputs <- prepare_pCap_inputs(mainstem =T,mainstem_site=uniqsite[isite])
+  pCap_inputs <- prepare_pCap_inputs(model_type = "one_site", skew = T, site_selection = uniqsite[isite])
+
   Releases=pCap_inputs$inputs$data$Releases
   Recaptures=pCap_inputs$inputs$data$Recaptures
   obs_pCap=Recaptures/Releases
   flow=pCap_inputs$inputs$data$mr_flow
 
-  load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_mainstem_skew_re_",DoSite,".Rdata"))
+  load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_one_site_skew_re_",DoSite,".Rdata"))
   dp=as.data.frame(pcap,pars=c("logit_pCap","b0_pCap","b_flow","pro_sd_P","alpha"))
 
   #Predicted trap efficiences for each trial
@@ -94,13 +95,13 @@ for(isite in 1:Nsites){
   DoSite=uniqsite[isite]
 
   #observed trap efficiences for each trial
-  pCap_inputs <- prepare_pCap_inputs(mainstem =T,mainstem_site=uniqsite[isite])
+  pCap_inputs <- prepare_pCap_inputs(model_type = "one_site", skew = T, site_selection = uniqsite[isite])
   Releases=pCap_inputs$inputs$data$Releases
   Recaptures=pCap_inputs$inputs$data$Recaptures
   obs_pCap=Recaptures/Releases
 
 
-  load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_mainstem_skew_re_",DoSite,".Rdata"))
+  load(paste0("C:/Projects/BayDelta/SAC_JPE/SRJPEmodel/model_files/output/pCap_one_site_skew_re_",DoSite,".Rdata"))
   dp=as.data.frame(pcap)
 
   Vnm="b0_pCap";icol=which(names(dp)==Vnm);b0_pCap=dp[,icol]
