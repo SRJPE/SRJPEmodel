@@ -2,31 +2,29 @@
 % Please edit documentation in R/storage.R
 \name{model_pin_board}
 \alias{model_pin_board}
-\title{Model Data Pin Board}
+\title{Model Pin Board}
 \usage{
-model_pin_board(storage_account, container, model_name, ...)
+model_pin_board(
+  storage_account,
+  container,
+  model_name,
+  access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")
+)
 }
 \arguments{
-\item{storage_account}{The name of the Azure Storage account.}
+\item{storage_account}{Azure storage account name.}
 
-\item{container}{The name of the blob container within the storage account.}
+\item{container}{Azure blob container name.}
 
-\item{...}{Additional arguments passed to \code{setup_azure_blob_backend()}.}
+\item{model_name}{Model type name, used as the blob subfolder.}
+
+\item{access_key}{Azure storage access key.}
 }
 \value{
-A pins board object connected to the specified Azure Blob Storage container.
+A \code{pins} board object connected to Azure Blob Storage.
 }
 \description{
-Creates a pin board for model data storage in Azure Blob Storage.
-}
-\examples{
-\dontrun{
-board <- model_pin_board("my_storage_account", "my_container")
-}
-
-}
-\seealso{
-\code{\link[AzureStor]{blob_container}}
-\code{\link[pins]{board_azure}}
+Creates a \code{pins} board scoped to a specific model type's subfolder within
+the Azure blob container (\verb{model-fits/<model_name>/}).
 }
 \keyword{internal}
