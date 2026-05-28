@@ -23,6 +23,7 @@ for(ii in 1:3){
   MainSite=switch(ii,NA,"knights landing","tisdale")
   rname=switch(ii,"Tributary Model","Knights Landing","Tisdale")
 
+
   if(IsMain==F){
     pCap_inputs <- prepare_pCap_inputs(model_type = "all_sites")
   } else {
