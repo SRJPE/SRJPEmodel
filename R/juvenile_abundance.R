@@ -1,20 +1,52 @@
-#' Prepare inputs for pCap STAN model
-#' @details This function prepares data for input into a pCap STAN model.
-#' @param model_type either `one_site` or `all_sites`
-#' @param skew either `TRUE` or `FALSE`. Only applies for `one_site` models.
-#' @param site_selection if fitting the `one_site` model, the tributary you want to fit.
-#' @param exclude_from_hyper a vector of sites you want to drop from being estimated in the hyper distribution
-#' parameters `b0_pCap` and `b_flow`. Default is NULL, meaning no sites are dropped. Must be site names
-#' in `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`
-#' @param input_catch_data Optional argument for weekly catch data.
-#' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
-#' passed in, structure of data frame must match that of the default.
-#' @param input_efficiency_data Optional argument for weekly efficiency data.
-#' Defaults to `SRJPEdata::SRJPEdata::weekly_juvenile_abundance_efficiency_data`. If
-#' passed in, structure of data frame must match that of the default.
-#' @returns a list:
-#' * **pCap_inputs** a list of data and inits for input into the pCap model.
-#' * **sites_fit** a list of site names associated with `ind_trib`.
+#' Prepare inputs for the pCap Stan model
+#'
+#' @details Prepares the data list, initial values, and indexing structures
+#'   needed to fit the capture probability (pCap) Stan model. Supports two
+#'   model types: a hierarchical model fit across all tributary sites
+#'   (`"all_sites"`) and a single-site model for mainstem sites
+#'   (`"one_site"`), optionally with a skew-normal process-error distribution.
+#'
+#' @param model_type Character. Either `"all_sites"` or `"one_site"`.
+#'   The `"all_sites"` model fits a hierarchical model across all available
+#'   tributary sites. The `"one_site"` model fits a single mainstem site
+#'   specified by `site_selection`.
+#' @param skew Logical (`TRUE`/`FALSE`) or `NULL`. Whether to use a
+#'   skew-normal distribution for process error. Only applies when
+#'   `model_type = "one_site"`; ignored (with a warning) for `"all_sites"`.
+#'   Must be specified explicitly for `"one_site"` models.
+#' @param site_selection Character. The site name to fit when
+#'   `model_type = "one_site"`. Must be exactly one value. Ignored for
+#'   `"all_sites"`.
+#' @param exclude_from_hyper Character vector of site names to exclude from
+#'   the hyper-distribution over `b0_pCap` and `b_flow`. Default `NULL`
+#'   (no sites excluded). Values must be present in
+#'   `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`.
+#' @param input_catch_data Optional data frame of weekly catch data.
+#'   Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`.
+#'   If supplied, the structure must match that of the default.
+#' @param input_efficiency_data Optional data frame of weekly efficiency
+#'   (mark-recapture) data. Defaults to
+#'   `SRJPEdata::weekly_juvenile_abundance_efficiency_data`.
+#'   If supplied, the structure must match that of the default.
+#'
+#' @returns A named list with the following elements:
+#' * **inputs** A list with three sub-elements passed directly to
+#'   `fit_pCap_model()`: `data` (Stan data list), `inits` (initial values
+#'   replicated across 3 chains), and `parameters` (character vector of
+#'   parameters to monitor).
+#' * **sites_fit** Character vector of site names in the order they are
+#'   indexed by `ind_trib` in the Stan data.
+#' * **years_fit** Numeric vector of run years in the order they are indexed
+#'   by `ind_yr`.
+#' * **sites_dropped** The value passed to `exclude_from_hyper`; `NULL` if
+#'   none were excluded.
+#' * **site_year_fit** Data frame with columns `site` and `run_year` giving
+#'   the unique site-year combinations indexed by `ind_yr`.
+#' * **model_name** Character. The Stan model name selected
+#'   (`"pCap_all_sites"`, `"pCap_one_site"`, or `"pCap_one_site_skew"`).
+#' * **skew** The value passed to the `skew` argument.
+#' * **site_selection** The value passed to the `site_selection` argument.
+#'
 #' @family Prepare Model Inputs
 #' @export
 #' @md
@@ -257,36 +289,73 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
 }
 
 
-#' Prepare inputs for abundance model
-#' @details This function prepares data for input into an abundance model.
-#' @param site site for which you want to fit the model
-#' @param run_year run year for which you want to fit the model
-#' @param input_catch_data Optional argument for weekly catch data.
-#' Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`. If
-#' passed in, structure of data frame must match that of the default.
-#' @param pCap_model_type One of `all_sites`, `one_site_skew`, or `one_site`. Describes your input
-#' for parameter `pCap_model_object`
-#' @param min_pCap a parameter that sets the minimum pCap value for setting maximum and initial
-#' values for abundance (N). Can be tweaked by min_pCap_mult. Default value is `0.0005`
-#' @param min_pCap_mult a parameter that lets you tweak the min pCap value for setting
-#' maximum and initial values for abundance (N). Gets multiplied by min_pCap. Default value is `1.0`
-#' @param pCap_model_object the STAN model file produced by running `prepare_pCap_inputs()`
-#' #' @param input_catch_data Optional argument for weekly catch data.
-#' Defaults to `SRJPEdata::SRJPEdata::weekly_juvenile_abundance_catch_data`. If
-#' passed in, structure of data frame must match that of the default.
-#' @param input_efficiency_data Optional argument for weekly efficiency data.
-#' Defaults to `SRJPEdata::SRJPEdata::weekly_juvenile_abundance_efficiency_data`. If
-#' passed in, structure of data frame must match that of the default.
-#' @returns a list:
-#' * **abundance_inputs** a list of data and inits for input into the abundance model.
-#' * **model_name** The version of the pCap logic to use for generating lt_pCap_U values. Either
-#' `all_mark_recap`, `missing_mark_recap`, `no_mark_recap`, or `no_mark_recap_no_trib`.
-#' * **site** The site run.
-#' * **run_year** The run year.
-#' * **weeks_fit** The weeks fit for the abundance model
-#' * **weeks_date** Associated dates for the weeks fit for the abundance model.
-#' * **lt_pCap_Us** A list containing output of `generate_lt_pCap_Us`: containing values of
-#' length `Nstrata` for `lt_pCap_mu` and `lt_pCap_sd`.
+#' Prepare inputs for the abundance model
+#'
+#' @details Prepares the data list, initial values, spline basis, indexing
+#'   structures, and logit-scale capture probability priors (`lt_pCap_mu`,
+#'   `lt_pCap_sd`) needed to fit the BT-SPAS-X abundance BUGS model for a
+#'   single site and run year. Internally calls `generate_lt_pCap_Us()` using
+#'   the supplied pCap model object.
+#'
+#' @param site Character. The site name to prepare inputs for (e.g.
+#'   `"ucc"`, `"knights landing"`).
+#' @param run_year Numeric. The run year to prepare inputs for.
+#' @param pCap_model_type Character. The type of pCap model whose output is
+#'   supplied in `pCap_model_object`. One of `"all_sites"`,
+#'   `"one_site_skew"`, or `"one_site"`. Used to determine how to extract
+#'   posterior samples and whether a skew-normal process-error distribution
+#'   was used.
+#' @param min_pCap Numeric. Baseline minimum pCap value used to compute
+#'   upper bounds and initial values for abundance (`N`). Overridden by the
+#'   minimum observed Lincoln-Peterson efficiency at the site if that is
+#'   available and non-zero. Default `0.0005`.
+#' @param min_pCap_mult Numeric. Multiplier applied to `min_pCap` (or to
+#'   the observed minimum efficiency) to allow sensitivity testing. Values
+#'   less than 1 relax the upper bound on `N`. Default `1.0`.
+#' @param pCap_model_object A fitted Stan model object produced by
+#'   `fit_pCap_model()`. The model type must match `pCap_model_type`.
+#' @param input_catch_data Optional data frame of weekly catch data.
+#'   Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`.
+#'   If supplied, the structure must match that of the default.
+#' @param input_efficiency_data Optional data frame of weekly efficiency
+#'   (mark-recapture) data. Defaults to
+#'   `SRJPEdata::weekly_juvenile_abundance_efficiency_data`.
+#'   If supplied, the structure must match that of the default.
+#'
+#' @returns A named list with the following elements:
+#' * **inputs** A list with `data`, `inits`, and `parameters` for passing
+#'   to `fit_abundance_model_BUGS()`.
+#' * **lt_pCap_U_data** Intermediate indexing and flow values used by
+#'   `generate_lt_pCap_Us()` to compute the logit-scale pCap priors.
+#' * **lt_pCap_Us** Named list with `lt_pCap_mu` and `lt_pCap_sd` vectors
+#'   of length `Nstrata`, the logit-scale pCap mean and SD passed into the
+#'   BUGS data list.
+#' * **lp_data** Data frame of weekly catch and efficiency data used for
+#'   plotting, including Lincoln-Peterson abundance and efficiency estimates.
+#' * **model_name** Character. The abundance model variant selected based
+#'   on mark-recapture data availability: `"all_mark_recap"`,
+#'   `"missing_mark_recap"`, `"no_mark_recap"`, or
+#'   `"no_mark_recap_no_trib"`.
+#' * **pCap_model_type** The value passed to `pCap_model_type`.
+#' * **site** The value passed to `site`.
+#' * **run_year** The value passed to `run_year`.
+#' * **catch_flow_raw** Numeric vector of raw flow (cfs) for each week in
+#'   the modelled period.
+#' * **mr_flow_raw** Numeric vector of raw flow (cfs) at the time of each
+#'   mark-recapture trial used to fit the pCap model.
+#' * **weeks_fit** Integer vector of Julian weeks included in the model.
+#' * **week_date** Character vector of calendar dates associated with
+#'   `weeks_fit`.
+#' * **sites_fit** Character vector of sites whose pCap posteriors are
+#'   available from the supplied pCap model object.
+#' * **run_year_id** Integer. Index into the `yr_re` vector in the pCap
+#'   model corresponding to this site–run year combination.
+#' * **year_sd_id** Integer. Index into `yr_sd_P` in the pCap model
+#'   corresponding to this site.
+#' * **min_pCap** Numeric. The effective minimum pCap value after applying
+#'   `min_pCap_mult`.
+#'
+#' @family Prepare Model Inputs
 #' @export
 #' @md
 prepare_abundance_inputs <- function(site, run_year,
@@ -317,7 +386,7 @@ prepare_abundance_inputs <- function(site, run_year,
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
               standardized_flow = mean(standardized_flow, na.rm = T)
               #lgN_prior = mean(lgN_prior, na.rm = T)
-              ) |>
+    ) |>
     ungroup() |>
     left_join(site_order_north_south, by = "site") |>
     arrange(ns_order) |>
@@ -347,10 +416,10 @@ prepare_abundance_inputs <- function(site, run_year,
                 select(-flow_cfs),
               by = c("year", "run_year", "week", "stream", "site")) |>
     mutate(# plot things
-           lincoln_peterson_abundance = count * (number_released / number_recaptured),
-           lincoln_peterson_efficiency = number_recaptured / number_released,
-           sampled = ifelse(is.na(count), FALSE, TRUE),
-           efficiency_trial = ifelse(is.na(lincoln_peterson_efficiency), FALSE, TRUE)) |>
+      lincoln_peterson_abundance = count * (number_released / number_recaptured),
+      lincoln_peterson_efficiency = number_recaptured / number_released,
+      sampled = ifelse(is.na(count), FALSE, TRUE),
+      efficiency_trial = ifelse(is.na(lincoln_peterson_efficiency), FALSE, TRUE)) |>
     left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
     left_join(site_order_north_south, by = "site") |>
     arrange(ns_order) |>
@@ -641,13 +710,29 @@ prepare_abundance_inputs <- function(site, run_year,
 }
 
 
-#' Prepare spline parameters object for BT-SPAS-X model
-#' @details This function is called within `run_single_bt_spas_x()` and prepares spline parameters
-#' to pass to the data list
-#' @param number_weeks_catch number of weeks with catch data.
-#' @param k_int number of knots to use in building spline for abundance data.
-#' Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)
-#' @returns a named list containing *K* and *b_spline_matrix* for passing to WinBUGS
+#' Build B-spline basis matrix for the BT-SPAS-X abundance model
+#'
+#' @details Constructs the B-spline basis matrix and associated parameters
+#'   used to model the smooth temporal trend in weekly abundance. Knots are
+#'   placed at evenly-spaced positions between the second and second-to-last
+#'   week, keeping the tails free of knots to reduce boundary effects.
+#'   Called internally by `prepare_abundance_inputs()`.
+#'
+#' @param number_weeks_catch Integer. Total number of weekly strata in the
+#'   modelled period (including weeks with no catch).
+#' @param k_int Integer. Number of data points per knot. A cubic spline has
+#'   4 parameters, so the rule of thumb is `k_int = 4` (one knot per 4
+#'   observations). Passed directly from `prepare_abundance_inputs()`.
+#'
+#' @returns A named list with:
+#' * **K** Integer. Total number of columns in the B-spline basis matrix
+#'   (number of knots + polynomial degree).
+#' * **b_spline_matrix** Numeric matrix of dimensions
+#'   `number_weeks_catch` × `K`. Each row is the basis vector for one
+#'   weekly stratum.
+#' * **knot_positions** Numeric vector of knot positions on the 1-to-`number_weeks_catch`
+#'   index scale.
+#'
 #' @keywords internal
 #' @export
 #' @md
@@ -666,10 +751,25 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 }
 
 
-#' Fit pCap model
-#' @details This function prepares the data list for the abundance STAN model based on what the model name is.
-#' @param input A list containing the inputs for the pCap model.
-#' @returns a STANfit object with the pCap model fit.
+#' Fit the pCap Stan model
+#'
+#' @details Selects the appropriate Stan model code from
+#'   `SRJPEmodel::bt_spas_x_model_code` based on the model name stored in
+#'   `input`, then calls `rstan::stan()` with fixed MCMC settings (10,000
+#'   iterations, seed 84735, max tree depth 15, using all available cores).
+#'
+#' @param input A named list produced by `prepare_pCap_inputs()`. Must
+#'   contain:
+#'   * `model_name` — character string identifying which Stan model to run
+#'     (`"pCap_all_sites"`, `"pCap_one_site"`, or `"pCap_one_site_skew"`).
+#'   * `inputs$data` — the Stan data list.
+#'   * `inputs$inits` — initial values (list of 3 chains).
+#'   * `inputs$parameters` — character vector of parameters to monitor.
+#'
+#' @returns A `stanfit` object containing the posterior samples for the
+#'   pCap model. Pass this object to `generate_lt_pCap_Us()` via
+#'   `prepare_abundance_inputs()`.
+#'
 #' @family Fit model
 #' @export
 #' @md
@@ -695,13 +795,44 @@ fit_pCap_model <- function(input) {
 
 }
 
-#' Generate lt_pCap_U values from the pCap model object
-#' @details This function prepares the data list for the abundance STAN model based on what the model name is.
-#' @param abundance_inputs A list containing the inputs for the site-specific abundance model including
-#' `model_name`, `Nstrata`, `catch_flow`, `use_trib`, `Ntribs`, `Nmr`, `Nwmr`, `Nwomr`, `Uind_wMR`, `Uind_woMR`,
-#' `ind_pCap`. This is created by calling `prepare_abundance_inputs()`.
-#' @returns a named list with the simulated `lt_pCap_mu` and `lt_pCap_sd` values for
-#' `Nstrata`.
+#' Generate logit-scale pCap priors for the abundance model
+#'
+#' @details Extracts posterior samples from the fitted pCap Stan model and
+#'   uses them to compute, for each weekly stratum, the mean and standard
+#'   deviation of the logit-scale capture probability distribution
+#'   (`lt_pCap_mu`, `lt_pCap_sd`). These are passed into the BUGS data list
+#'   as informative priors for `lt_pCap_U`.
+#'
+#'   The computation differs by abundance model variant:
+#'   * `"all_mark_recap"` — uses the estimated `logit_pCap` posterior
+#'     directly for every stratum.
+#'   * `"missing_mark_recap"` — uses `logit_pCap` for strata with
+#'     efficiency trials and simulates from the flow-regression + process
+#'     error for strata without.
+#'   * `"no_mark_recap"` — simulates all strata from the flow-regression
+#'     with both process error and year random effect.
+#'   * `"no_mark_recap_no_trib"` — as above, but draws intercept and slope
+#'     from the hyper-distribution (`trib_mu_P`, `trib_sd_P`,
+#'     `flow_mu_P`, `flow_sd_P`) because no site-specific pCap was
+#'     estimated.
+#'
+#'   Effort adjustment (`log(effort)`) is added to modelled strata in all
+#'   variants except `"all_mark_recap"`.
+#'
+#' @param abundance_inputs A named list produced by
+#'   `prepare_abundance_inputs()`. The relevant sub-elements are
+#'   `model_name`, `pCap_model_type`, `inputs$data`, `lt_pCap_U_data`,
+#'   `run_year_id`, and `year_sd_id`.
+#' @param pCap_model_object A fitted `stanfit` object produced by
+#'   `fit_pCap_model()`. Must match the `pCap_model_type` recorded in
+#'   `abundance_inputs`.
+#'
+#' @returns A named list with two numeric vectors, each of length `Nstrata`:
+#' * **lt_pCap_mu** Per-stratum posterior mean of `lt_pCap_U` on the logit
+#'   scale.
+#' * **lt_pCap_sd** Per-stratum posterior standard deviation of `lt_pCap_U`
+#'   on the logit scale.
+#'
 #' @export
 #' @md
 generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
@@ -774,19 +905,19 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     } else if (ModelName == "no_mark_recap"){
 
       for (i in 1:Nwomr) {
-          if(skew){
-            sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
-          } else {
-            sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
-          }
-          sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
-          lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
+        if(skew){
+          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        } else {
+          sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
+        }
+        sim_yr_dev = rnorm(n=Ntrials, mean=0, sd=yr_sd_P)
+        lt_pCap_U[,Uind_woMR[i]] = b0_pCap + b_flow * catch_flow[Uind_woMR[i]] + sim_pro_dev + sim_yr_dev + log(abundance_inputs$inputs$data$effort[Uind_woMR[i]])
       }
 
     } else if (ModelName == "no_mark_recap_no_trib"){
 
-       logit_b0 = rnorm(n=Ntrials, mean=trib_mu_P, sd=trib_sd_P)
-       logit_bflow = rnorm(n=Ntrials, mean=flow_mu_P, sd=flow_sd_P)
+      logit_b0 = rnorm(n=Ntrials, mean=trib_mu_P, sd=trib_sd_P)
+      logit_bflow = rnorm(n=Ntrials, mean=flow_mu_P, sd=flow_sd_P)
 
 
       for (i in 1:Nwomr) {
@@ -908,11 +1039,26 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 }
 
 
-#' Fit abundance model in BUGS.
-#' @details This function runs the BUGS abundance model.
-#' @param abundance_inputs the object produced by `prepare_abundance_inputs()`
-#' @param bugs_directory the filepath pointing to where your WinBUGS14/ directory is
-#' @returns a BUGS object.
+#' Fit the BT-SPAS-X abundance model in WinBUGS
+#'
+#' @details Augments the data list from `prepare_abundance_inputs()` with the
+#'   logit-scale pCap priors (`lt_pCap_mu`, `lt_pCap_tau`), writes the BUGS
+#'   model code from `SRJPEmodel::bt_spas_x_model_code$abundance_BUGS` to a
+#'   temporary file, and calls `R2WinBUGS::bugs()` with fixed MCMC settings
+#'   (3 chains, 2000 iterations, 500 burn-in, thinning by 2).
+#'
+#' @param abundance_inputs A named list produced by
+#'   `prepare_abundance_inputs()`. Must contain `inputs$data`, `inputs$inits`,
+#'   and `lt_pCap_Us` (the output of `generate_lt_pCap_Us()`).
+#' @param bugs_directory Character. File path to the WinBUGS 1.4 executable
+#'   directory (e.g. `"C:/Program Files/WinBUGS14/"`).
+#'
+#' @returns A `bugs` object (from `R2WinBUGS`) containing posterior summaries
+#'   and MCMC samples for the parameters `lt_pCap_U`, `pCap_U`, `Usp`, `N`,
+#'   `Ntot`, `sd.N`, `sd.Ne`, and `lg_CumN`. Pass this to
+#'   `extract_abundance_estimates()`.
+#'
+#' @family Fit model
 #' @export
 #' @md
 fit_abundance_model_BUGS <- function(abundance_inputs,
@@ -954,22 +1100,36 @@ fit_abundance_model_BUGS <- function(abundance_inputs,
 }
 
 
-#' Extract parameter estimates from abundance BUGS model object
-#' @details This function extracts parameter estimates from the abundance BUGS model and returns them in a tidy data frame format.
-#' @param site the site fit.
-#' @param run_year the run year fit.
-#' @param abundance_inputs a list of inputs for the abundance BUGS model, generated by running `prepare_abundance_inputs()`
-#' @param model_object the BUGS object produced by running `fit_abundance_model_BUGS()`.
-#' @returns A table with the format:
-#' * **model_name**
-#' * **site**
-#' * **run_year**
-#' * **week_fit**
-#' * **location_fit**
-#' * **parameter**
-#' * **statistic**
-#' * **value**
-#' * **srjpedata_version**
+#' Extract parameter estimates from the abundance BUGS model object
+#'
+#' @details Tidies the summary table from a fitted `bugs` object into a long
+#'   data frame, attaches week dates and stream names, and records the
+#'   `SRJPEdata` package version used. The resulting table is in a format
+#'   suitable for writing to the database or passing to downstream summaries.
+#'
+#' @param abundance_inputs A named list produced by
+#'   `prepare_abundance_inputs()`, containing at minimum `site`, `run_year`,
+#'   `model_name`, and `weeks_fit`.
+#' @param model_object A `bugs` object produced by
+#'   `fit_abundance_model_BUGS()`.
+#'
+#' @returns A tidy data frame with one row per parameter–statistic
+#'   combination, containing the following columns:
+#' * **model_name** Character. The abundance model variant
+#'   (e.g. `"missing_mark_recap"`).
+#' * **site** Character. The site name.
+#' * **stream** Character. The stream associated with the site.
+#' * **run_year** Numeric. The run year.
+#' * **week_fit** Integer. The Julian week associated with the parameter
+#'   (NA for scalars such as `Ntot`).
+#' * **parameter** Character. The parameter name with index notation
+#'   removed (e.g. `"N"`, `"lt_pCap_U"`, `"Ntot"`).
+#' * **statistic** Character. The posterior summary statistic
+#'   (e.g. `"mean"`, `"sd"`, `"2.5"`, `"50"`, `"97.5"`, `"Rhat"`).
+#' * **value** Numeric. The value of the statistic.
+#' * **srjpedata_version** Character. The version of the `SRJPEdata` package
+#'   used when producing these estimates.
+#'
 #' @export
 #' @md
 extract_abundance_estimates <- function(abundance_inputs,
@@ -1006,20 +1166,38 @@ extract_abundance_estimates <- function(abundance_inputs,
 }
 
 
-#' Extract parameter estimates from the pCap BUGS model object
-#' @details This function extracts parameter estimates from the pCap BUGS model and returns them in a tidy data frame format.
-#' @param pCap_inputs a list of inputs for the abundance BUGS model, generated by running `prepare_pCap_inputs()`
-#' @param model_object the BUGS object produced by running `fit_pCap_model_BUGS()`.
-#' @returns A table with the format:
-#' * **model_name**
-#' * **site**
-#' * **run_year**
-#' * **week_fit**
-#' * **location_fit**
-#' * **parameter**
-#' * **statistic**
-#' * **value**
-#' * **srjpedata_version**
+#' Extract parameter estimates from the pCap Stan model object
+#'
+#' @details Tidies the summary table from a fitted `stanfit` pCap model into
+#'   a long data frame, attaches site and stream name lookups, and records the
+#'   `SRJPEdata` package version. For `one_site` (mainstem skew) models, the
+#'   site name is taken from `pCap_inputs$site` rather than the parameter
+#'   index. The resulting table is in the same format as
+#'   `extract_abundance_estimates()`.
+#'
+#' @param model_object A `stanfit` object produced by `fit_pCap_model()`.
+#' @param pCap_inputs A named list produced by `prepare_pCap_inputs()`,
+#'   containing at minimum `sites_fit` and `model_name`.
+#'
+#' @returns A tidy data frame with one row per parameter–statistic
+#'   combination, containing the following columns:
+#' * **model_name** Character. The pCap model name
+#'   (e.g. `"pCap_all_sites"`, `"pCap_one_site_skew"`).
+#' * **site** Character. The site name associated with the parameter, or
+#'   `NA` for hyper-parameters not tied to a specific site.
+#' * **stream** Character. The stream associated with the site, or `NA`.
+#' * **run_year** Always `NA` for the pCap model (pCap is estimated
+#'   across all years).
+#' * **week_fit** Always `NA` for the pCap model (no weekly parameters
+#'   are extracted).
+#' * **parameter** Character. The parameter name with index notation
+#'   removed (e.g. `"b0_pCap"`, `"b_flow"`, `"logit_pCap"`).
+#' * **statistic** Character. The posterior summary statistic
+#'   (e.g. `"mean"`, `"sd"`, `"2.5"`, `"50"`, `"97.5"`, `"Rhat"`).
+#' * **value** Numeric. The value of the statistic.
+#' * **srjpedata_version** Character. The version of the `SRJPEdata` package
+#'   used when producing these estimates.
+#'
 #' @export
 #' @md
 extract_pCap_estimates <- function(model_object, pCap_inputs) {
@@ -1062,24 +1240,36 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
   return(formatted_table)
 }
 
-#' Run all JPE sites.
-#' @details This function automates running BT-SPAS-X for all JPE sites/run years.
-#' @param sites_to_run
-#' @param run_pCap
-#' @param mainstem
-#' @param pCap_model_object_filepath
-#' @param bugs_model_file
-#' @param bugs_directory
-#' @returns A table with the format:
-#' * **model_name**
-#' * **site**
-#' * **run_year**
-#' * **week_fit**
-#' * **location_fit**
-#' * **parameter**
-#' * **statistic**
-#' * **value**
-#' * **srjpedata_version**
+#' Run BT-SPAS-X for all JPE sites and run years
+#'
+#' @details Iterates over all site–run year combinations in `sites_to_run`
+#'   and calls `run_abundance_workflow()` for each, with progress reporting.
+#'   Optionally re-fits the pCap model before running abundance. Results from
+#'   all sites are row-bound into a single tidy data frame.
+#'
+#' @param sites_to_run Data frame with (at minimum) columns `site` and
+#'   `run_year` specifying which site–run year combinations to model.
+#' @param run_pCap Logical. If `TRUE`, the pCap model is re-fit before
+#'   running the abundance models and saved to `pCap_model_object_filepath`.
+#'   Default `FALSE`.
+#' @param mainstem Passed to `prepare_pCap_inputs()` when `run_pCap = TRUE`.
+#' @param pCap_model_object_filepath Character. File path (`.rds`) from which
+#'   the pCap model object is read (and to which it is written if
+#'   `run_pCap = TRUE`).
+#' @param bugs_model_file Character. File path to the WinBUGS model code
+#'   (`.bug` file) for the abundance model.
+#' @param bugs_directory Character. File path to the WinBUGS 1.4 executable
+#'   directory.
+#'
+#' @returns A tidy data frame combining the output of
+#'   `extract_abundance_estimates()` across all site–run year combinations,
+#'   with columns:
+#' * **model_name**, **site**, **stream**, **run_year**, **week_fit**,
+#'   **parameter**, **statistic**, **value**, **srjpedata_version**
+#'
+#'   Rows where the model errored are included with only `site`, `run_year`,
+#'   and `error = TRUE` columns (from `run_abundance_workflow()`).
+#'
 #' @export
 #' @md
 run_bt_spas_x_JPE_sites <- function(sites_to_run,
@@ -1116,14 +1306,29 @@ run_bt_spas_x_JPE_sites <- function(sites_to_run,
 
 }
 
-#' Run abundance BUGS workflow.
-#' @details This function runs the abundance BUGS workflow.
-#' @param site
-#' @param run_year
-#' @param pCap
-#' @param bugs_model_file
-#' @param bugs_directory
-#' @returns A table.
+#' Run the full abundance estimation workflow for a single site and run year
+#'
+#' @details Executes the complete BT-SPAS-X pipeline for one site–run year
+#'   combination in sequence: prepares abundance inputs, loads the pCap model
+#'   object, generates logit-scale pCap priors, fits the BUGS abundance model,
+#'   and extracts tidy results. Errors are caught and returned as a one-row
+#'   tibble with an `error` flag so that `run_bt_spas_x_JPE_sites()` can
+#'   continue to the next site without stopping.
+#'
+#' @param site Character. The site name.
+#' @param run_year Numeric. The run year.
+#' @param pCap_model_object_filepath Character. File path to the saved pCap
+#'   `stanfit` object (`.rds`), read with `readRDS()`.
+#' @param bugs_model_file Character. File path to the WinBUGS model code
+#'   (`.bug` file) for the abundance model. Passed to
+#'   `fit_abundance_model_BUGS()`.
+#' @param bugs_directory Character. File path to the WinBUGS 1.4 executable
+#'   directory. Passed to `fit_abundance_model_BUGS()`.
+#'
+#' @returns On success, the tidy data frame returned by
+#'   `extract_abundance_estimates()`. On error, a one-row tibble with columns
+#'   `site`, `run_year`, and `error = TRUE`.
+#'
 #' @export
 #' @md
 run_abundance_workflow <- function(site,
@@ -1155,161 +1360,3 @@ run_abundance_workflow <- function(site,
 
   return(results)
 }
-
-
-
-#' BT SPAS X diagnostic plots
-#' @details This function produces a plot with data and results of fitting the pCap and abundance models for
-#' a given site and run year.
-#' @param inputs a list of inputs generated by running `prepare_abundance_inputs()`
-#' @param results_df a table of parameter estimates generated by running `extract_abundance_estimates()` or
-#' by pulling and filtering from the database using `get_most_recent_model_results()`.
-#' @returns A plot.
-#' @export
-#' @md
-generate_diagnostic_plot_juv <- function(inputs, results_df) {
-
-  params <- results_df |>
-    filter(model_name == "bt_spas_x",
-           site == inputs$site,
-           year == inputs$run_year) |>
-    select(-c(id, model_run_id, model_name)) |>
-    pivot_wider(names_from = statistic,
-                values_from = value)
-
-  pCap_estimates <- params |>
-    filter(parameter == "lt_pCap_U") |>
-    select(week = week_fit,
-           c("97.5", "50", "mean", "75", "sd", "25", "2.5"))
-
-  N_estimates <- params |>
-    filter(parameter == "N") |>
-    select(week = week_fit,
-           c("97.5", "50", "mean", "75", "sd", "25", "2.5"))
-
-  abundance_plot <- N_estimates |>
-    left_join(inputs$lp_data,
-              by = "week") |>
-    mutate(count_label = ifelse(is.na(count), "", count)) |>
-    ggplot(aes(x = date, y = `50`)) +
-    geom_bar(stat = "identity", fill = "grey", width = .75) +
-    geom_errorbar(aes(x = date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-    geom_point(aes(x = date, y = lincoln_peterson_abundance),
-               shape = 1, color = "blue" ,size = 3) +
-    geom_point(aes(x = date, y = Inf, color = sampled),
-               size = 3) +
-    geom_text(aes(x = date, y = Inf,
-                  label = paste(count_label),
-                  angle = 90),
-              hjust = 1,
-              size = 3) +
-    scale_color_manual(values = c("TRUE" = "white", "FALSE" = "#ec5858")) +
-    theme_minimal() +
-    labs(x = "",
-         #x = "Date",
-         y = "Abundance",
-         title = paste(inputs$site, inputs$run_year)) +
-    #theme(axis.text.x=element_blank()) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
-          legend.position = "")
-
-  # efficiency
-  efficiency_plot <- pCap_estimates |>
-    left_join(inputs$lp_data,
-              by = "week") |>
-    mutate(across(c(mean, `50`, `2.5`, `97.5`), plogis),
-           number_released_label = ifelse(is.na(number_released), "", number_released),
-           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
-    ggplot(aes(x = date, y = `50`, fill = efficiency_trial)) +
-    geom_bar(stat = "identity", width = .75) +
-    geom_errorbar(aes(x = date, ymin = `2.5`, ymax = `97.5`), width = 0.2) +
-    geom_point(aes(x = date, y = lincoln_peterson_efficiency),
-               shape = 1, color = "blue", size = 3) +
-    geom_text(aes(x = date, y = Inf,
-                  label = paste(number_released_label, number_recaptured_label),
-                  angle = 90),
-              hjust = 1,
-              size = 3) +
-    scale_fill_manual(values = c("TRUE" = "grey", "FALSE" = "#ec5858")) +
-    theme_minimal() +
-    labs(x = "Date", y = "Weekly Efficiency") +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
-          legend.position = "")
-
-  # arrange together
-  gridExtra::grid.arrange(abundance_plot, efficiency_plot)
-}
-
-
-#' BT SPAS X raw data plots
-#' @details This function produces a plot with data for a site and run year.
-#' @param site The site being fit
-#' @param run_year The run year being fit
-#' @returns A plot
-#' @export
-#' @md
-plot_juv_data <- function(site, run_year) {
-  data <- SRJPEdata::weekly_juvenile_abundance_catch_data |>
-    filter(run_year == !!run_year,
-           site == !!site,
-           week %in% c(seq(45, 53), seq(1, 22))) |>
-    group_by(year, week, stream, site, run_year) |>
-    # keep NAs in count columns
-    summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
-              mean_fork_length = mean(mean_fork_length, na.rm = T),
-              hours_fished = mean(hours_fished, na.rm = T),
-              catch_flow_cfs = mean(flow_cfs, na.rm = T),
-              average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T)
-              #lgN_prior = mean(lgN_prior, na.rm = T)
-              ) |>
-    ungroup() |>
-    left_join(SRJPEdata::weekly_juvenile_abundance_efficiency_data,
-              by = c("year", "run_year", "week", "stream", "site")) |>
-    mutate(count = round(count, 0),
-           # change all NaNs to NAs
-           # across(mean_fork_length:lgN_prior, ~ifelse(is.nan(.x), NA, .x)),
-           # plot things
-           lincoln_peterson_abundance = count * (number_released / number_recaptured),
-           lincoln_peterson_efficiency = number_recaptured / number_released) |>
-    left_join(SRJPEmodel::julian_week_to_date_lookup, by = c("week" = "Jwk")) |>
-    left_join(site_order_north_south, by = "site") |>
-    arrange(ns_order) |>
-    select(-ns_order) |>
-    mutate(date = factor(date, levels = date),
-           week_index = row_number())
-
-  abundance_plot <- data |>
-    ggplot(aes(x = date, y = count)) +
-    geom_bar(stat = "identity", fill = "grey", width = .75) +
-    geom_text(aes(x = date, y = Inf,
-                  label = paste(count),
-                  angle = 90),
-              hjust = 1,
-              size = 3) +
-    theme_minimal() +
-    labs(x = "",
-         y = "Abundance",
-         title = paste(site, run_year)) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
-
-  efficiency_plot <- data |>
-    mutate(number_released_label = ifelse(is.na(number_released), "", number_released),
-           number_recaptured_label = ifelse(is.na(number_recaptured), "", number_recaptured)) |>
-    ggplot(aes(x = date, y = lincoln_peterson_efficiency)) +
-    geom_point(shape = 1, color = "blue") +
-    # geom_bar(stat = "identity", fill = "grey", width = 4) +
-    geom_text(aes(x = date, y = Inf,
-                  label = paste(number_released_label, number_recaptured_label),
-                  angle = 90),
-              hjust = 1,
-              size = 3) +
-    theme_minimal() +
-    labs(x = "Date", y = "Weekly Efficiency") +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
-
-  # arrange together
-  gridExtra::grid.arrange(abundance_plot, efficiency_plot)
-
-}
-

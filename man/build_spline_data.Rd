@@ -2,24 +2,38 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{build_spline_data}
 \alias{build_spline_data}
-\title{Prepare spline parameters object for BT-SPAS-X model}
+\title{Build B-spline basis matrix for the BT-SPAS-X abundance model}
 \usage{
 build_spline_data(number_weeks_catch, k_int)
 }
 \arguments{
-\item{number_weeks_catch}{number of weeks with catch data.}
+\item{number_weeks_catch}{Integer. Total number of weekly strata in the
+modelled period (including weeks with no catch).}
 
-\item{k_int}{number of knots to use in building spline for abundance data.
-Rule of thumb is 1 knot for every 4 data points for a cubic spline (which has 4 parameters)}
+\item{k_int}{Integer. Number of data points per knot. A cubic spline has
+4 parameters, so the rule of thumb is \code{k_int = 4} (one knot per 4
+observations). Passed directly from \code{prepare_abundance_inputs()}.}
 }
 \value{
-a named list containing \emph{K} and \emph{b_spline_matrix} for passing to WinBUGS
+A named list with:
+\itemize{
+\item \strong{K} Integer. Total number of columns in the B-spline basis matrix
+(number of knots + polynomial degree).
+\item \strong{b_spline_matrix} Numeric matrix of dimensions
+\code{number_weeks_catch} × \code{K}. Each row is the basis vector for one
+weekly stratum.
+\item \strong{knot_positions} Numeric vector of knot positions on the 1-to-\code{number_weeks_catch}
+index scale.
+}
 }
 \description{
-Prepare spline parameters object for BT-SPAS-X model
+Build B-spline basis matrix for the BT-SPAS-X abundance model
 }
 \details{
-This function is called within \code{run_single_bt_spas_x()} and prepares spline parameters
-to pass to the data list
+Constructs the B-spline basis matrix and associated parameters
+used to model the smooth temporal trend in weekly abundance. Knots are
+placed at evenly-spaced positions between the second and second-to-last
+week, keeping the tails free of knots to reduce boundary effects.
+Called internally by \code{prepare_abundance_inputs()}.
 }
 \keyword{internal}

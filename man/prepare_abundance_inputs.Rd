@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{prepare_abundance_inputs}
 \alias{prepare_abundance_inputs}
-\title{Prepare inputs for abundance model}
+\title{Prepare inputs for the abundance model}
 \usage{
 prepare_abundance_inputs(
   site,
@@ -16,49 +16,90 @@ prepare_abundance_inputs(
 )
 }
 \arguments{
-\item{site}{site for which you want to fit the model}
+\item{site}{Character. The site name to prepare inputs for (e.g.
+\code{"ucc"}, \code{"knights landing"}).}
 
-\item{run_year}{run year for which you want to fit the model}
+\item{run_year}{Numeric. The run year to prepare inputs for.}
 
-\item{pCap_model_type}{One of \code{all_sites}, \code{one_site_skew}, or \code{one_site}. Describes your input
-for parameter \code{pCap_model_object}}
+\item{pCap_model_type}{Character. The type of pCap model whose output is
+supplied in \code{pCap_model_object}. One of \code{"all_sites"},
+\code{"one_site_skew"}, or \code{"one_site"}. Used to determine how to extract
+posterior samples and whether a skew-normal process-error distribution
+was used.}
 
-\item{min_pCap}{a parameter that sets the minimum pCap value for setting maximum and initial
-values for abundance (N). Can be tweaked by min_pCap_mult. Default value is \code{0.0005}}
+\item{min_pCap}{Numeric. Baseline minimum pCap value used to compute
+upper bounds and initial values for abundance (\code{N}). Overridden by the
+minimum observed Lincoln-Peterson efficiency at the site if that is
+available and non-zero. Default \code{0.0005}.}
 
-\item{min_pCap_mult}{a parameter that lets you tweak the min pCap value for setting
-maximum and initial values for abundance (N). Gets multiplied by min_pCap. Default value is \code{1.0}}
+\item{min_pCap_mult}{Numeric. Multiplier applied to \code{min_pCap} (or to
+the observed minimum efficiency) to allow sensitivity testing. Values
+less than 1 relax the upper bound on \code{N}. Default \code{1.0}.}
 
-\item{pCap_model_object}{the STAN model file produced by running \code{prepare_pCap_inputs()}
-#' @param input_catch_data Optional argument for weekly catch data.
-Defaults to \verb{SRJPEdata::SRJPEdata::weekly_juvenile_abundance_catch_data}. If
-passed in, structure of data frame must match that of the default.}
+\item{pCap_model_object}{A fitted Stan model object produced by
+\code{fit_pCap_model()}. The model type must match \code{pCap_model_type}.}
 
-\item{input_catch_data}{Optional argument for weekly catch data.
-Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If
-passed in, structure of data frame must match that of the default.}
+\item{input_catch_data}{Optional data frame of weekly catch data.
+Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}.
+If supplied, the structure must match that of the default.}
 
-\item{input_efficiency_data}{Optional argument for weekly efficiency data.
-Defaults to \verb{SRJPEdata::SRJPEdata::weekly_juvenile_abundance_efficiency_data}. If
-passed in, structure of data frame must match that of the default.}
+\item{input_efficiency_data}{Optional data frame of weekly efficiency
+(mark-recapture) data. Defaults to
+\code{SRJPEdata::weekly_juvenile_abundance_efficiency_data}.
+If supplied, the structure must match that of the default.}
 }
 \value{
-a list:
+A named list with the following elements:
 \itemize{
-\item \strong{abundance_inputs} a list of data and inits for input into the abundance model.
-\item \strong{model_name} The version of the pCap logic to use for generating lt_pCap_U values. Either
-\code{all_mark_recap}, \code{missing_mark_recap}, \code{no_mark_recap}, or \code{no_mark_recap_no_trib}.
-\item \strong{site} The site run.
-\item \strong{run_year} The run year.
-\item \strong{weeks_fit} The weeks fit for the abundance model
-\item \strong{weeks_date} Associated dates for the weeks fit for the abundance model.
-\item \strong{lt_pCap_Us} A list containing output of \code{generate_lt_pCap_Us}: containing values of
-length \code{Nstrata} for \code{lt_pCap_mu} and \code{lt_pCap_sd}.
+\item \strong{inputs} A list with \code{data}, \code{inits}, and \code{parameters} for passing
+to \code{fit_abundance_model_BUGS()}.
+\item \strong{lt_pCap_U_data} Intermediate indexing and flow values used by
+\code{generate_lt_pCap_Us()} to compute the logit-scale pCap priors.
+\item \strong{lt_pCap_Us} Named list with \code{lt_pCap_mu} and \code{lt_pCap_sd} vectors
+of length \code{Nstrata}, the logit-scale pCap mean and SD passed into the
+BUGS data list.
+\item \strong{lp_data} Data frame of weekly catch and efficiency data used for
+plotting, including Lincoln-Peterson abundance and efficiency estimates.
+\item \strong{model_name} Character. The abundance model variant selected based
+on mark-recapture data availability: \code{"all_mark_recap"},
+\code{"missing_mark_recap"}, \code{"no_mark_recap"}, or
+\code{"no_mark_recap_no_trib"}.
+\item \strong{pCap_model_type} The value passed to \code{pCap_model_type}.
+\item \strong{site} The value passed to \code{site}.
+\item \strong{run_year} The value passed to \code{run_year}.
+\item \strong{catch_flow_raw} Numeric vector of raw flow (cfs) for each week in
+the modelled period.
+\item \strong{mr_flow_raw} Numeric vector of raw flow (cfs) at the time of each
+mark-recapture trial used to fit the pCap model.
+\item \strong{weeks_fit} Integer vector of Julian weeks included in the model.
+\item \strong{week_date} Character vector of calendar dates associated with
+\code{weeks_fit}.
+\item \strong{sites_fit} Character vector of sites whose pCap posteriors are
+available from the supplied pCap model object.
+\item \strong{run_year_id} Integer. Index into the \code{yr_re} vector in the pCap
+model corresponding to this site–run year combination.
+\item \strong{year_sd_id} Integer. Index into \code{yr_sd_P} in the pCap model
+corresponding to this site.
+\item \strong{min_pCap} Numeric. The effective minimum pCap value after applying
+\code{min_pCap_mult}.
 }
 }
 \description{
-Prepare inputs for abundance model
+Prepare inputs for the abundance model
 }
 \details{
-This function prepares data for input into an abundance model.
+Prepares the data list, initial values, spline basis, indexing
+structures, and logit-scale capture probability priors (\code{lt_pCap_mu},
+\code{lt_pCap_sd}) needed to fit the BT-SPAS-X abundance BUGS model for a
+single site and run year. Internally calls \code{generate_lt_pCap_Us()} using
+the supplied pCap model object.
 }
+\seealso{
+Other Prepare Model Inputs: 
+\code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_inseason_inputs}()},
+\code{\link{prepare_pCap_inputs}()},
+\code{\link{prepare_stock_recruit_inputs}()},
+\code{\link{prepare_survival_inputs}()}
+}
+\concept{Prepare Model Inputs}

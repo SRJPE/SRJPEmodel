@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{prepare_pCap_inputs}
 \alias{prepare_pCap_inputs}
-\title{Prepare inputs for pCap STAN model}
+\title{Prepare inputs for the pCap Stan model}
 \usage{
 prepare_pCap_inputs(
   model_type = c("all_sites", "one_site"),
@@ -14,40 +14,69 @@ prepare_pCap_inputs(
 )
 }
 \arguments{
-\item{model_type}{either \code{one_site} or \code{all_sites}}
+\item{model_type}{Character. Either \code{"all_sites"} or \code{"one_site"}.
+The \code{"all_sites"} model fits a hierarchical model across all available
+tributary sites. The \code{"one_site"} model fits a single mainstem site
+specified by \code{site_selection}.}
 
-\item{skew}{either \code{TRUE} or \code{FALSE}. Only applies for \code{one_site} models.}
+\item{skew}{Logical (\code{TRUE}/\code{FALSE}) or \code{NULL}. Whether to use a
+skew-normal distribution for process error. Only applies when
+\code{model_type = "one_site"}; ignored (with a warning) for \code{"all_sites"}.
+Must be specified explicitly for \code{"one_site"} models.}
 
-\item{site_selection}{if fitting the \code{one_site} model, the tributary you want to fit.}
+\item{site_selection}{Character. The site name to fit when
+\code{model_type = "one_site"}. Must be exactly one value. Ignored for
+\code{"all_sites"}.}
 
-\item{exclude_from_hyper}{a vector of sites you want to drop from being estimated in the hyper distribution
-parameters \code{b0_pCap} and \code{b_flow}. Default is NULL, meaning no sites are dropped. Must be site names
-in \code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}}
+\item{exclude_from_hyper}{Character vector of site names to exclude from
+the hyper-distribution over \code{b0_pCap} and \code{b_flow}. Default \code{NULL}
+(no sites excluded). Values must be present in
+\code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}.}
 
-\item{input_catch_data}{Optional argument for weekly catch data.
-Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}. If
-passed in, structure of data frame must match that of the default.}
+\item{input_catch_data}{Optional data frame of weekly catch data.
+Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}.
+If supplied, the structure must match that of the default.}
 
-\item{input_efficiency_data}{Optional argument for weekly efficiency data.
-Defaults to \verb{SRJPEdata::SRJPEdata::weekly_juvenile_abundance_efficiency_data}. If
-passed in, structure of data frame must match that of the default.}
+\item{input_efficiency_data}{Optional data frame of weekly efficiency
+(mark-recapture) data. Defaults to
+\code{SRJPEdata::weekly_juvenile_abundance_efficiency_data}.
+If supplied, the structure must match that of the default.}
 }
 \value{
-a list:
+A named list with the following elements:
 \itemize{
-\item \strong{pCap_inputs} a list of data and inits for input into the pCap model.
-\item \strong{sites_fit} a list of site names associated with \code{ind_trib}.
+\item \strong{inputs} A list with three sub-elements passed directly to
+\code{fit_pCap_model()}: \code{data} (Stan data list), \code{inits} (initial values
+replicated across 3 chains), and \code{parameters} (character vector of
+parameters to monitor).
+\item \strong{sites_fit} Character vector of site names in the order they are
+indexed by \code{ind_trib} in the Stan data.
+\item \strong{years_fit} Numeric vector of run years in the order they are indexed
+by \code{ind_yr}.
+\item \strong{sites_dropped} The value passed to \code{exclude_from_hyper}; \code{NULL} if
+none were excluded.
+\item \strong{site_year_fit} Data frame with columns \code{site} and \code{run_year} giving
+the unique site-year combinations indexed by \code{ind_yr}.
+\item \strong{model_name} Character. The Stan model name selected
+(\code{"pCap_all_sites"}, \code{"pCap_one_site"}, or \code{"pCap_one_site_skew"}).
+\item \strong{skew} The value passed to the \code{skew} argument.
+\item \strong{site_selection} The value passed to the \code{site_selection} argument.
 }
 }
 \description{
-Prepare inputs for pCap STAN model
+Prepare inputs for the pCap Stan model
 }
 \details{
-This function prepares data for input into a pCap STAN model.
+Prepares the data list, initial values, and indexing structures
+needed to fit the capture probability (pCap) Stan model. Supports two
+model types: a hierarchical model fit across all tributary sites
+(\code{"all_sites"}) and a single-site model for mainstem sites
+(\code{"one_site"}), optionally with a skew-normal process-error distribution.
 }
 \seealso{
 Other Prepare Model Inputs: 
 \code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_abundance_inputs}()},
 \code{\link{prepare_inseason_inputs}()},
 \code{\link{prepare_stock_recruit_inputs}()},
 \code{\link{prepare_survival_inputs}()}

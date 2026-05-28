@@ -31,6 +31,7 @@ survival STAN model. It will prepare these data based on what model you want to 
 \seealso{
 Other Prepare Model Inputs: 
 \code{\link{prepare_P2S_inputs}()},
+\code{\link{prepare_abundance_inputs}()},
 \code{\link{prepare_inseason_inputs}()},
 \code{\link{prepare_pCap_inputs}()},
 \code{\link{prepare_stock_recruit_inputs}()}

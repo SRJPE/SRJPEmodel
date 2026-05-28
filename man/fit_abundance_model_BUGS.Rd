@@ -2,21 +2,40 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{fit_abundance_model_BUGS}
 \alias{fit_abundance_model_BUGS}
-\title{Fit abundance model in BUGS.}
+\title{Fit the BT-SPAS-X abundance model in WinBUGS}
 \usage{
 fit_abundance_model_BUGS(abundance_inputs, bugs_directory)
 }
 \arguments{
-\item{abundance_inputs}{the object produced by \code{prepare_abundance_inputs()}}
+\item{abundance_inputs}{A named list produced by
+\code{prepare_abundance_inputs()}. Must contain \code{inputs$data}, \code{inputs$inits},
+and \code{lt_pCap_Us} (the output of \code{generate_lt_pCap_Us()}).}
 
-\item{bugs_directory}{the filepath pointing to where your WinBUGS14/ directory is}
+\item{bugs_directory}{Character. File path to the WinBUGS 1.4 executable
+directory (e.g. \code{"C:/Program Files/WinBUGS14/"}).}
 }
 \value{
-a BUGS object.
+A \code{bugs} object (from \code{R2WinBUGS}) containing posterior summaries
+and MCMC samples for the parameters \code{lt_pCap_U}, \code{pCap_U}, \code{Usp}, \code{N},
+\code{Ntot}, \code{sd.N}, \code{sd.Ne}, and \code{lg_CumN}. Pass this to
+\code{extract_abundance_estimates()}.
 }
 \description{
-Fit abundance model in BUGS.
+Fit the BT-SPAS-X abundance model in WinBUGS
 }
 \details{
-This function runs the BUGS abundance model.
+Augments the data list from \code{prepare_abundance_inputs()} with the
+logit-scale pCap priors (\code{lt_pCap_mu}, \code{lt_pCap_tau}), writes the BUGS
+model code from \code{SRJPEmodel::bt_spas_x_model_code$abundance_BUGS} to a
+temporary file, and calls \code{R2WinBUGS::bugs()} with fixed MCMC settings
+(3 chains, 2000 iterations, 500 burn-in, thinning by 2).
 }
+\seealso{
+Other Fit model: 
+\code{\link{fit_inseason_model}()},
+\code{\link{fit_pCap_model}()},
+\code{\link{fit_passage_to_spawner_model}()},
+\code{\link{fit_stock_recruit_model}()},
+\code{\link{fit_survival_model}()}
+}
+\concept{Fit model}

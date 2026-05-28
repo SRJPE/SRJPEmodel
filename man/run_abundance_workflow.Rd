@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{run_abundance_workflow}
 \alias{run_abundance_workflow}
-\title{Run abundance BUGS workflow.}
+\title{Run the full abundance estimation workflow for a single site and run year}
 \usage{
 run_abundance_workflow(
   site,
@@ -12,12 +12,34 @@ run_abundance_workflow(
   bugs_directory
 )
 }
+\arguments{
+\item{site}{Character. The site name.}
+
+\item{run_year}{Numeric. The run year.}
+
+\item{pCap_model_object_filepath}{Character. File path to the saved pCap
+\code{stanfit} object (\code{.rds}), read with \code{readRDS()}.}
+
+\item{bugs_model_file}{Character. File path to the WinBUGS model code
+(\code{.bug} file) for the abundance model. Passed to
+\code{fit_abundance_model_BUGS()}.}
+
+\item{bugs_directory}{Character. File path to the WinBUGS 1.4 executable
+directory. Passed to \code{fit_abundance_model_BUGS()}.}
+}
 \value{
-A table.
+On success, the tidy data frame returned by
+\code{extract_abundance_estimates()}. On error, a one-row tibble with columns
+\code{site}, \code{run_year}, and \code{error = TRUE}.
 }
 \description{
-Run abundance BUGS workflow.
+Run the full abundance estimation workflow for a single site and run year
 }
 \details{
-This function runs the abundance BUGS workflow.
+Executes the complete BT-SPAS-X pipeline for one site–run year
+combination in sequence: prepares abundance inputs, loads the pCap model
+object, generates logit-scale pCap priors, fits the BUGS abundance model,
+and extracts tidy results. Errors are caught and returned as a one-row
+tibble with an \code{error} flag so that \code{run_bt_spas_x_JPE_sites()} can
+continue to the next site without stopping.
 }

@@ -2,24 +2,38 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{fit_pCap_model}
 \alias{fit_pCap_model}
-\title{Fit pCap model}
+\title{Fit the pCap Stan model}
 \usage{
 fit_pCap_model(input)
 }
 \arguments{
-\item{input}{A list containing the inputs for the pCap model.}
+\item{input}{A named list produced by \code{prepare_pCap_inputs()}. Must
+contain:
+\itemize{
+\item \code{model_name} — character string identifying which Stan model to run
+(\code{"pCap_all_sites"}, \code{"pCap_one_site"}, or \code{"pCap_one_site_skew"}).
+\item \code{inputs$data} — the Stan data list.
+\item \code{inputs$inits} — initial values (list of 3 chains).
+\item \code{inputs$parameters} — character vector of parameters to monitor.
+}}
 }
 \value{
-a STANfit object with the pCap model fit.
+A \code{stanfit} object containing the posterior samples for the
+pCap model. Pass this object to \code{generate_lt_pCap_Us()} via
+\code{prepare_abundance_inputs()}.
 }
 \description{
-Fit pCap model
+Fit the pCap Stan model
 }
 \details{
-This function prepares the data list for the abundance STAN model based on what the model name is.
+Selects the appropriate Stan model code from
+\code{SRJPEmodel::bt_spas_x_model_code} based on the model name stored in
+\code{input}, then calls \code{rstan::stan()} with fixed MCMC settings (10,000
+iterations, seed 84735, max tree depth 15, using all available cores).
 }
 \seealso{
 Other Fit model: 
+\code{\link{fit_abundance_model_BUGS}()},
 \code{\link{fit_inseason_model}()},
 \code{\link{fit_passage_to_spawner_model}()},
 \code{\link{fit_stock_recruit_model}()},

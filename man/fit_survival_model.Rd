@@ -20,6 +20,7 @@ This model calls a survival STAN model that estimates survival in the Sacramento
 }
 \seealso{
 Other Fit model: 
+\code{\link{fit_abundance_model_BUGS}()},
 \code{\link{fit_inseason_model}()},
 \code{\link{fit_pCap_model}()},
 \code{\link{fit_passage_to_spawner_model}()},

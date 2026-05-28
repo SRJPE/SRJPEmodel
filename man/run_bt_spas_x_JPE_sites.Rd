@@ -2,7 +2,7 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{run_bt_spas_x_JPE_sites}
 \alias{run_bt_spas_x_JPE_sites}
-\title{Run all JPE sites.}
+\title{Run BT-SPAS-X for all JPE sites and run years}
 \usage{
 run_bt_spas_x_JPE_sites(
   sites_to_run,
@@ -13,23 +13,44 @@ run_bt_spas_x_JPE_sites(
   bugs_directory
 )
 }
+\arguments{
+\item{sites_to_run}{Data frame with (at minimum) columns \code{site} and
+\code{run_year} specifying which site–run year combinations to model.}
+
+\item{run_pCap}{Logical. If \code{TRUE}, the pCap model is re-fit before
+running the abundance models and saved to \code{pCap_model_object_filepath}.
+Default \code{FALSE}.}
+
+\item{mainstem}{Passed to \code{prepare_pCap_inputs()} when \code{run_pCap = TRUE}.}
+
+\item{pCap_model_object_filepath}{Character. File path (\code{.rds}) from which
+the pCap model object is read (and to which it is written if
+\code{run_pCap = TRUE}).}
+
+\item{bugs_model_file}{Character. File path to the WinBUGS model code
+(\code{.bug} file) for the abundance model.}
+
+\item{bugs_directory}{Character. File path to the WinBUGS 1.4 executable
+directory.}
+}
 \value{
-A table with the format:
+A tidy data frame combining the output of
+\code{extract_abundance_estimates()} across all site–run year combinations,
+with columns:
 \itemize{
-\item \strong{model_name}
-\item \strong{site}
-\item \strong{run_year}
-\item \strong{week_fit}
-\item \strong{location_fit}
-\item \strong{parameter}
-\item \strong{statistic}
-\item \strong{value}
-\item \strong{srjpedata_version}
+\item \strong{model_name}, \strong{site}, \strong{stream}, \strong{run_year}, \strong{week_fit},
+\strong{parameter}, \strong{statistic}, \strong{value}, \strong{srjpedata_version}
+
+Rows where the model errored are included with only \code{site}, \code{run_year},
+and \code{error = TRUE} columns (from \code{run_abundance_workflow()}).
 }
 }
 \description{
-Run all JPE sites.
+Run BT-SPAS-X for all JPE sites and run years
 }
 \details{
-This function automates running BT-SPAS-X for all JPE sites/run years.
+Iterates over all site–run year combinations in \code{sites_to_run}
+and calls \code{run_abundance_workflow()} for each, with progress reporting.
+Optionally re-fits the pCap model before running abundance. Results from
+all sites are row-bound into a single tidy data frame.
 }

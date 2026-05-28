@@ -2,22 +2,54 @@
 % Please edit documentation in R/juvenile_abundance.R
 \name{generate_lt_pCap_Us}
 \alias{generate_lt_pCap_Us}
-\title{Generate lt_pCap_U values from the pCap model object}
+\title{Generate logit-scale pCap priors for the abundance model}
 \usage{
 generate_lt_pCap_Us(abundance_inputs, pCap_model_object)
 }
 \arguments{
-\item{abundance_inputs}{A list containing the inputs for the site-specific abundance model including
-\code{model_name}, \code{Nstrata}, \code{catch_flow}, \code{use_trib}, \code{Ntribs}, \code{Nmr}, \code{Nwmr}, \code{Nwomr}, \code{Uind_wMR}, \code{Uind_woMR},
-\code{ind_pCap}. This is created by calling \code{prepare_abundance_inputs()}.}
+\item{abundance_inputs}{A named list produced by
+\code{prepare_abundance_inputs()}. The relevant sub-elements are
+\code{model_name}, \code{pCap_model_type}, \code{inputs$data}, \code{lt_pCap_U_data},
+\code{run_year_id}, and \code{year_sd_id}.}
+
+\item{pCap_model_object}{A fitted \code{stanfit} object produced by
+\code{fit_pCap_model()}. Must match the \code{pCap_model_type} recorded in
+\code{abundance_inputs}.}
 }
 \value{
-a named list with the simulated \code{lt_pCap_mu} and \code{lt_pCap_sd} values for
-\code{Nstrata}.
+A named list with two numeric vectors, each of length \code{Nstrata}:
+\itemize{
+\item \strong{lt_pCap_mu} Per-stratum posterior mean of \code{lt_pCap_U} on the logit
+scale.
+\item \strong{lt_pCap_sd} Per-stratum posterior standard deviation of \code{lt_pCap_U}
+on the logit scale.
+}
 }
 \description{
-Generate lt_pCap_U values from the pCap model object
+Generate logit-scale pCap priors for the abundance model
 }
 \details{
-This function prepares the data list for the abundance STAN model based on what the model name is.
+Extracts posterior samples from the fitted pCap Stan model and
+uses them to compute, for each weekly stratum, the mean and standard
+deviation of the logit-scale capture probability distribution
+(\code{lt_pCap_mu}, \code{lt_pCap_sd}). These are passed into the BUGS data list
+as informative priors for \code{lt_pCap_U}.
+
+The computation differs by abundance model variant:
+\itemize{
+\item \code{"all_mark_recap"} — uses the estimated \code{logit_pCap} posterior
+directly for every stratum.
+\item \code{"missing_mark_recap"} — uses \code{logit_pCap} for strata with
+efficiency trials and simulates from the flow-regression + process
+error for strata without.
+\item \code{"no_mark_recap"} — simulates all strata from the flow-regression
+with both process error and year random effect.
+\item \code{"no_mark_recap_no_trib"} — as above, but draws intercept and slope
+from the hyper-distribution (\code{trib_mu_P}, \code{trib_sd_P},
+\code{flow_mu_P}, \code{flow_sd_P}) because no site-specific pCap was
+estimated.
+}
+
+Effort adjustment (\code{log(effort)}) is added to modelled strata in all
+variants except \code{"all_mark_recap"}.
 }
