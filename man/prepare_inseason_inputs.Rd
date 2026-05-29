@@ -47,7 +47,6 @@ as flags and incorporated into the model specification.
 }
 \seealso{
 Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
 \code{\link{prepare_abundance_inputs}()},
 \code{\link{prepare_pCap_inputs}()},
 \code{\link{prepare_stock_recruit_inputs}()},

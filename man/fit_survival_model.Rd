@@ -23,7 +23,6 @@ Other Fit model:
 \code{\link{fit_abundance_model_BUGS}()},
 \code{\link{fit_inseason_model}()},
 \code{\link{fit_pCap_model}()},
-\code{\link{fit_passage_to_spawner_model}()},
 \code{\link{fit_stock_recruit_model}()}
 }
 \concept{Fit model}

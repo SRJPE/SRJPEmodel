@@ -35,7 +35,6 @@ iterations, seed 84735, max tree depth 15, using all available cores).
 Other Fit model: 
 \code{\link{fit_abundance_model_BUGS}()},
 \code{\link{fit_inseason_model}()},
-\code{\link{fit_passage_to_spawner_model}()},
 \code{\link{fit_stock_recruit_model}()},
 \code{\link{fit_survival_model}()}
 }

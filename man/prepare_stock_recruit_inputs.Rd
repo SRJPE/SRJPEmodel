@@ -45,7 +45,6 @@ This function prepares data for input into a stock recruit model.
 }
 \seealso{
 Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
 \code{\link{prepare_abundance_inputs}()},
 \code{\link{prepare_inseason_inputs}()},
 \code{\link{prepare_pCap_inputs}()},

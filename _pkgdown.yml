@@ -28,13 +28,6 @@ reference:
   - extract_pCap_estimates
   - run_abundance_workflow
   - run_bt_spas_x_JPE_sites
-- subtitle: P2S
-  desc: Functions to run P2S
-- contents:
-  - prepare_P2S_inputs
-  - fit_passage_to_spawner_model
-  - extract_P2S_estimates
-  - generate_results_plot_p2s
 - subtitle: Survival
   desc: Functions to run Survival Model
 - contents:
@@ -64,11 +57,9 @@ reference:
   - bt_spas_x_bayes_params
   - bt_spas_x_model_code
   - survival_model_code
-  - p2s_model_code
 - title: Helper and Storage Functions
   desc: Functions used as to generate model data / format model outputs / and interface with the database
 - contents:
-  - compare_P2S_model_covariates
   - get_model_fit
   - get_many_model_fits
   - get_most_recent_model_results
@@ -86,8 +77,6 @@ navbar:
     href: reference/index.html
   - text: 'Articles'
     menu:
-      - text: 'Passage to Spawner Model (P2S)'
-        href: articles/passage_to_spawner_submodel.html
       - text: 'Survival Model'
         href: articles/survival_submodel_documentation.html
 
