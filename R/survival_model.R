@@ -140,7 +140,7 @@ create_sac_survival_data <- function() {
     filter(name == "monthly_max_flow",
            stream %in% c("sacramento river", "feather river", "butte creek")) |>
     arrange(stream, year, month) |>
-    select(stream, year, month, value)
+    select(stream, year, month, value, site_group)
 
   # sacramento data
   sac_data <- SRJPEdata::survival_model_inputs |>
@@ -151,7 +151,8 @@ create_sac_survival_data <- function() {
                 select(year, exceedence = value),
               by = "year") |>
     left_join(max_flows |>
-                filter(stream == "sacramento river") |>
+                filter(stream == "sacramento river",
+                       site_group == "knights landing") |>
                 select(year, month, max_flow = value),
               by = c("month", "year")) |>
     # TODO confirm order of scaling
