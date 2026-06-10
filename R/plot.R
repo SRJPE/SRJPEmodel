@@ -91,6 +91,7 @@ plot_pCap_all_sites <- function(pcap, lb = 0.025, ub = 0.975) {
   lpvec      <- log(pvec / (1 - pvec))
   dens_vals  <- dnorm(lpvec, mean = mean(dp_mu[, 1]), sd = mean(dp_sd[, 1]))
   hyper_df   <- data.frame(pCap = pvec, density = dens_vals)
+  hyper_df$y_pos <- hyper_df$density / max(hyper_df$density) * Ntribs
 
   site_mean_plot <- ggplot2::ggplot(site_df) +
     ggplot2::annotate(
@@ -100,19 +101,30 @@ plot_pCap_all_sites <- function(pcap, lb = 0.025, ub = 0.975) {
       fill = "darkgray", alpha = 0.25
     ) +
     ggplot2::geom_vline(xintercept = hmu, linetype = "dashed") +
+    ggplot2::geom_line(
+      data = hyper_df,
+      ggplot2::aes(x = pCap, y = y_pos),
+      colour = "grey30",
+      linewidth = 0.8,
+      inherit.aes = FALSE
+    ) +
     ggplot2::geom_errorbarh(
-      ggplot2::aes(y = site, xmin = lo, xmax = hi),
+      ggplot2::aes(y = site_ord, xmin = lo, xmax = hi),
       height = 0.3
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(x = mean_pred, y = site),
+      ggplot2::aes(x = mean_pred, y = site_ord),
       shape = 19, size = 2
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(x = obs_mean, y = site),
+      ggplot2::aes(x = obs_mean, y = site_ord),
       shape = 21, colour = "red", size = 2.5
     ) +
     ggplot2::scale_x_continuous(limits = c(0, xmax_dens)) +
+    ggplot2::scale_y_continuous(
+      breaks = seq_len(Ntribs),
+      labels = levels(site_df$site)
+    ) +
     ggplot2::labs(
       x     = "Mean Trap Efficiency",
       y     = NULL,
