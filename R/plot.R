@@ -120,11 +120,11 @@ plot_pCap_all_sites <- function(pcap, lb = 0.025, ub = 0.975) {
       ggplot2::aes(x = obs_mean, y = site_ord),
       shape = 21, colour = "red", size = 2.5
     ) +
-    ggplot2::scale_x_continuous(limits = c(0, xmax_dens)) +
     ggplot2::scale_y_continuous(
       breaks = seq_len(Ntribs),
       labels = levels(site_df$site)
     ) +
+    ggplot2::coord_cartesian(xlim = c(0, xmax_dens)) +
     ggplot2::labs(
       x     = "Mean Trap Efficiency",
       y     = NULL,
