@@ -120,6 +120,15 @@ plot_pCap_all_sites <- function(
   hyper_df <- data.frame(pCap = pvec, density = dens_vals)
   hyper_df$y_pos <- hyper_df$density / max(hyper_df$density) * Ntribs
 
+  site_df <- site_df |>
+    mutate(
+      site_order = ifelse(
+        site_order == "okie dam",
+        "Butte Creek",
+        str_to_title(site_order)
+      )
+    )
+
   site_mean_plot <- ggplot2::ggplot(site_df) +
     ggplot2::annotate(
       "rect",
