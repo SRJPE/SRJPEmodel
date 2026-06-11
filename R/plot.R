@@ -106,7 +106,11 @@ plot_pCap_all_sites <- function(
     levels = site_df$site[order(site_df$site_ord)]
   )
   site_df <- site_df |>
-    mutate(site = ifelse(site == "okie dam", "Butte Creek", str_to_title(site)))
+    mutate(
+      site = str_replace(as.character(site), "okie dam", "Butte Creek"),
+      site = str_to_title(site),
+      site = factor(site, levels = site[order(site_ord)])
+    )
 
   # Hyper-distribution summary
   dp_mu <- as.data.frame(pcap, pars = "trib_mu_P")
