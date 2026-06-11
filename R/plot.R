@@ -1,3 +1,12 @@
+format_site_name <- function(x) {
+  x <- as.character(x)
+  x <- stringr::str_replace(x, "\\bubc\\b", "Upper Battle Creek")
+  x <- stringr::str_replace(x, "\\bucc\\b", "Upper Clear Creek")
+  x <- stringr::str_replace(x, "\\blcc\\b", "Lower Clear Creek")
+  x <- stringr::str_replace(x, "\\bokie dam\\b", "Butte Creek")
+  stringr::str_to_title(x)
+}
+
 #' Plot pCap diagnostics for all sites (tributary) model
 #'
 #' @description Produces three ggplot objects from a fitted `pCap_all_sites`
@@ -107,8 +116,7 @@ plot_pCap_all_sites <- function(
   )
   site_df <- site_df |>
     mutate(
-      site = str_replace(as.character(site), "okie dam", "Butte Creek"),
-      site = str_to_title(site),
+      site = format_site_name(as.character(site)),
       site = factor(site, levels = site[order(site_ord)])
     )
 
@@ -190,13 +198,13 @@ plot_pCap_all_sites <- function(
 
     irecs <- which(ind_trib == i)
     obs_rows <- data.frame(
-      site = sites[i],
+      site = format_site_name(sites[i]),
       flow = mr_flow[irecs],
       pCap = Recaptures[irecs] / Releases[irecs],
       type = "observed"
     )
     curve_rows <- data.frame(
-      site = sites[i],
+      site = format_site_name(sites[i]),
       flow = Qs,
       mean_pred = pred_mat["mean", ],
       lo = pred_mat["lo.2.5%", ],
@@ -256,7 +264,7 @@ plot_pCap_all_sites <- function(
     gen_cut <- pC[pC <= xmax]
 
     data.frame(
-      site = sites[i],
+      site = format_site_name(sites[i]),
       value = c(obs_cut, gen_cut),
       source = c(
         rep("Observed", length(obs_cut)),
@@ -273,7 +281,7 @@ plot_pCap_all_sites <- function(
     pdev <- rnorm(Nsims_h, 0, pro_sd)
     pC <- inv_logit(b0 + pdev)
     data.frame(
-      site = sites[i],
+      site = format_site_name(sites[i]),
       source = c("Observed", "Predicted"),
       xint = c(mean(pCap_obs[irecs]), mean(pC))
     )
@@ -478,7 +486,7 @@ plot_pCap_main <- function(
       linewidth = 0.5
     ) +
     ggplot2::labs(
-      title = site_name,
+      title = format_site_name(site_name),
       x = "Standardized Discharge",
       y = "Capture Probability"
     ) +
@@ -544,7 +552,7 @@ plot_pCap_main <- function(
       values = c("Observed" = "red", "Predicted" = "blue")
     ) +
     ggplot2::labs(
-      title = site_name,
+      title = format_site_name(site_name),
       x = "Capture Probability",
       y = "Density",
       fill = NULL,
@@ -793,7 +801,13 @@ plot_pCap_site_year <- function(
     ) +
     ggplot2::labs(
       x = "",
-      title = paste0(site, " ", run_year, "  Ntot = ", NtotLab)
+      title = paste0(
+        format_site_name(site),
+        " ",
+        run_year,
+        "  Ntot = ",
+        NtotLab
+      )
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -918,7 +932,12 @@ plot_pCap_site_year <- function(
     ) +
     ggplot2::labs(
       x = "First Date of Week",
-      title = paste0(site, " ", run_year, ": Weekly Capture Probability")
+      title = paste0(
+        format_site_name(site),
+        " ",
+        run_year,
+        ": Weekly Capture Probability"
+      )
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -978,7 +997,7 @@ plot_year_re_with_effort <- function(
       input_efficiency_data = input_efficiency_data
     )
     xlabels <- paste(
-      strtrim(pCap_inputs$site_year_fit$site, 3),
+      format_site_name(pCap_inputs$site_year_fit$site),
       pCap_inputs$site_year_fit$run_year,
       sep = "-"
     )
@@ -1020,7 +1039,7 @@ plot_year_re_with_effort <- function(
 
   # Colour-code by site (all_sites only)
   if (model_type == "all_sites") {
-    site_prefix <- strtrim(xlabels, 3)
+    site_prefix <- format_site_name(pCap_inputs$site_year_fit$site)
     uniq_prefix <- unique(site_prefix)
     palette <- rep(
       c("black", "red", "goldenrod2", "purple", "hotpink", "forestgreen"),
@@ -1121,7 +1140,7 @@ plot_year_re_with_effort <- function(
       yr_sd <- dp[[paste0("yr_sd_P[", i, "]")]]
       yrdev <- rnorm(Nsims, 0, yr_sd)
       pdev <- rnorm(Nsims, 0, pro_sd) * use_pdev
-      site_nm <- pCap_inputs$sites_fit[i]
+      site_nm <- format_site_name(pCap_inputs$sites_fit[i])
     } else {
       b0 <- dp[["b0_pCap"]]
       pro_sd <- dp[["pro_sd_P"]]
@@ -1130,7 +1149,7 @@ plot_year_re_with_effort <- function(
       yrdev <- rnorm(Nsims, 0, yr_sd)
       pdev <- brms::rskew_normal(Nsims, 0, pro_sd, alpha, NULL, NULL) *
         use_pdev
-      site_nm <- site_selection
+      site_nm <- format_site_name(site_selection)
     }
 
     irecs2 <- which(pCap_inputs$inputs$data$ind_trib == i)
@@ -1287,7 +1306,7 @@ generate_diagnostic_plot_juv <- function(inputs, results_df) {
       x = "",
       #x = "Date",
       y = "Abundance",
-      title = paste(inputs$site, inputs$run_year)
+      title = paste(format_site_name(inputs$site), inputs$run_year)
     ) +
     #theme(axis.text.x=element_blank()) +
     theme(
@@ -1400,7 +1419,11 @@ plot_juv_data <- function(site, run_year) {
       size = 3
     ) +
     theme_minimal() +
-    labs(x = "", y = "Abundance", title = paste(site, run_year)) +
+    labs(
+      x = "",
+      y = "Abundance",
+      title = paste(format_site_name(site), run_year)
+    ) +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
   efficiency_plot <- data |>
