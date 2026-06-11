@@ -105,6 +105,8 @@ plot_pCap_all_sites <- function(
     site_df$site,
     levels = site_df$site[order(site_df$site_ord)]
   )
+  site_df <- site_df |>
+    mutate(site = ifelse(site == "okie dam", "Butte Creek", str_to_title(site)))
 
   # Hyper-distribution summary
   dp_mu <- as.data.frame(pcap, pars = "trib_mu_P")
@@ -119,15 +121,6 @@ plot_pCap_all_sites <- function(
   dens_vals <- dnorm(lpvec, mean = mean(dp_mu[, 1]), sd = mean(dp_sd[, 1]))
   hyper_df <- data.frame(pCap = pvec, density = dens_vals)
   hyper_df$y_pos <- hyper_df$density / max(hyper_df$density) * Ntribs
-
-  site_df <- site_df |>
-    mutate(
-      site_order = ifelse(
-        site_order == "okie dam",
-        "Butte Creek",
-        str_to_title(site_order)
-      )
-    )
 
   site_mean_plot <- ggplot2::ggplot(site_df) +
     ggplot2::annotate(
