@@ -1,0 +1,27 @@
+name: Sync GitHub Issue → monday.com
+
+on:
+  issues:
+    types: [closed, reopened, labeled, unlabeled, assigned, unassigned]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    uses: FlowWest/infra/.github/workflows/sync-issue-to-monday.yml@main
+    with:
+      issue_url:      ${{ github.event.issue.html_url }}
+      event_action:   ${{ github.event.action }}
+      label_name:     ${{ github.event.label.name || '' }}
+      assignee_login: ${{ github.event.assignee.login || '' }}
+      board_id:           ${{ vars.MONDAY_BOARD_ID }}
+      item_link_col:      ${{ vars.MONDAY_ITEM_LINK_COL }}
+      item_status_col:    ${{ vars.MONDAY_ITEM_STATUS_COL }}
+      item_owner_col:     ${{ vars.MONDAY_ITEM_OWNER_COL }}
+      subitem_board_id:   ${{ vars.MONDAY_SUBITEM_BOARD_ID }}
+      subitem_link_col:   ${{ vars.MONDAY_SUBITEM_LINK_COL }}
+      subitem_status_col: ${{ vars.MONDAY_SUBITEM_STATUS_COL }}
+      subitem_owner_col:  ${{ vars.MONDAY_SUBITEM_OWNER_COL }}
+    secrets:
+      MONDAY_API_TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
