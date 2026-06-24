@@ -11,7 +11,9 @@ plot_year_re_with_effort(
   use_pdev = FALSE,
   use_effort = FALSE,
   lb = 0.025,
-  ub = 0.975
+  ub = 0.975,
+  input_catch_data = NULL,
+  input_efficiency_data = NULL
 )
 }
 \arguments{

@@ -967,9 +967,11 @@ plot_pCap_site_year <- function(
 #' @param lb Numeric. Lower quantile bound. Default `0.025`.
 #' @param ub Numeric. Upper quantile bound. Default `0.975`.
 #'
-#' @returns A named list with two ggplot objects:
+#' @returns A named list with three ggplot objects:
 #'   \describe{
-#'     \item{`yr_re_plot`}{All year random effects.}
+#'     \item{`yr_re_plot`}{All year random effects with run year on the x axis.}
+#'     \item{`yr_re_plot_facet`}{Same as `yr_re_plot`, faceted by site with a
+#'       free x axis and a shared y axis.}
 #'     \item{`site_year_plot`}{Per-site pCap by year (faceted, or single panel
 #'       for `one_site`).}
 #'   }
@@ -996,11 +998,7 @@ plot_year_re_with_effort <- function(
       input_catch_data = input_catch_data,
       input_efficiency_data = input_efficiency_data
     )
-    xlabels <- paste(
-      format_site_name(pCap_inputs$site_year_fit$site),
-      pCap_inputs$site_year_fit$run_year,
-      sep = "-"
-    )
+    xlabels <- as.character(pCap_inputs$site_year_fit$run_year)
     dp <- as.data.frame(
       pcap,
       pars = c("b0_pCap", "yr_re", "yr_sd_P", "pro_sd_P")
@@ -1093,6 +1091,28 @@ plot_year_re_with_effort <- function(
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 7),
       legend.position = if (model_type == "all_sites") "right" else "none"
+    )
+
+  yr_re_df$year_fac <- factor(yr_re_df$label, levels = unique(yr_re_df$label))
+
+  yr_re_plot_facet <- ggplot2::ggplot(yr_re_df, ggplot2::aes(x = year_fac, y = mean_re)) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = lo_re, ymax = hi_re),
+      width = 0.3,
+      colour = "grey40"
+    ) +
+    ggplot2::geom_point(shape = 19, size = 2) +
+    ggplot2::facet_wrap(~site, scales = "free_x") +
+    ggplot2::labs(
+      x = "Run Year",
+      y = "Random Year Effect",
+      title = "Year Random Effects by Site"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 7),
+      legend.position = "none"
     )
 
   # ---- 2. Per-site pCap by year ---------------------------------------------
@@ -1251,7 +1271,11 @@ plot_year_re_with_effort <- function(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 7)
     )
 
-  list(yr_re_plot = yr_re_plot, site_year_plot = site_year_plot)
+  list(
+    yr_re_plot = yr_re_plot,
+    yr_re_plot_facet = yr_re_plot_facet,
+    site_year_plot = site_year_plot
+  )
 }
 
 

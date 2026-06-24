@@ -4,7 +4,14 @@
 \alias{plot_pCap_main}
 \title{Plot pCap flow relationship and predicted vs observed for mainstem sites}
 \usage{
-plot_pCap_main(site_name, pcap, lb = 0.025, ub = 0.975)
+plot_pCap_main(
+  site_name,
+  pcap,
+  lb = 0.025,
+  ub = 0.975,
+  input_catch_data = NULL,
+  input_efficiency_data = NULL
+)
 }
 \arguments{
 \item{site_name}{Character. One of the mainstem sites supported by the

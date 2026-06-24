@@ -4,7 +4,13 @@
 \alias{plot_pCap_all_sites}
 \title{Plot pCap diagnostics for all sites (tributary) model}
 \usage{
-plot_pCap_all_sites(pcap, lb = 0.025, ub = 0.975)
+plot_pCap_all_sites(
+  pcap,
+  lb = 0.025,
+  ub = 0.975,
+  input_catch_data = NULL,
+  input_efficiency_data = NULL
+)
 }
 \arguments{
 \item{pcap}{A fitted Stan model object for the \code{all_sites} pCap model.}
