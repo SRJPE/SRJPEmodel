@@ -250,25 +250,6 @@ prepare_pCap_inputs <- function(
   )]) |>
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
 
-  # test mr_flow replace
-  clean_mr_flow <- mark_recapture_data |>
-    group_by(site) |>
-    mutate(
-      mean_eff_flow = ifelse(
-        log_transform_flow,
-        mean(log_flow_cfs, na.rm = T),
-        mean(flow_cfs, na.rm = T)
-      ),
-      sd_eff_flow = ifelse(
-        log_transform_flow,
-        sd(log_flow_cfs, na.rm = T),
-        sd(flow_cfs, na.rm = T)
-      ),
-      selected_flow_cfs = ifelse(log_transform_flow, log_flow_cfs, flow_cfs),
-      new_mr_flow = (selected_flow_cfs - mean_eff_flow) / sd_eff_flow
-    ) |>
-    ungroup()
-
   # prepare data and inits for one_site and all_sites separately
   if (model_type == "all_sites") {
     # drop sites we don't want used in efficiency estimates
@@ -282,7 +263,11 @@ prepare_pCap_inputs <- function(
       "Releases" = mark_recapture_data$number_released,
       "Recaptures" = mark_recapture_data$number_recaptured,
       "effort" = effort,
-      "mr_flow" = clean_mr_flow$new_mr_flow,
+      "mr_flow" = if (log_transform_flow) {
+        mark_recapture_data$standardized_log_efficiency_flow
+      } else {
+        mark_recapture_data$standardized_efficiency_flow
+      },
       "ind_yr" = mark_recapture_data$site_run_year_id,
       "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
       "sd_yr_ind" = sd_yr_ind
@@ -320,11 +305,11 @@ prepare_pCap_inputs <- function(
       "Releases" = mark_recapture_data$number_released,
       "Recaptures" = mark_recapture_data$number_recaptured,
       "effort" = effort,
-      "mr_flow" = ifelse(
-        log_transform_flow,
-        mark_recapture_data$standardized_log_efficiency_flow,
+      "mr_flow" = if (log_transform_flow) {
+        mark_recapture_data$standardized_log_efficiency_flow
+      } else {
         mark_recapture_data$standardized_efficiency_flow
-      ),
+      },
       "ind_yr" = mark_recapture_data$site_run_year_id,
       "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id))
     )
@@ -793,11 +778,11 @@ prepare_abundance_inputs <- function(
   # data needed for generating lt_pCap_Us
   # also plotting data needs (sorted) for Josh's code
   lt_pCap_U_data <- list(
-    "catch_flow" = ifelse(
-      log_transform_flow,
-      catch_data$log_standardized_flow,
+    "catch_flow" = if (log_transform_flow) {
+      catch_data$log_standardized_flow
+    } else {
       catch_data$standardized_flow
-    ),
+    },
     "use_trib" = indices_sites_pCap,
     "Nwmr" = number_weeks_with_mark_recapture,
     "Nwomr" = number_weeks_without_mark_recapture,
@@ -915,16 +900,16 @@ prepare_abundance_inputs <- function(
     "pCap_model_type" = pCap_model_type,
     "site" = site,
     "run_year" = run_year,
-    "catch_flow_raw" = ifelse(
-      log_transform_flow,
-      catch_data$log_flow_cfs,
+    "catch_flow_raw" = if (log_transform_flow) {
+      catch_data$log_flow_cfs
+    } else {
       catch_data$flow_cfs
-    ),
-    "mr_flow_raw" = ifelse(
-      log_transform_flow,
-      mark_recapture_data$log_flow_cfs,
+    },
+    "mr_flow_raw" = if (log_transform_flow) {
+      mark_recapture_data$log_flow_cfs
+    } else {
       mark_recapture_data$flow_cfs
-    ),
+    },
     "weeks_fit" = weeks_fit$Jwk,
     "week_date" = weeks_fit$date,
     "sites_fit" = sites_fit,
