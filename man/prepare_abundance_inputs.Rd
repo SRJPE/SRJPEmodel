@@ -10,6 +10,7 @@ prepare_abundance_inputs(
   pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
   min_pCap = 5e-04,
   min_pCap_mult = 1,
+  log_transform_flow = FALSE,
   pCap_model_object,
   input_catch_data = NULL,
   input_efficiency_data = NULL
@@ -35,6 +36,14 @@ available and non-zero. Default \code{0.0005}.}
 \item{min_pCap_mult}{Numeric. Multiplier applied to \code{min_pCap} (or to
 the observed minimum efficiency) to allow sensitivity testing. Values
 less than 1 relax the upper bound on \code{N}. Default \code{1.0}.}
+
+\item{log_transform_flow}{Logical. If \code{TRUE}, the log-transformed flow
+(\code{log_standardized_flow}) is used in place of the flow on its natural
+scale (\code{standardized_flow}) when building \code{catch_flow} for
+\code{generate_lt_pCap_Us()}, and \code{catch_flow_raw}/\code{mr_flow_raw} are reported
+as log(cfs) rather than cfs. Should match the value passed to
+\code{log_transform_flow} in \code{prepare_pCap_inputs()} when fitting the
+supplied \code{pCap_model_object}. Default \code{FALSE}.}
 
 \item{pCap_model_object}{A fitted Stan model object produced by
 \code{fit_pCap_model()}. The model type must match \code{pCap_model_type}.}
@@ -67,10 +76,12 @@ on mark-recapture data availability: \code{"all_mark_recap"},
 \item \strong{pCap_model_type} The value passed to \code{pCap_model_type}.
 \item \strong{site} The value passed to \code{site}.
 \item \strong{run_year} The value passed to \code{run_year}.
-\item \strong{catch_flow_raw} Numeric vector of raw flow (cfs) for each week in
-the modelled period.
-\item \strong{mr_flow_raw} Numeric vector of raw flow (cfs) at the time of each
-mark-recapture trial used to fit the pCap model.
+\item \strong{catch_flow_raw} Numeric vector of flow for each week in the
+modelled period, in cfs if \code{log_transform_flow = FALSE} or log(cfs) if
+\code{log_transform_flow = TRUE}.
+\item \strong{mr_flow_raw} Numeric vector of flow at the time of each
+mark-recapture trial used to fit the pCap model, in cfs if
+\code{log_transform_flow = FALSE} or log(cfs) if \code{log_transform_flow = TRUE}.
 \item \strong{weeks_fit} Integer vector of Julian weeks included in the model.
 \item \strong{week_date} Character vector of calendar dates associated with
 \code{weeks_fit}.
@@ -95,11 +106,11 @@ single site and run year. Internally calls \code{generate_lt_pCap_Us()} using
 the supplied pCap model object.
 }
 \seealso{
-Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
-\code{\link{prepare_inseason_inputs}()},
-\code{\link{prepare_pCap_inputs}()},
-\code{\link{prepare_stock_recruit_inputs}()},
-\code{\link{prepare_survival_inputs}()}
+Other Prepare Model Inputs:
+\code{\link[=prepare_P2S_inputs]{prepare_P2S_inputs()}},
+\code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}},
+\code{\link[=prepare_pCap_inputs]{prepare_pCap_inputs()}},
+\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}},
+\code{\link[=prepare_survival_inputs]{prepare_survival_inputs()}}
 }
 \concept{Prepare Model Inputs}

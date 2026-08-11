@@ -24,11 +24,11 @@ a list containing data elements required to run the STAN passage to spawner mode
 This function prepares data for running P2S on a single stream and covariate. It is called in \code{fit_passage_to_spawner_model()}.
 }
 \seealso{
-Other Prepare Model Inputs: 
-\code{\link{prepare_abundance_inputs}()},
-\code{\link{prepare_inseason_inputs}()},
-\code{\link{prepare_pCap_inputs}()},
-\code{\link{prepare_stock_recruit_inputs}()},
-\code{\link{prepare_survival_inputs}()}
+Other Prepare Model Inputs:
+\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}},
+\code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}},
+\code{\link[=prepare_pCap_inputs]{prepare_pCap_inputs()}},
+\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}},
+\code{\link[=prepare_survival_inputs]{prepare_survival_inputs()}}
 }
 \concept{Prepare Model Inputs}

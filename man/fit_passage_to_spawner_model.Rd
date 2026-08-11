@@ -28,11 +28,11 @@ will return the full fitted \code{stanfit} object.
 See \code{vignette("passage_to_spawner_submodel.Rmd", package = "SRJPEmodel")} for more details.
 }
 \seealso{
-Other Fit model: 
-\code{\link{fit_abundance_model_BUGS}()},
-\code{\link{fit_inseason_model}()},
-\code{\link{fit_pCap_model}()},
-\code{\link{fit_stock_recruit_model}()},
-\code{\link{fit_survival_model}()}
+Other Fit model:
+\code{\link[=fit_abundance_model_BUGS]{fit_abundance_model_BUGS()}},
+\code{\link[=fit_inseason_model]{fit_inseason_model()}},
+\code{\link[=fit_pCap_model]{fit_pCap_model()}},
+\code{\link[=fit_stock_recruit_model]{fit_stock_recruit_model()}},
+\code{\link[=fit_survival_model]{fit_survival_model()}}
 }
 \concept{Fit model}

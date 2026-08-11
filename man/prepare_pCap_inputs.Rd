@@ -9,6 +9,7 @@ prepare_pCap_inputs(
   skew = NULL,
   site_selection = NULL,
   exclude_from_hyper = NULL,
+  log_transform_flow = FALSE,
   input_catch_data = NULL,
   input_efficiency_data = NULL
 )
@@ -32,6 +33,11 @@ Must be specified explicitly for \code{"one_site"} models.}
 the hyper-distribution over \code{b0_pCap} and \code{b_flow}. Default \code{NULL}
 (no sites excluded). Values must be present in
 \code{unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)}.}
+
+\item{log_transform_flow}{Logical. If \code{TRUE}, the log-transformed flow
+(\code{log_flow_cfs} / \code{standardized_log_efficiency_flow}) is used to build
+\code{mr_flow} instead of the flow on its natural scale
+(\code{flow_cfs} / \code{standardized_efficiency_flow}). Default \code{FALSE}.}
 
 \item{input_catch_data}{Optional data frame of weekly catch data.
 Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}.
@@ -74,11 +80,11 @@ model types: a hierarchical model fit across all tributary sites
 (\code{"one_site"}), optionally with a skew-normal process-error distribution.
 }
 \seealso{
-Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
-\code{\link{prepare_abundance_inputs}()},
-\code{\link{prepare_inseason_inputs}()},
-\code{\link{prepare_stock_recruit_inputs}()},
-\code{\link{prepare_survival_inputs}()}
+Other Prepare Model Inputs:
+\code{\link[=prepare_P2S_inputs]{prepare_P2S_inputs()}},
+\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}},
+\code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}},
+\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}},
+\code{\link[=prepare_survival_inputs]{prepare_survival_inputs()}}
 }
 \concept{Prepare Model Inputs}

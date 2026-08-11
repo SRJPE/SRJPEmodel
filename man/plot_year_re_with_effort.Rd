@@ -35,9 +35,11 @@ predicted pCap? Default \code{FALSE}.}
 \item{ub}{Numeric. Upper quantile bound. Default \code{0.975}.}
 }
 \value{
-A named list with two ggplot objects:
+A named list with three ggplot objects:
 \describe{
-\item{\code{yr_re_plot}}{All year random effects.}
+\item{\code{yr_re_plot}}{All year random effects with run year on the x axis.}
+\item{\code{yr_re_plot_facet}}{Same as \code{yr_re_plot}, faceted by site with a
+free x axis and a shared y axis.}
 \item{\code{site_year_plot}}{Per-site pCap by year (faceted, or single panel
 for \code{one_site}).}
 }
