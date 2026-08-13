@@ -93,9 +93,17 @@ plot_pCap_all_sites <- function(
   dp_b0 <- as.data.frame(pcap, pars = c("b0_pCap", "pro_sd_P"))
   Nsims <- nrow(dp_b0)
 
+  # Matrix of per-site pCap draws (probability scale). Kept as a matrix
+  # (not just per-site summaries) so we can also compute the network-mean
+  # overlay below as a proper posterior quantity, not a point estimate.
+  pC_mat <- vapply(
+    seq_len(Ntribs),
+    function(i) inv_logit(dp_b0[[paste0("b0_pCap[", i, "]")]]),
+    numeric(Nsims)
+  )
+
   site_stats <- lapply(seq_len(Ntribs), function(i) {
-    b0 <- dp_b0[[paste0("b0_pCap[", i, "]")]]
-    pC <- inv_logit(b0)
+    pC <- pC_mat[, i]
     q <- quantile(pC, probs = c(lb, 0.5, ub))
     irecs <- which(ind_trib == i)
     obs_mean <- sum(Recaptures[irecs]) / sum(Releases[irecs])
@@ -120,11 +128,24 @@ plot_pCap_all_sites <- function(
       site = factor(site, levels = site[order(site_ord)])
     )
 
-  # Hyper-distribution summary
+  # Hyper-distribution parameters, used ONLY for the density curve below
+  # (a visual reference showing the fitted spread of site-level intercepts,
+  # not a point estimate of "the mean"). Kept separate from hmu/hci.
   dp_mu <- as.data.frame(pcap, pars = "trib_mu_P")
   dp_sd <- as.data.frame(pcap, pars = "trib_sd_P")
-  hmu <- inv_logit(mean(dp_mu[, 1]))
-  hci <- inv_logit(quantile(dp_mu[, 1], probs = c(lb, ub)))
+
+  # Network-mean overlay (dashed line) and its uncertainty (shaded band).
+  # This is the average tributary capture probability across sites,
+  # computed as the mean across sites WITHIN each posterior draw and then
+  # summarized across draws, NOT inv_logit(mean(trib_mu_P)). Those are not
+  # the same quantity under the logit link: back-transforming the mean of
+  # a logit-scale distribution understates the mean of the back-transformed
+  # (probability-scale) distribution whenever that distribution has
+  # meaningful spread, which it does here (see BT-SPAS-X manuscript
+  # response to reviewer comments on Figure 5).
+  network_mean_draws <- rowMeans(pC_mat)
+  hmu <- mean(network_mean_draws)
+  hci <- quantile(network_mean_draws, probs = c(lb, ub))
 
   # Hyper-distribution density overlay (logit-normal -> probability scale)
   xmax_dens <- 0.3
@@ -157,15 +178,29 @@ plot_pCap_all_sites <- function(
       height = 0.3
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(x = mean_pred, y = site_ord),
+      ggplot2::aes(
+        x = mean_pred,
+        y = site_ord,
+        colour = "Hierarchical (model) estimate"
+      ),
       shape = 19,
       size = 2
     ) +
     ggplot2::geom_point(
-      ggplot2::aes(x = obs_mean, y = site_ord),
+      ggplot2::aes(
+        x = obs_mean,
+        y = site_ord,
+        colour = "Raw (unpooled) estimate"
+      ),
       shape = 21,
-      colour = "red",
       size = 2.5
+    ) +
+    ggplot2::scale_colour_manual(
+      name = NULL,
+      values = c(
+        "Hierarchical (model) estimate" = "black",
+        "Raw (unpooled) estimate" = "red"
+      )
     ) +
     ggplot2::scale_y_continuous(
       breaks = seq_len(Ntribs),
@@ -177,7 +212,8 @@ plot_pCap_all_sites <- function(
       y = NULL,
       title = "All Sites: Per-Site Capture Probability"
     ) +
-    ggplot2::theme_bw()
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "bottom")
 
   # ---- 3. Flow–pCap curves per site -----------------------------------------
   Qs <- seq(-2, 6, by = 0.1)
