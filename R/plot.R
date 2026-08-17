@@ -7,7 +7,7 @@ format_site_name <- function(x) {
   stringr::str_to_title(x)
 }
 
-#' Plot pCap diagnostics for all sites (tributary) model
+#' Plot pCap diagnostics for tributary sites model
 #'
 #' @description Produces three ggplot objects from a fitted `pCap_all_sites`
 #'   Stan model:
@@ -85,7 +85,7 @@ plot_pCap_all_sites <- function(
     ggplot2::labs(
       x = "Observed Capture Probability",
       y = "Predicted Capture Probability",
-      title = "All Sites: Observed vs. Predicted pCap"
+      title = "Tributary Sites: Observed vs. Predicted pCap"
     ) +
     ggplot2::theme_bw()
 
@@ -210,7 +210,7 @@ plot_pCap_all_sites <- function(
     ggplot2::labs(
       x = "Mean Trap Efficiency",
       y = NULL,
-      title = "All Sites: Per-Site Capture Probability"
+      title = "Tributary Sites: Per-Site Capture Probability"
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(legend.position = "bottom")
@@ -275,7 +275,7 @@ plot_pCap_all_sites <- function(
     ggplot2::labs(
       x = "Standardized Discharge",
       y = "Capture Probability",
-      title = "All Sites: Flow–pCap Relationships"
+      title = "Tributary Sites: Flow–pCap Relationships"
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(legend.position = "none")
@@ -352,7 +352,7 @@ plot_pCap_all_sites <- function(
     ggplot2::labs(
       x = "Capture Probability",
       y = "Density",
-      title = "All Sites: Observed vs. Predicted pCap Distributions",
+      title = "Tributary Sites: Observed vs. Predicted pCap Distributions",
       fill = NULL,
       colour = NULL,
       linetype = NULL
@@ -1131,7 +1131,10 @@ plot_year_re_with_effort <- function(
 
   yr_re_df$year_fac <- factor(yr_re_df$label, levels = unique(yr_re_df$label))
 
-  yr_re_plot_facet <- ggplot2::ggplot(yr_re_df, ggplot2::aes(x = year_fac, y = mean_re)) +
+  yr_re_plot_facet <- ggplot2::ggplot(
+    yr_re_df,
+    ggplot2::aes(x = year_fac, y = mean_re)
+  ) +
     ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
     ggplot2::geom_errorbar(
       ggplot2::aes(ymin = lo_re, ymax = hi_re),

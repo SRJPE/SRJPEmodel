@@ -46,11 +46,11 @@ The function optionally includes covariate effects and autocorrelation, which ar
 as flags and incorporated into the model specification.
 }
 \seealso{
-Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
-\code{\link{prepare_abundance_inputs}()},
-\code{\link{prepare_pCap_inputs}()},
-\code{\link{prepare_stock_recruit_inputs}()},
-\code{\link{prepare_survival_inputs}()}
+Other Prepare Model Inputs:
+\code{\link[=prepare_P2S_inputs]{prepare_P2S_inputs()}},
+\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}},
+\code{\link[=prepare_pCap_inputs]{prepare_pCap_inputs()}},
+\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}},
+\code{\link[=prepare_survival_inputs]{prepare_survival_inputs()}}
 }
 \concept{Prepare Model Inputs}

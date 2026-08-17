@@ -29,11 +29,11 @@ This function prepares the data, initial values, and parameter list needed to ca
 survival STAN model. It will prepare these data based on what model you want to run.
 }
 \seealso{
-Other Prepare Model Inputs: 
-\code{\link{prepare_P2S_inputs}()},
-\code{\link{prepare_abundance_inputs}()},
-\code{\link{prepare_inseason_inputs}()},
-\code{\link{prepare_pCap_inputs}()},
-\code{\link{prepare_stock_recruit_inputs}()}
+Other Prepare Model Inputs:
+\code{\link[=prepare_P2S_inputs]{prepare_P2S_inputs()}},
+\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}},
+\code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}},
+\code{\link[=prepare_pCap_inputs]{prepare_pCap_inputs()}},
+\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}}
 }
 \concept{Prepare Model Inputs}

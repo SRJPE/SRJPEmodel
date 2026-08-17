@@ -29,11 +29,11 @@ in the return object.
 \seealso{
 \link[rstan:stan]{rstan::stan}, \code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}}
 
-Other Fit model: 
-\code{\link{fit_abundance_model_BUGS}()},
-\code{\link{fit_pCap_model}()},
-\code{\link{fit_passage_to_spawner_model}()},
-\code{\link{fit_stock_recruit_model}()},
-\code{\link{fit_survival_model}()}
+Other Fit model:
+\code{\link[=fit_abundance_model_BUGS]{fit_abundance_model_BUGS()}},
+\code{\link[=fit_pCap_model]{fit_pCap_model()}},
+\code{\link[=fit_passage_to_spawner_model]{fit_passage_to_spawner_model()}},
+\code{\link[=fit_stock_recruit_model]{fit_stock_recruit_model()}},
+\code{\link[=fit_survival_model]{fit_survival_model()}}
 }
 \concept{Fit model}

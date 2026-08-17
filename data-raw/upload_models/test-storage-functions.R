@@ -13,16 +13,16 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
 # file path for bugs
-bugs_directory  <- "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"
+bugs_directory <- "C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"
 
 # connect to db
 cfg <- config::get()
 con <- DBI::dbConnect(
   RPostgres::Postgres(),
-  dbname   = cfg$db_name,
-  host     = cfg$db_host,
-  port     = cfg$db_port,
-  user     = cfg$db_user,
+  dbname = cfg$db_name,
+  host = cfg$db_host,
+  port = cfg$db_port,
+  user = cfg$db_user,
   password = cfg$db_password
 )
 on.exit(DBI::dbDisconnect(con), add = TRUE)
@@ -59,26 +59,41 @@ abundance_fit <- fit_abundance_model_BUGS(
 )
 
 store_model_fit(
-  con              = con,
+  con = con,
   model_fit_object = abundance_fit,
-  model_inputs     = abundance_inputs,
-  description      = paste("TEST —", test_site, test_run_year, "abundance", Sys.Date())
+  model_inputs = abundance_inputs,
+  description = paste(
+    "TEST —",
+    test_site,
+    test_run_year,
+    "abundance",
+    Sys.Date()
+  )
 )
 
 
 # download ----------------------------------------------------------------
 
-# pCap models (all sites, one site tisdale, one site knights landing)
+# pCap models (tributary sites, one site tisdale, one site knights landing)
 pCap_all_sites <- get_model_fit("pcap_all_sites")
-pCap_tisdale <- get_model_fit("pcap_one_site", con = con,
-                              site_selection = "tisdale")
-pCap_kdl <- get_model_fit("pcap_one_site", con = con,
-                          site_selection = "knights landing")
+pCap_tisdale <- get_model_fit(
+  "pcap_one_site",
+  con = con,
+  site_selection = "tisdale"
+)
+pCap_kdl <- get_model_fit(
+  "pcap_one_site",
+  con = con,
+  site_selection = "knights landing"
+)
 
 # abundance - all fits for each site/run year
 all_abundance_fits <- get_many_model_fits(con, model_name = "abundance")
 
 # abundance - one fit
-abund_single <- get_model_fit("abundance", con = con,
-                              site = test_site, run_year = test_run_year)
-
+abund_single <- get_model_fit(
+  "abundance",
+  con = con,
+  site = test_site,
+  run_year = test_run_year
+)

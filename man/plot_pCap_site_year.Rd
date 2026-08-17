@@ -13,7 +13,9 @@ plot_pCap_site_year(
   min_pCap_mult = 0.5,
   Nscale = 0.001,
   lb = 0.025,
-  ub = 0.975
+  ub = 0.975,
+  input_catch_data = NULL,
+  input_efficiency_data = NULL
 )
 }
 \arguments{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_pCap_all_sites}
 \alias{plot_pCap_all_sites}
-\title{Plot pCap diagnostics for all sites (tributary) model}
+\title{Plot pCap diagnostics for tributary sites model}
 \usage{
 plot_pCap_all_sites(
   pcap,

@@ -32,11 +32,11 @@ Selects the appropriate Stan model code from
 iterations, seed 84735, max tree depth 15, using all available cores).
 }
 \seealso{
-Other Fit model: 
-\code{\link{fit_abundance_model_BUGS}()},
-\code{\link{fit_inseason_model}()},
-\code{\link{fit_passage_to_spawner_model}()},
-\code{\link{fit_stock_recruit_model}()},
-\code{\link{fit_survival_model}()}
+Other Fit model:
+\code{\link[=fit_abundance_model_BUGS]{fit_abundance_model_BUGS()}},
+\code{\link[=fit_inseason_model]{fit_inseason_model()}},
+\code{\link[=fit_passage_to_spawner_model]{fit_passage_to_spawner_model()}},
+\code{\link[=fit_stock_recruit_model]{fit_stock_recruit_model()}},
+\code{\link[=fit_survival_model]{fit_survival_model()}}
 }
 \concept{Fit model}
