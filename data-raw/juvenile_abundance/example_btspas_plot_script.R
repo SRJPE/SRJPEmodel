@@ -29,7 +29,7 @@ plots_kl <- plot_pCap_main(site_name = "knights landing",
 plots_kl$hist_plot
 plots_kl$flow_plot
 
-pcap_ubc_2010 <- get_model_fit(results_name = "abundance",
+pcap_ubc_2010 <- get_model_fit(results_name = "bt-spas-x",
                                con = con,
                                site = "ubc",
                                run_year = 2010)

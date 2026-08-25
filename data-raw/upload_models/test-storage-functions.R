@@ -87,12 +87,12 @@ pCap_kdl <- get_model_fit(
   site_selection = "knights landing"
 )
 
-# abundance - all fits for each site/run year
-all_abundance_fits <- get_many_model_fits(con, model_name = "abundance")
+# abundance (BT-SPAS-X) - all fits for each site/run year
+all_abundance_fits <- get_many_model_fits(con, model_name = "bt-spas-x")
 
-# abundance - one fit
+# abundance (BT-SPAS-X) - one fit
 abund_single <- get_model_fit(
-  "abundance",
+  "bt-spas-x",
   con = con,
   site = test_site,
   run_year = test_run_year

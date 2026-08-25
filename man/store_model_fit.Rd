@@ -46,6 +46,14 @@ preserved and the latest is always the default when retrieving.
 
 Metadata is extracted automatically from \code{model_inputs}, so the same
 function works for pCap and abundance models without extra arguments.
+For abundance fits, \code{model_inputs$model_name} may be either the specific
+variant \code{prepare_abundance_inputs()} derives (\code{"all_mark_recap"},
+\code{"no_mark_recap"}, \code{"missing_mark_recap"}, \code{"no_mark_recap_no_trib"}) or
+plain \code{"bt-spas-x"} — use the latter when the variant isn't known or
+isn't meaningful to whoever is storing the fit (e.g. a manual upload
+through an app). Both resolve to the same DB \code{model_name}
+(\code{"bt-spas-x"}); the plain form simply records \code{model_type} as \code{NULL}
+instead of the variant.
 Fields that do not apply to a given model type (e.g. \code{skew} for abundance
 models) are stored as \code{NULL} in the database.
 

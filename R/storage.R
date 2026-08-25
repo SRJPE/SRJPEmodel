@@ -16,19 +16,32 @@
 # .approved_model_names: must match the `name` column of the `model_name` table.
 # .abundance_model_types / .pcap_one_site_model_types: the specific variants
 #   stored in the `model_type` column of `model_run`. These map to a single
-#   consolidated model_name in the DB ("abundance" and "pcap_one_site").
+#   consolidated model_name in the DB ("bt-spas-x" and "pcap_one_site").
 # Extend these vectors (and update model_name / model_type accordingly) when
 # adding new model families.
+#
+# The abundance model family is stored under the consolidated name
+# "bt-spas-x" (the actual estimator it runs — a Bayesian Time-Stratified
+# Petersen model), not "abundance"; "abundance" describes the quantity every
+# model type here ultimately estimates, so it isn't specific enough to use
+# as one model family's name.
 
 .approved_model_names <- c(
-  "abundance",
+  "bt-spas-x",
   "pcap_all_sites", "pcap_one_site",
   "p2s", "stock_recruit",
   "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
   "survival_cov_wy", "survival_no_cov"
 )
 
-# Abundance model type variants (stored in model_run.model_type)
+# Abundance (BT-SPAS-X) model type variants (stored in model_run.model_type
+# when present). prepare_abundance_inputs() still derives one of these
+# internally to pick the right BUGS model file, and store_model_fit() still
+# accepts them directly from that pipeline (preserving model_type provenance
+# for pipeline-driven runs). They are *not* meant to be chosen by a human
+# uploading a fit manually (e.g. via a Shiny app) — for that, use the plain
+# "bt-spas-x" name below instead, which consolidates to itself and records
+# model_type = NULL.
 .abundance_model_types <- c(
   "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib"
 )
@@ -36,19 +49,24 @@
 # pCap one-site model type variants (stored in model_run.model_type)
 .pcap_one_site_model_types <- c("standard", "skew")
 
-# Maps a model_inputs$model_name to the consolidated DB model_name
+# Maps a model_inputs$model_name to the consolidated DB model_name.
+# Names absent from this lookup (e.g. "bt-spas-x" itself) consolidate to
+# themselves — see store_model_fit()'s `results_name` resolution below.
 .model_name_lookup <- c(
-  all_mark_recap        = "abundance",
-  no_mark_recap         = "abundance",
-  missing_mark_recap    = "abundance",
-  no_mark_recap_no_trib = "abundance",
+  all_mark_recap        = "bt-spas-x",
+  no_mark_recap         = "bt-spas-x",
+  missing_mark_recap    = "bt-spas-x",
+  no_mark_recap_no_trib = "bt-spas-x",
   pcap_one_site         = "pcap_one_site",
   pcap_one_site_skew    = "pcap_one_site"
 )
 
-# All valid values for model_inputs$model_name (inputs-level names, pre-consolidation)
+# All valid values for model_inputs$model_name (inputs-level names, pre-consolidation).
+# "bt-spas-x" is included alongside the granular .abundance_model_types so a
+# caller that doesn't know (or care about) the specific variant — e.g. a
+# manual upload — can pass "bt-spas-x" directly.
 .approved_input_model_names <- c(
-  .abundance_model_types,
+  .abundance_model_types, "bt-spas-x",
   "pcap_all_sites", "pcap_one_site", "pcap_one_site_skew",
   "p2s", "stock_recruit",
   "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
@@ -56,7 +74,7 @@
 )
 
 # Model class lookup for validation
-.bugs_input_models <- .abundance_model_types
+.bugs_input_models <- c(.abundance_model_types, "bt-spas-x")
 .stan_input_models <- setdiff(.approved_input_model_names, .bugs_input_models)
 
 
@@ -71,6 +89,14 @@
 #'
 #' Metadata is extracted automatically from `model_inputs`, so the same
 #' function works for pCap and abundance models without extra arguments.
+#' For abundance fits, `model_inputs$model_name` may be either the specific
+#' variant `prepare_abundance_inputs()` derives (`"all_mark_recap"`,
+#' `"no_mark_recap"`, `"missing_mark_recap"`, `"no_mark_recap_no_trib"`) or
+#' plain `"bt-spas-x"` — use the latter when the variant isn't known or
+#' isn't meaningful to whoever is storing the fit (e.g. a manual upload
+#' through an app). Both resolve to the same DB `model_name`
+#' (`"bt-spas-x"`); the plain form simply records `model_type` as `NULL`
+#' instead of the variant.
 #' Fields that do not apply to a given model type (e.g. `skew` for abundance
 #' models) are stored as `NULL` in the database.
 #'
@@ -171,7 +197,7 @@ store_model_fit <- function(con,
     ))
   }
 
-  # Resolve the consolidated DB model name (e.g. "all_mark_recap" -> "abundance")
+  # Resolve the consolidated DB model name (e.g. "all_mark_recap" -> "bt-spas-x")
   results_name <- unname(.model_name_lookup[input_model_name])
   if (is.na(results_name)) results_name <- input_model_name
 
@@ -255,7 +281,7 @@ store_model_fit <- function(con,
 #'
 #' @param results_name The model type name used when the fit was stored. Must
 #'   be one of `.approved_model_names` (e.g. `"pcap_one_site"`,
-#'   `"abundance"`).
+#'   `"bt-spas-x"`).
 #' @param con Optional. A database connection object (e.g. from
 #'   [DBI::dbConnect()]). Required when using `site`, `run_year`, or
 #'   `site_selection` filters.
@@ -307,7 +333,7 @@ get_model_fit <- function(results_name,
     cli::cli_abort(c(
       "{.arg results_name} must be one of the approved DB model names.",
       "i" = "Approved names: {.val {(.approved_model_names)}}",
-      "i" = "For abundance fits use {.val {'abundance'}}; for pCap one-site use {.val {'pcap_one_site'}}.",
+      "i" = "For abundance (BT-SPAS-X) fits use {.val {'bt-spas-x'}}; for pCap one-site use {.val {'pcap_one_site'}}.",
       "x" = "Got: {.val {results_name}}"
     ))
   }
@@ -433,7 +459,7 @@ list_model_versions <- function(results_name,
 #'
 #' @param con A database connection object (e.g. from [DBI::dbConnect()]).
 #' @param model_name The consolidated DB model name to retrieve. Must be one of
-#'   `.approved_model_names` (e.g. `"abundance"`, `"pcap_one_site"`). The
+#'   `.approved_model_names` (e.g. `"bt-spas-x"`, `"pcap_one_site"`). The
 #'   specific model variant used for each fit is stored in the `model_type`
 #'   column of `model_run` and is not used for filtering here.
 #' @param sites Optional character vector of sites to include (e.g.
@@ -454,14 +480,14 @@ list_model_versions <- function(results_name,
 #'
 #' @examples
 #' \dontrun{
-#' # All abundance fits for every site × run_year
-#' fits <- get_many_model_fits(con, model_name = "abundance")
+#' # All abundance (BT-SPAS-X) fits for every site × run_year
+#' fits <- get_many_model_fits(con, model_name = "bt-spas-x")
 #'
 #' # Filter to specific sites or run years
-#' fits <- get_many_model_fits(con, model_name = "abundance",
+#' fits <- get_many_model_fits(con, model_name = "bt-spas-x",
 #'                             sites = c("ubc", "lcc", "mill creek"))
 #'
-#' fits <- get_many_model_fits(con, model_name = "abundance",
+#' fits <- get_many_model_fits(con, model_name = "bt-spas-x",
 #'                             run_years = 2020:2024)
 #'
 #' # Access a single result from the list
@@ -588,7 +614,7 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
   # ── Resolve consolidated DB model_name and model_type ─────────────────────
   # input_model_name is the specific variant (e.g. "all_mark_recap",
   # "pcap_one_site_skew"). results_name is the consolidated DB name
-  # (e.g. "abundance", "pcap_one_site"). model_type stores the variant.
+  # (e.g. "bt-spas-x", "pcap_one_site"). model_type stores the variant.
   input_model_name <- str_to_lower(model_inputs$model_name)
   results_name     <- unname(.model_name_lookup[input_model_name])
   if (is.na(results_name)) results_name <- input_model_name

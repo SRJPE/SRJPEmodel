@@ -18,7 +18,7 @@ get_many_model_fits(
 \item{con}{A database connection object (e.g. from \code{\link[DBI:dbConnect]{DBI::dbConnect()}}).}
 
 \item{model_name}{The consolidated DB model name to retrieve. Must be one of
-\code{.approved_model_names} (e.g. \code{"abundance"}, \code{"pcap_one_site"}). The
+\code{.approved_model_names} (e.g. \code{"bt-spas-x"}, \code{"pcap_one_site"}). The
 specific model variant used for each fit is stored in the \code{model_type}
 column of \code{model_run} and is not used for filtering here.}
 
@@ -55,14 +55,14 @@ present in \code{model_run} for the given \code{model_name}.
 }
 \examples{
 \dontrun{
-# All abundance fits for every site × run_year
-fits <- get_many_model_fits(con, model_name = "abundance")
+# All abundance (BT-SPAS-X) fits for every site × run_year
+fits <- get_many_model_fits(con, model_name = "bt-spas-x")
 
 # Filter to specific sites or run years
-fits <- get_many_model_fits(con, model_name = "abundance",
+fits <- get_many_model_fits(con, model_name = "bt-spas-x",
                             sites = c("ubc", "lcc", "mill creek"))
 
-fits <- get_many_model_fits(con, model_name = "abundance",
+fits <- get_many_model_fits(con, model_name = "bt-spas-x",
                             run_years = 2020:2024)
 
 # Access a single result from the list
