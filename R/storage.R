@@ -648,18 +648,23 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
   }
 
   # ── Model-specific metadata (all nullable) ─────────────────────────────────
+  # Uses [[ (exact match) rather than $ (partial match) — with $, a lookup
+  # for the absent "site" key would silently partial-match the present
+  # "site_selection" key on every pCap one-site upload, incorrectly copying
+  # the site_selection value into the site column instead of leaving it NULL.
+  #
   # Abundance models
-  site     <- model_inputs$site     %||% NA_character_
-  run_year <- model_inputs$run_year %||% NA_integer_
+  site     <- model_inputs[["site"]]     %||% NA_character_
+  run_year <- model_inputs[["run_year"]] %||% NA_integer_
 
   # pCap one_site models
-  skew           <- model_inputs$skew           %||% NA
-  site_selection <- model_inputs$site_selection %||% NA_character_
+  skew           <- model_inputs[["skew"]]           %||% NA
+  site_selection <- model_inputs[["site_selection"]] %||% NA_character_
 
   # pCap all_sites: sites excluded from the hyper-distribution.
   # prepare_pCap_inputs() stores this as $sites_dropped (mirrors exclude_from_hyper arg).
   # Stored as a Postgres TEXT[] — NULL if nothing was excluded.
-  sites_excluded <- model_inputs$sites_dropped
+  sites_excluded <- model_inputs[["sites_dropped"]]
 
   # ── INSERT ─────────────────────────────────────────────────────────────────
   # Use dbAppendTable() so RPostgres handles type serialisation natively —
