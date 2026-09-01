@@ -158,7 +158,10 @@ list_canonical_model_runs <- function(con, results_name = NULL) {
     dplyr::group_by(dplyr::across(dplyr::all_of(scope_cols))) |>
     dplyr::slice_max(set_at, n = 1, with_ties = FALSE) |>
     dplyr::ungroup() |>
-    dplyr::inner_join(dplyr::tbl(con, "model_name"), by = c("model_name_id" = "id")) |>
+    dplyr::inner_join(
+      dplyr::tbl(con, "model_name") |> dplyr::select(id, name),
+      by = c("model_name_id" = "id")
+    ) |>
     dplyr::rename(model_name = name) |>
     dplyr::inner_join(
       dplyr::tbl(con, "model_run") |>

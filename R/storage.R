@@ -355,8 +355,10 @@ get_model_fit <- function(results_name,
     if (using_filters) {
       # Query DB for the most recent matching model_run record
       query <- dplyr::tbl(con, "model_run") |>
-        dplyr::inner_join(dplyr::tbl(con, "model_name"),
-                          by = c("model_name_id" = "id")) |>
+        dplyr::inner_join(
+          dplyr::tbl(con, "model_name") |> dplyr::select(id, name),
+          by = c("model_name_id" = "id")
+        ) |>
         dplyr::filter(name == results_name)
 
       if (!is.null(site))           query <- dplyr::filter(query, site           == !!site)
@@ -513,7 +515,10 @@ get_many_model_fits <- function(con,
 
   # ── Query DB for the most recent run per site × run_year ───────────────────
   runs <- dplyr::tbl(con, "model_run") |>
-    dplyr::inner_join(dplyr::tbl(con, "model_name"), by = c("model_name_id" = "id")) |>
+    dplyr::inner_join(
+      dplyr::tbl(con, "model_name") |> dplyr::select(id, name),
+      by = c("model_name_id" = "id")
+    ) |>
     dplyr::filter(name == model_name) |>
     dplyr::filter(!is.na(site), !is.na(run_year))
 
