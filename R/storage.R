@@ -186,7 +186,7 @@ store_model_fit <- function(con,
                             container_name  = "model-results",
                             access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
 
-  input_model_name <- str_to_lower(model_inputs$model_name)
+  input_model_name <- stringr::str_to_lower(model_inputs$model_name)
 
   # ── Validate input model name ──────────────────────────────────────────────
   if (!input_model_name %in% .approved_input_model_names) {
@@ -620,7 +620,7 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
   # input_model_name is the specific variant (e.g. "all_mark_recap",
   # "pcap_one_site_skew"). results_name is the consolidated DB name
   # (e.g. "bt-spas-x", "pcap_one_site"). model_type stores the variant.
-  input_model_name <- str_to_lower(model_inputs$model_name)
+  input_model_name <- stringr::str_to_lower(model_inputs$model_name)
   results_name     <- unname(.model_name_lookup[input_model_name])
   if (is.na(results_name)) results_name <- input_model_name
   model_type       <- if (input_model_name != results_name) input_model_name else NA_character_
