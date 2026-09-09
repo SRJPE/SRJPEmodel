@@ -27,11 +27,9 @@
 # as one model family's name.
 
 .approved_model_names <- c(
-  "bt-spas-x",
+  "bt-spas-x", "plad_btspasx_results",
   "pcap_all_sites", "pcap_one_site",
-  "p2s", "stock_recruit",
-  "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
-  "survival_cov_wy", "survival_no_cov"
+  "stock_recruit", "survival", "inseason", "plad"
 )
 
 # Abundance (BT-SPAS-X) model type variants (stored in model_run.model_type
@@ -66,11 +64,9 @@
 # caller that doesn't know (or care about) the specific variant — e.g. a
 # manual upload — can pass "bt-spas-x" directly.
 .approved_input_model_names <- c(
-  .abundance_model_types, "bt-spas-x",
+  .abundance_model_types, "bt-spas-x", "plad_btspasx_results",
   "pcap_all_sites", "pcap_one_site", "pcap_one_site_skew",
-  "p2s", "stock_recruit",
-  "beta_dev_hbmrt", "beta_dv_hbmrt_lag1",
-  "survival_cov_wy", "survival_no_cov"
+  "stock_recruit", "survival", "inseason", "plad"
 )
 
 # Model class lookup for validation
@@ -106,7 +102,7 @@
 #' | Slot | DB column | Model type |
 #' |---|---|---|
 #' | `$model_name` | — | All (required) |
-#' | `$site` | `site` | Abundance |
+#' | `$site` | `site` | Abundance, inseason, PLAD |
 #' | `$run_year` | `run_year` | Abundance |
 #' | `$skew` | `skew` | pCap one_site |
 #' | `$site_selection` | `site_selection` | pCap one_site |
