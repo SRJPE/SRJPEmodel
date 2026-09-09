@@ -69,9 +69,15 @@
   "stock_recruit", "survival", "inseason", "plad"
 )
 
+# Model types whose stored object is tabular results (e.g. read from a CSV)
+# rather than a fitted `bugs`/`stanfit` model — no object-class validation
+# applies to these in store_model_fit().
+.data_input_models <- c("plad", "plad_btspasx_results")
+
 # Model class lookup for validation
 .bugs_input_models <- c(.abundance_model_types, "bt-spas-x")
-.stan_input_models <- setdiff(.approved_input_model_names, .bugs_input_models)
+.stan_input_models <- setdiff(.approved_input_model_names,
+                              c(.bugs_input_models, .data_input_models))
 
 
 # ── store_model_fit() ─────────────────────────────────────────────────────────
@@ -114,7 +120,10 @@
 #'
 #' @param con A database connection object (e.g. from [DBI::dbConnect()]).
 #' @param model_fit_object The fitted model object to store. Must be of class
-#'   `stanfit` (Stan models) or `bugs` (WinBUGS / OpenBUGS models).
+#'   `stanfit` (Stan models) or `bugs` (WinBUGS / OpenBUGS models) — except
+#'   for model types in `.data_input_models` (currently `"plad"` and
+#'   `"plad_btspasx_results"`), which store tabular results (e.g. read from a
+#'   CSV) rather than a fitted model, so no class check applies.
 #' @param model_inputs The inputs list returned by the relevant
 #'   `prepare_*_inputs()` function.
 #' @param description A human-readable description of this model run (e.g.
