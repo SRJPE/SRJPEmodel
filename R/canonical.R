@@ -24,10 +24,11 @@
 # output (joined from model_run), just not part of the lookup key.
 #
 # ── Public API ────────────────────────────────────────────────────────────────
-#   set_canonical_model_run()   Record a model_run as canonical for a scope.
-#   list_canonical_model_runs() Current canonical designation per scope.
-#   get_canonical_history()     Full audit trail for one scope.
-#   get_canonical_model_fit()   Download the current canonical fit for a scope.
+#   set_canonical_model_run()      Record a model_run as canonical for a scope.
+#   list_canonical_model_runs()    Current canonical designation per scope.
+#   get_canonical_history()        Full audit trail for one scope.
+#   get_canonical_model_fit()      Download the current canonical fit for a scope.
+#   get_many_canonical_model_fits() Download canonical fits for many site × run_year scopes.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -283,4 +284,160 @@ get_canonical_model_fit <- function(con, results_name, site = NULL,
 #' @keywords internal
 .version_from_blob_url <- function(url) {
   basename(dirname(url))
+}
+
+
+# ── get_many_canonical_model_fits() ─────────────────────────────────────────
+
+#' @title Retrieve Multiple Canonical Model Fit Objects
+#' @description
+#' Downloads the current canonical fit for every scope matching `model_name`
+#' (and any supplied filters), resolved via [list_canonical_model_runs()]
+#' rather than "most recent version" — the batch analog of
+#' [get_canonical_model_fit()]. Unlike [get_many_model_fits()] (which is
+#' specific to the site × run_year scope of abundance models), this works
+#' across all scope shapes used in `canonical_model_run`:
+#'
+#' * **bt-spas-x / plad_btspasx_results** — scoped by site × run_year (PLAD
+#'   fits omit run_year and are scoped by site alone).
+#' * **pcap_one_site** — scoped by `site_selection` (e.g. `"tisdale"`,
+#'   `"knights landing"`).
+#' * **pcap_all_sites / other unscoped model types** — a single canonical fit
+#'   with no site/run_year/site_selection scope.
+#'
+#' A single call only spans scopes for one `model_name` at a time — e.g. call
+#' once with `"bt-spas-x"` and once with `"pcap_one_site"` to get both
+#' families.
+#'
+#' @param con A database connection object (e.g. from [DBI::dbConnect()]).
+#' @param model_name The consolidated DB model name to retrieve. Must be one of
+#'   `.approved_model_names` (e.g. `"bt-spas-x"`, `"pcap_one_site"`).
+#' @param sites Optional character vector of sites to include (e.g.
+#'   `c("ubc", "lcc")`). Applies to site-scoped model types (bt-spas-x,
+#'   plad_btspasx_results). When `NULL` all sites are returned.
+#' @param run_years Optional integer vector of run years to include (e.g.
+#'   `2020:2024`). Applies to bt-spas-x. When `NULL` all run years are
+#'   returned.
+#' @param site_selections Optional character vector of `site_selection`
+#'   values to include (e.g. `c("tisdale", "knights landing")`). Applies to
+#'   pcap_one_site. When `NULL` all site selections are returned.
+#' @param storage_account Azure storage account name. Defaults to
+#'   `"jpemodelresults"`.
+#' @param container_name Azure blob container name. Defaults to
+#'   `"model-results"`.
+#' @param access_key Azure storage access key with **read** permissions.
+#'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
+#'
+#' @return A named list of model fit objects. Names depend on the scope of
+#'   `model_name`: `"<site>_<run_year>"` for bt-spas-x (e.g. `"ubc_2020"`),
+#'   `"<site>"` for site-only scopes like plad_btspasx_results,
+#'   `"<site_selection>"` for pcap_one_site (e.g. `"tisdale"`), or
+#'   `model_name` itself for unscoped model types like pcap_all_sites. Any
+#'   scope that fails to download is returned as `NULL` with a warning rather
+#'   than aborting the whole batch.
+#'
+#' @examples
+#' \dontrun{
+#' # All canonical abundance (BT-SPAS-X) fits for every site × run_year
+#' fits <- get_many_canonical_model_fits(con, model_name = "bt-spas-x")
+#'
+#' # Filter to specific sites or run years
+#' fits <- get_many_canonical_model_fits(con, model_name = "bt-spas-x",
+#'                                       sites = c("ubc", "lcc", "mill creek"))
+#'
+#' fits <- get_many_canonical_model_fits(con, model_name = "bt-spas-x",
+#'                                       run_years = 2020:2024)
+#'
+#' # Canonical pCap one-site fits for tisdale and knights landing
+#' fits <- get_many_canonical_model_fits(con, model_name = "pcap_one_site",
+#'                                       site_selections = c("tisdale", "knights landing"))
+#'
+#' # The single canonical pCap all-sites fit
+#' fits <- get_many_canonical_model_fits(con, model_name = "pcap_all_sites")
+#' }
+#' @export
+get_many_canonical_model_fits <- function(con,
+                                          model_name,
+                                          sites           = NULL,
+                                          run_years       = NULL,
+                                          site_selections = NULL,
+                                          storage_account = "jpemodelresults",
+                                          container_name  = "model-results",
+                                          access_key      = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
+
+  # ── Validate model name ────────────────────────────────────────────────────
+  if (!model_name %in% .approved_model_names) {
+    cli::cli_abort(c(
+      "{.arg model_name} must be one of the approved model names.",
+      "i" = "Approved names: {.val {(.approved_model_names)}}",
+      "x" = "Got: {.val {model_name}}"
+    ))
+  }
+
+  # ── Resolve the current canonical designation for every matching scope ─────
+  canonical <- list_canonical_model_runs(con, results_name = model_name)
+
+  if (!is.null(sites))           canonical <- dplyr::filter(canonical, site %in% sites)
+  if (!is.null(run_years))       canonical <- dplyr::filter(canonical, run_year %in% run_years)
+  if (!is.null(site_selections)) canonical <- dplyr::filter(canonical, site_selection %in% site_selections)
+
+  if (nrow(canonical) == 0) {
+    cli::cli_warn("No canonical model runs found matching the supplied filters.")
+    return(list())
+  }
+
+  cli::cli_alert_info(
+    "Downloading {nrow(canonical)} canonical fit{?s} for {.val {model_name}} from Azure Blob Storage."
+  )
+
+  # ── Download each fit from blob ────────────────────────────────────────────
+  board <- model_pin_board(storage_account, container_name, model_name,
+                           access_key = access_key)
+
+  keys <- .canonical_fit_keys(canonical, model_name)
+
+  fits <- vector("list", nrow(canonical))
+  names(fits) <- keys
+
+  for (i in seq_len(nrow(canonical))) {
+    key <- names(fits)[i]
+
+    fits[[key]] <- tryCatch({
+      version <- .version_from_blob_url(canonical$blob_fit_storage_url[i])
+      pins::pin_read(board, model_name, version = version)
+    }, error = function(e) {
+      cli::cli_warn("Failed to download {.val {key}}: {e$message}")
+      NULL
+    })
+
+    cli::cli_progress_message("  Downloaded {i}/{nrow(canonical)}: {key}")
+  }
+
+  n_ok   <- sum(!vapply(fits, is.null, logical(1)))
+  n_fail <- nrow(canonical) - n_ok
+
+  cli::cli_alert_success("Downloaded {n_ok}/{nrow(canonical)} canonical fit{?s} successfully.")
+  if (n_fail > 0) {
+    cli::cli_alert_warning("{n_fail} fit{?s} failed — returned as NULL in the list.")
+  }
+
+  fits
+}
+
+
+#' Builds a result-list key per row of a `list_canonical_model_runs()` tibble,
+#' based on whichever scope columns are actually populated for that row (they
+#' vary by model type): `"<site>_<run_year>"` for bt-spas-x, `"<site>"` for
+#' site-only scopes (e.g. plad_btspasx_results), `"<site_selection>"` for
+#' pcap_one_site, and `model_name` itself when no scope column is populated
+#' (e.g. pcap_all_sites).
+#' @keywords internal
+.canonical_fit_keys <- function(canonical, model_name) {
+  dplyr::case_when(
+    !is.na(canonical$site) & !is.na(canonical$run_year) ~
+      paste0(canonical$site, "_", canonical$run_year),
+    !is.na(canonical$site_selection) ~ canonical$site_selection,
+    !is.na(canonical$site)           ~ canonical$site,
+    TRUE                             ~ model_name
+  )
 }

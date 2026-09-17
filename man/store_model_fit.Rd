@@ -18,7 +18,10 @@ store_model_fit(
 \item{con}{A database connection object (e.g. from \code{\link[DBI:dbConnect]{DBI::dbConnect()}}).}
 
 \item{model_fit_object}{The fitted model object to store. Must be of class
-\code{stanfit} (Stan models) or \code{bugs} (WinBUGS / OpenBUGS models).}
+\code{stanfit} (Stan models) or \code{bugs} (WinBUGS / OpenBUGS models) — except
+for model types in \code{.data_input_models} (currently \code{"plad"} and
+\code{"plad_btspasx_results"}), which store tabular results (e.g. read from a
+CSV) rather than a fitted model, so no class check applies.}
 
 \item{model_inputs}{The inputs list returned by the relevant
 \verb{prepare_*_inputs()} function.}
@@ -61,7 +64,7 @@ The \code{model_inputs} list is expected to carry the following slots depending
 on model type:\tabular{lll}{
    Slot \tab DB column \tab Model type \cr
    \verb{$model_name} \tab — \tab All (required) \cr
-   \verb{$site} \tab \code{site} \tab Abundance \cr
+   \verb{$site} \tab \code{site} \tab Abundance, inseason, PLAD \cr
    \verb{$run_year} \tab \code{run_year} \tab Abundance \cr
    \verb{$skew} \tab \code{skew} \tab pCap one_site \cr
    \verb{$site_selection} \tab \code{site_selection} \tab pCap one_site \cr
