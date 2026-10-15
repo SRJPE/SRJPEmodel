@@ -84,7 +84,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   }
 
   # available sites for fitting
-  available_sites <- c("ubc", "okie dam", "lcc", "ucc", "deer creek", "eye riffle",
+  available_sites <- c("ubc", "butte creek", "lcc", "ucc", "deer creek", "eye riffle",
                        "gateway riffle", "herringer riffle", "live oak",
                        "steep riffle", "sunset pumps", "mill creek", "hallwood")
   mainstem_sites <- c("red bluff diversion dam", "knights landing", "tisdale")
