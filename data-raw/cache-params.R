@@ -14,7 +14,7 @@ usethis::use_data(forecast_seed, overwrite = TRUE)
 site_order_north_south <- tibble("ns_order" = 1:15,
                                  "site" = c("lcc", "ucc", "ubc",
                                             "mill creek", "deer creek",
-                                            "okie dam",
+                                            "butte creek",
                                             "steep riffle", "eye riffle",
                                             "gateway riffle", "herringer riffle",
                                             "live oak", "sunset pumps",
