@@ -1,29 +1,46 @@
 Package: SRJPEmodel
-Title: Stores Code and Documentation for the Spring Run Juvenile Production Estimate Model 
-Version: 0.0.0.9000
+Title: Stores Code and Documentation for the Spring Run Juvenile Production Estimate Model
+Version: 0.1.0
 Authors@R: c(person("Ashley", "Vizek", , "avizek@flowwest.com", role = c("aut", "cre")),
              person("Erin", "Cain", , "ecain@flowwest.com", role = c("aut")),
              person("Liz", "Stebbins", , "lstebbins@flowwest.com", role = c("aut")))
-Description: This package contains functions to run submodels of the Spring Run Juvenile Production Estimate (SRJPE) forecast. 
+Description: This package contains functions to run submodels of the Spring Run Juvenile Production Estimate (SRJPE) forecast.
 License: GPL-3
-Imports: 
-    rstanarm,
-    here,
-    scales,
-    dplyr,
-    cli,
-    rstan,
-    splines2,
-    gtools,
-    readr,
-    R2WinBUGS,
-    brms
-Suggests: 
+URL: https://SRJPE.github.io/SRJPEmodel/, https://github.com/SRJPE/SRJPEmodel
+BugReports: https://github.com/SRJPE/SRJPEmodel/issues
+Depends:
+    R (>= 4.1.0)
+Imports:
+    AzureStor (>= 3.7.0),
+    brms (>= 2.23.0),
+    cli (>= 3.6.0),
+    DBI (>= 1.3.0),
+    dplyr (>= 1.1.0),
+    ggplot2 (>= 3.5.0),
+    glue (>= 1.8.0),
+    gridExtra (>= 2.3),
+    parallel,
+    pins (>= 1.4.0),
+    purrr (>= 1.0.0),
+    R2WinBUGS (>= 2.1.0),
+    readr (>= 2.1.0),
+    rstan (>= 2.32.0),
+    splines2 (>= 0.5.0),
+    SRJPEdata,
+    stringr (>= 1.5.0),
+    tibble (>= 3.2.0),
+    tidyr (>= 1.3.0),
+    utils
+Suggests:
+    knitr,
+    rmarkdown,
+    RPostgres,
     testthat (>= 3.0.0)
+Remotes:
+    SRJPE/SRJPEdata
 Config/testthat/edition: 3
+Config/testthat/parallel: true
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-Depends: 
-    R (>= 3.5)
 LazyData: true
 Config/roxygen2/version: 8.0.0

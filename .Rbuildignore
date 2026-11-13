@@ -7,3 +7,12 @@
 ^\.claude$
 ^planning$
 ^archive$
+^data-raw$
+^model_files$
+^db$
+^docs$
+^pkgdown$
+^_pkgdown\.yml$
+^\.github$
+^LICENSE$
+^vignettes$

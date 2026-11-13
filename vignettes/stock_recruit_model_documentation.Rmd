@@ -9,8 +9,12 @@ vignette: "%\\VignetteIndexEntry{Stock Recruit Model} %\\VignetteEngine{knitr::r
 #output: word_document
 ---
 
+> **Superseded.** The stock-recruit functions described here were removed from SRJPEmodel in November 2026 and will be added back from the stock-recruit repo. Code below is shown for reference and is not run.
+
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  eval = FALSE,
   collapse = TRUE,
   comment = "#>",
   fig.width = 7,
@@ -39,7 +43,7 @@ Spawner to recruit relationships can be used to make forecasts of outmigrant abu
 
 The stock recruit model takes in adult abuncace estimates, juvenile abundance estimates, and covariates to forecast outmigrant abundance. See figure 1 below to see how it fits into the full JPE model system.
 
-```{r, echo = FALSE, out.width = "500px"}
+```{r, echo = FALSE, out.width = "500px", eval = TRUE}
 knitr::include_graphics(path = here::here("vignettes", "images", "SR jpe diagram.png"), rel_path = FALSE)
 ```
 
@@ -49,7 +53,7 @@ knitr::include_graphics(path = here::here("vignettes", "images", "SR jpe diagram
 
 Spawner abundances used in the fitting can be direct annual observations of total redds (from redd surveys) or spawners (from holding or carcass surveys), or from models that predict spawner abundance based on passage abundance (the P2S model).
 
-```{r, echo = FALSE, out.width = "500px"}
+```{r, echo = FALSE, out.width = "500px", eval = TRUE}
 knitr::include_graphics(path = here::here("vignettes", "images", "SR_conceptual_diagram.png"), rel_path = FALSE)
 ```
 

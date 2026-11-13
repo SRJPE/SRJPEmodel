@@ -9,8 +9,12 @@ vignette: "%\\VignetteIndexEntry{Survival Model} %\\VignetteEngine{knitr::rmarkd
 #output: word_document
 ---
 
+> **Superseded.** PLAD has no functions in SRJPEmodel yet. This page will be updated when PLAD code is added.
+
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  eval = FALSE,
   collapse = TRUE,
   comment = "#>",
   fig.width = 7,

@@ -32,10 +32,6 @@ temporary file, and calls \code{R2WinBUGS::bugs()} with fixed MCMC settings
 }
 \seealso{
 Other Fit model:
-\code{\link[=fit_inseason_model]{fit_inseason_model()}},
-\code{\link[=fit_pCap_model]{fit_pCap_model()}},
-\code{\link[=fit_passage_to_spawner_model]{fit_passage_to_spawner_model()}},
-\code{\link[=fit_stock_recruit_model]{fit_stock_recruit_model()}},
-\code{\link[=fit_survival_model]{fit_survival_model()}}
+\code{\link[=fit_pCap_model]{fit_pCap_model()}}
 }
 \concept{Fit model}

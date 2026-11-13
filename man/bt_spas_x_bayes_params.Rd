@@ -3,20 +3,26 @@
 \docType{data}
 \name{bt_spas_x_bayes_params}
 \alias{bt_spas_x_bayes_params}
-\title{BT-SPAS-X BUGS parameters}
+\title{BT-SPAS-X MCMC settings}
 \format{
-A named list with 4 elements:
+A named list:
 \itemize{
-\item \code{number_mcmc}: TODO
-\item \code{number_burnin}:
-\item \code{number_thin}:
-\item \code{number_chains}:
+\item \strong{number_mcmc} Numeric. Total iterations per chain for the BUGS abundance model.
+\item \strong{number_burnin} Numeric. Iterations discarded as burn-in.
+\item \strong{number_thin} Numeric. Thinning interval.
+\item \strong{number_chains} Numeric. Number of chains, used by both the pCap and abundance models.
 }
+}
+\source{
+Built in \code{data-raw/cache-params.R}.
 }
 \usage{
 bt_spas_x_bayes_params
 }
 \description{
-Parameters for running BUGS on the BT-SPAS-X model
+BT-SPAS-X MCMC settings
+}
+\details{
+MCMC settings used to fit the BT-SPAS-X models.
 }
 \keyword{datasets}

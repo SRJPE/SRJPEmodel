@@ -9,8 +9,12 @@ vignette: "%\\VignetteIndexEntry{Survival Model} %\\VignetteEngine{knitr::rmarkd
 #output: word_document
 ---
 
+> **Superseded.** The survival functions described here were removed from SRJPEmodel in November 2026 and will be added back from the survival-travel-time repo. Code below is shown for reference and is not run.
+
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  eval = FALSE,
   collapse = TRUE,
   comment = "#>",
   fig.width = 7,

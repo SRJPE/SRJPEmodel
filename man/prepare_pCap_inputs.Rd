@@ -75,10 +75,6 @@ model types: a hierarchical model fit across all tributary sites
 }
 \seealso{
 Other Prepare Model Inputs:
-\code{\link[=prepare_P2S_inputs]{prepare_P2S_inputs()}},
-\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}},
-\code{\link[=prepare_inseason_inputs]{prepare_inseason_inputs()}},
-\code{\link[=prepare_stock_recruit_inputs]{prepare_stock_recruit_inputs()}},
-\code{\link[=prepare_survival_inputs]{prepare_survival_inputs()}}
+\code{\link[=prepare_abundance_inputs]{prepare_abundance_inputs()}}
 }
 \concept{Prepare Model Inputs}
