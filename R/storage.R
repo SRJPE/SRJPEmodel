@@ -1,30 +1,9 @@
-# storage.R
-# Functions for storing and retrieving model fit objects (.rds) in Azure Blob Storage,
-# and writing model run metadata to the JPE database.
-#
-# ── Public API ────────────────────────────────────────────────────────────────
-#   store_model_fit()      Upload a model fit object and record it in the DB.
-#   get_model_fit()        Download the most recent (or a specific) model fit.
-#   list_model_versions()  List all stored versions for a given model type.
-# ── Internal helpers ──────────────────────────────────────────────────────────
-#   setup_azure_blob_backend()   Build an AzureStor endpoint object.
-#   model_pin_board()            Build a pins board scoped to one model type.
-#   insert_model_run()           Write one model run record to the database.
-# ─────────────────────────────────────────────────────────────────────────────
+# Store model fits (.rds) in Azure Blob Storage and record each run in the
+# model_run table of the JPE database.
 
 # ── Model name constants ───────────────────────────────────────────────────────
-# .approved_model_names: must match the `name` column of the `model_name` table.
-# .abundance_model_types / .pcap_one_site_model_types: the specific variants
-#   stored in the `model_type` column of `model_run`. These map to a single
-#   consolidated model_name in the DB ("bt-spas-x" and "pcap_one_site").
-# Extend these vectors (and update model_name / model_type accordingly) when
-# adding new model families.
-#
-# The abundance model family is stored under the consolidated name
-# "bt-spas-x" (the actual estimator it runs — a Bayesian Time-Stratified
-# Petersen model), not "abundance"; "abundance" describes the quantity every
-# model type here ultimately estimates, so it isn't specific enough to use
-# as one model family's name.
+# .approved_model_names must match the `name` column of the `model_name` table.
+# Add to these vectors (and the database tables) when adding a model.
 
 .approved_model_names <- c(
   "bt-spas-x", "plad_btspasx_results",
@@ -32,14 +11,8 @@
   "stock_recruit", "survival", "inseason", "plad"
 )
 
-# Abundance (BT-SPAS-X) model type variants (stored in model_run.model_type
-# when present). prepare_abundance_inputs() still derives one of these
-# internally to pick the right BUGS model file, and store_model_fit() still
-# accepts them directly from that pipeline (preserving model_type provenance
-# for pipeline-driven runs). They are *not* meant to be chosen by a human
-# uploading a fit manually (e.g. via a Shiny app) — for that, use the plain
-# "bt-spas-x" name below instead, which consolidates to itself and records
-# model_type = NULL.
+# BT-SPAS-X variants, stored in model_run.model_type. Manual uploads should
+# use plain "bt-spas-x" instead, which records model_type = NULL.
 .abundance_model_types <- c(
   "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib"
 )

@@ -1,35 +1,7 @@
-# canonical.R
-# Functions for designating and retrieving the canonical ("production") model
-# run for a given model type + scope (site / run_year / site_selection,
-# where applicable). Builds on top of storage.R: a canonical designation
-# always points at a specific model_run row via model_run_id, so canonical
-# fits are downloaded through the same get_model_fit()/version machinery as
-# any other stored fit — this file only adds the "which version is
-# production" bookkeeping.
-#
-# canonical_model_run (see db/migrations/0001_create_canonical_model_run.sql)
-# is an append-only log, not an update-in-place table: set_canonical_model_run()
-# always inserts a new row rather than overwriting an existing one. The
-# "current" canonical version for a scope is simply the row with the latest
-# set_at for that scope — mirroring the newest-wins pattern store_model_fit()
-# already uses for pin versions. This gives a free audit trail with no
-# separate is_current flag or transactional flip.
-#
-# Deliberately not part of the scope: model_type (the mark-recapture variant
-# for bt-spas-x, e.g. "all_mark_recap"). A canonical designation answers
-# "what's the production run for this site/run_year", not "...for this
-# specific variant" — the variant is an implementation detail of how a given
-# model_run was fit, not something that should further subdivide which run
-# counts as canonical. It's still shown in list_canonical_model_runs()'s
-# output (joined from model_run), just not part of the lookup key.
-#
-# ── Public API ────────────────────────────────────────────────────────────────
-#   set_canonical_model_run()      Record a model_run as canonical for a scope.
-#   list_canonical_model_runs()    Current canonical designation per scope.
-#   get_canonical_history()        Full audit trail for one scope.
-#   get_canonical_model_fit()      Download the current canonical fit for a scope.
-#   get_many_canonical_model_fits() Download canonical fits for many site × run_year scopes.
-# ─────────────────────────────────────────────────────────────────────────────
+# Mark which stored model_run is canonical (production) for a model and scope
+# (site / run_year / site_selection). canonical_model_run is append-only, so
+# the row with the latest set_at is current and older rows are the history.
+# model_type (e.g. "all_mark_recap") is not part of the scope.
 
 
 # ── set_canonical_model_run() ───────────────────────────────────────────────
