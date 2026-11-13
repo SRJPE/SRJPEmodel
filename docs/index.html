@@ -34,7 +34,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -51,17 +51,30 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="articles/survival_submodel_documentation.html">Survival Model</a>
+    </li>
+    <li>
+      <a href="articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
     </li>
   </ul>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -81,48 +94,32 @@
 <div class="section level1">
 <div class="page-header"><h1 id="srjpemodel">SRJPEmodel<a class="anchor" aria-label="anchor" href="#srjpemodel"></a>
 </h1></div>
-<p>This data package contains the Spring Run Juvenile Production Estimate (SRJPE) Forecast model. This model is made up of multiple submodels that are combined to produce an annual forecast of juvenile spring run chinook salmon at the delta entry.</p>
-<p>This model is dependent on data produced in the <code>SRJPEdata</code> R package.</p>
-<p>The SR JPE model is still in development. This package will be updated to contain the most up to date code and documentation on the model.</p>
+<p>Functions and documentation for the Spring Run Juvenile Production Estimate (SRJPE) forecast model. Input data comes from the <a href="https://github.com/SRJPE/SRJPEdata" class="external-link">SRJPEdata</a> package, and the forecast is run in <a href="https://github.com/SRJPE/runSRJPE" class="external-link">runSRJPE</a>.</p>
+<p>The package currently contains the BT-SPAS-X juvenile abundance submodel and the functions for storing model fits. The stock-recruit, survival/travel-time, in-season and PLAD submodels are being developed in their own repositories and will be added back as they are finalized. Earlier versions of their code are in <code>archive/</code> and at the tag <code>legacy-pre-migration</code>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<pre><code><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"SRJPE/SRJPEmodel"</span><span class="op">)</span></span></code></pre>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"SRJPE/SRJPEmodel"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
+<h2 id="submodels">Submodels<a class="anchor" aria-label="anchor" href="#submodels"></a>
 </h2>
-<p>This package contains code and documenation for the SR JPE model.</p>
-<pre><code><span><span class="co"># datasets within the package</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">'SRJPEmodel'</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># explore package documentation</span></span>
-<span><span class="op">?</span><span class="va">SRJPEmodel</span></span></code></pre>
-</div>
-<div class="section level2">
-<h2 id="sr-jpe-submodel-components">SR JPE Submodel Components<a class="anchor" aria-label="anchor" href="#sr-jpe-submodel-components"></a>
-</h2>
-<p>This repository contains code to run a few versions of the SR JPE including:</p>
 <ul>
-<li>Within Season Forecast</li>
-<li>SR Annual Forecast</li>
-</ul>
-<p><em>Both these versions can be run using tributary RST data or Mainstem RST data</em></p>
-<p>These models are both dependent on the following submodels, click on the link to view an article giving a brief overview of each submodel:</p>
-<ul>
-<li><a href="https://srjpe.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html" class="external-link">BTSPAS-X Juvenile Abundance Modeling</a></li>
-<li><a href="https://srjpe.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html" class="external-link">Passage to Spawner (P2S) - Adult Spawner Modeling</a></li>
-<li>Survival Model</li>
-<li>Probabilistic Length at Date (PLAD) - Run Identification Model</li>
-<li>Stock-Recruit Model</li>
-<li>Travel Time Model</li>
+<li><a href="https://srjpe.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html" class="external-link">BT-SPAS-X juvenile abundance</a></li>
+<li>Stock-recruit, survival, in-season and PLAD: articles are superseded until their code is added back.</li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="explore-model-fits-and-results">Explore model fits and results<a class="anchor" aria-label="anchor" href="#explore-model-fits-and-results"></a>
+<h2 id="development">Development<a class="anchor" aria-label="anchor" href="#development"></a>
 </h2>
-<p>Explore model datasets, fits, and results on the SRJPEdashboard shiny app. (Add link)</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span>     <span class="co"># regenerate NAMESPACE and man/</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">test</a></span><span class="op">(</span><span class="op">)</span>         <span class="co"># run tests</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">check</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># R CMD check</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/build_readme.html" class="external-link">build_readme</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># render this README</span></span></code></pre></div>
+<p>Style standards for this package are in <code>planning/style_standards_DRAFT.md</code>.</p>
 </div>
 </div>
   </div>
@@ -131,7 +128,8 @@
     <div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/SRJPE/SRJPEmodel/issues" class="external-link">Report a bug</a></li>
 <li><a href="https://water.ca.gov/Programs/State-Water-Project/Endangered-Species-Protection" class="external-link">ITP Website</a></li>
 </ul>
 </div>
@@ -155,9 +153,9 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Ashley Vizek <br><small class="roles"> Author, maintainer </small>  </li>
-<li>Erin Cain <br><small class="roles"> Author </small>  </li>
-<li>Liz Stebbins <br><small class="roles"> Author </small>  </li>
+<li>Ashley Vizek <br><small class="roles"> Author, maintainer </small>   </li>
+<li>Erin Cain <br><small class="roles"> Author </small>   </li>
+<li>Liz Stebbins <br><small class="roles"> Author </small>   </li>
 </ul>
 </div>
 
@@ -174,7 +172,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer>

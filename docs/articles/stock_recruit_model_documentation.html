@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -50,17 +50,30 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="../articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="../articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
+    </li>
+    <li>
+      <a href="../articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="../articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
     </li>
   </ul>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -83,13 +96,19 @@
 Korman</h4>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/SRJPE/SRJPEmodel/blob/HEAD/vignettes/stock_recruit_model_documentation.Rmd" class="external-link"><code>vignettes/stock_recruit_model_documentation.Rmd</code></a></small>
       <div class="hidden name"><code>stock_recruit_model_documentation.Rmd</code></div>
 
     </div>
 
     
     
+<blockquote>
+<p><strong>Superseded.</strong> The stock-recruit functions described
+here were removed from SRJPEmodel in November 2026 and will be added
+back from the stock-recruit repo. Code below is shown for reference and
+is not run.</p>
+</blockquote>
 <div class="section level3">
 <h3 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h3>
@@ -112,7 +131,7 @@ outmigrant abundance in the JPE model.</p>
 abundance estimates, and covariates to forecast outmigrant abundance.
 See figure 1 below to see how it fits into the full JPE model
 system.</p>
-<p><img src="images%2FSR%20jpe%20diagram.png" width="500px"></p>
+<p><img src="images/SR%20jpe%20diagram.png" class="r-plt" alt="" width="500px"></p>
 <p><em>Figure 1: Conceptual Diagram of SRJPE model. Stock recruit model
 shown in yellow.</em></p>
 </div>
@@ -123,7 +142,7 @@ shown in yellow.</em></p>
 observations of total redds (from redd surveys) or spawners (from
 holding or carcass surveys), or from models that predict spawner
 abundance based on passage abundance (the P2S model).</p>
-<p><img src="images%2FSR_conceptual_diagram.png" width="500px"></p>
+<p><img src="images/SR_conceptual_diagram.png" class="r-plt" alt="" width="500px"></p>
 <p><em>Figure 2: Conceptual Diagram of Stock Recruit model.</em></p>
 <p>Water year type, discharge, or water temperature will be used as
 covariates in the modeling. Covariates consist of annual values that
@@ -143,7 +162,7 @@ upstream of the mainstem traps.</p>
 <h2 id="model-inputs">Model Inputs<a class="anchor" aria-label="anchor" href="#model-inputs"></a>
 </h2>
 <p>The model takes in one dataset produced by
-<code><a href="../reference/prepare_stock_recruit_inputs.html">prepare_stock_recruit_inputs()</a></code> function. This function
+<code>prepare_stock_recruit_inputs()</code> function. This function
 takes in a database connection to the model run database, a stream, an
 adult data type (either passage, redd, holding, broodstock_tag, or
 carcass), the covariate you would like to use to fit the model (see
@@ -168,178 +187,37 @@ environmental covariate.</p>
 <span>                      user <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">db_user</span>,</span>
 <span>                      password <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">db_password</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">battle_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_stock_recruit_inputs.html">prepare_stock_recruit_inputs</a></span><span class="op">(</span>con <span class="op">=</span> <span class="va">con</span>, </span>
+<span><span class="va">battle_inputs</span> <span class="op">&lt;-</span> <span class="fu">prepare_stock_recruit_inputs</span><span class="op">(</span>con <span class="op">=</span> <span class="va">con</span>, </span>
 <span>                                              stream <span class="op">=</span> <span class="st">"battle creek"</span>, </span>
 <span>                                              adult_data_type <span class="op">=</span> <span class="st">"redd"</span>, </span>
 <span>                                              covariate <span class="op">=</span>  <span class="st">"rearing_max_flow"</span>,</span>
 <span>                                              truncate_dataset <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">battle_SR_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_stock_recruit_model.html">fit_stock_recruit_model</a></span><span class="op">(</span><span class="va">battle_inputs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">battle_SR_model</span> <span class="op">&lt;-</span> <span class="fu">fit_stock_recruit_model</span><span class="op">(</span><span class="va">battle_inputs</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
 </h2>
 <p>The Stock Recruit model produces a STAN fit object when run. You can
 extract parameter estimates from the model object with the function
-<code><a href="../reference/extract_stock_recruit_estimates.html">extract_stock_recruit_estimates()</a></code>. This produces a
+<code>extract_stock_recruit_estimates()</code>. This produces a
 table.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">battle_parameter_estimates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_stock_recruit_estimates.html">extract_stock_recruit_estimates</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">battle_parameter_estimates</span> <span class="op">&lt;-</span> <span class="fu">extract_stock_recruit_estimates</span><span class="op">(</span></span>
 <span>  stock_recruit_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
 <span>  stock_recruit_model_object <span class="op">=</span> <span class="va">battle_SR_model</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">battle_parameter_estimates</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
-<colgroup>
-<col width="10%">
-<col width="5%">
-<col width="10%">
-<col width="12%">
-<col width="14%">
-<col width="5%">
-<col width="9%">
-<col width="13%">
-<col width="18%">
-</colgroup>
-<thead><tr class="header">
-<th align="left">parameter</th>
-<th align="right">year</th>
-<th align="left">statistic</th>
-<th align="right">value</th>
-<th align="left">model_name</th>
-<th align="left">site</th>
-<th align="left">week_fit</th>
-<th align="left">stream</th>
-<th align="left">srjpedata_version</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">mean</td>
-<td align="right">6.3431384</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">se_mean</td>
-<td align="right">0.0140127</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">sd</td>
-<td align="right">0.2541701</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">2.5</td>
-<td align="right">5.8887872</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">25</td>
-<td align="right">6.1671345</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">50</td>
-<td align="right">6.3283653</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">75</td>
-<td align="right">6.4994980</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">97.5</td>
-<td align="right">6.8735830</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">n_eff</td>
-<td align="right">329.0048736</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">alpha</td>
-<td align="right">NA</td>
-<td align="left">Rhat</td>
-<td align="right">1.0053195</td>
-<td align="left">stock_recruit</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">battle creek</td>
-<td align="left">0.0.2</td>
-</tr>
-</tbody>
-</table>
 <p>The following plots show SR model results.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu"><a href="../reference/generate_diagnostic_plot_sr.html">generate_diagnostic_plot_sr</a></span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
-<span>                                        sr_fit <span class="op">=</span> <span class="va">battle_SR_model</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stock_recruit_model_documentation_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu"><a href="../reference/generate_diagnostic_plot_sr_covar.html">generate_diagnostic_plot_sr_covar</a></span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
-<span>                                        sr_fit <span class="op">=</span> <span class="va">battle_SR_model</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stock_recruit_model_documentation_files/figure-html/unnamed-chunk-7-2.png" width="672"></p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="fu"><a href="../reference/generate_results_plot_sr.html">generate_results_plot_sr</a></span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
+<code class="sourceCode R"><span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu">generate_diagnostic_plot_sr</span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
+<span>                                        sr_fit <span class="op">=</span> <span class="va">battle_SR_model</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu">generate_diagnostic_plot_sr_covar</span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
+<span>                                        sr_fit <span class="op">=</span> <span class="va">battle_SR_model</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">generate_results_plot_sr</span><span class="op">(</span>sr_inputs <span class="op">=</span> <span class="va">battle_inputs</span>, </span>
 <span>                         con <span class="op">=</span> <span class="va">con</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stock_recruit_model_documentation_files/figure-html/unnamed-chunk-7-3.png" width="672"></p>
 <p><strong>Resources</strong> For more in depth documentation on the
 Spring Run JPE Stock Recruit Model please see the full report.</p>
 </div>
@@ -360,7 +238,7 @@ Spring Run JPE Stock Recruit Model please see the full report.</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer>

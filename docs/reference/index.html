@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -32,14 +32,27 @@
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="../articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="../articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
     </li>
+    <li>
+      <a href="../articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="../articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
+    </li>
   </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"><li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -58,7 +71,7 @@
 
     <table class="ref-index"><colgroup><col class="alias"><col class="title"></colgroup><tbody><tr><th colspan="2">
           <h2 id="model-and-submodels-functions">Model and Submodels Functions <a href="#model-and-submodels-functions" class="anchor" aria-hidden="true"></a></h2>
-          <p class="section-desc"></p><p>Functions used as to run submodels/models</p>
+          <p class="section-desc"></p><p>Functions used to run submodels/models</p>
         </th>
       </tr></tbody><tbody><tr><th colspan="2">
           <h3 id="btspas-x">BTSPAS-X <a href="#btspas-x" class="anchor" aria-hidden="true"></a></h3>
@@ -67,203 +80,127 @@
       </tr></tbody><tbody><tr><td>
           <p><code><a href="prepare_pCap_inputs.html">prepare_pCap_inputs()</a></code> </p>
         </td>
-        <td><p>Prepare inputs for pCap STAN model</p></td>
+        <td><p>Prepare inputs for the pCap Stan model</p></td>
       </tr><tr><td>
           <p><code><a href="prepare_abundance_inputs.html">prepare_abundance_inputs()</a></code> </p>
         </td>
-        <td><p>Prepare inputs for abundance model</p></td>
-      </tr><tr><td>
-          <p><code><a href="prepare_mainstem_pCap_data.html">prepare_mainstem_pCap_data()</a></code> </p>
-        </td>
-        <td><p>Prepare mainstem inputs for abundance model</p></td>
+        <td><p>Prepare inputs for the abundance model</p></td>
       </tr><tr><td>
           <p><code><a href="build_spline_data.html">build_spline_data()</a></code> </p>
         </td>
-        <td><p>Prepare spline parameters object for BT-SPAS-X model</p></td>
+        <td><p>Build B-spline basis matrix for the BT-SPAS-X abundance model</p></td>
       </tr><tr><td>
           <p><code><a href="fit_pCap_model.html">fit_pCap_model()</a></code> </p>
         </td>
-        <td><p>Fit pCap model</p></td>
+        <td><p>Fit the pCap Stan model</p></td>
       </tr><tr><td>
           <p><code><a href="generate_lt_pCap_Us.html">generate_lt_pCap_Us()</a></code> </p>
         </td>
-        <td><p>Generate lt_pCap_U values from the pCap model object</p></td>
+        <td><p>Generate logit-scale pCap priors for the abundance model</p></td>
       </tr><tr><td>
           <p><code><a href="fit_abundance_model_BUGS.html">fit_abundance_model_BUGS()</a></code> </p>
         </td>
-        <td><p>Fit abundance model in BUGS.</p></td>
+        <td><p>Fit the BT-SPAS-X abundance model in WinBUGS</p></td>
+      </tr><tr><td>
+          <p><code><a href="extract_abundance_estimates.html">extract_abundance_estimates()</a></code> </p>
+        </td>
+        <td><p>Extract parameter estimates from the abundance BUGS model object</p></td>
+      </tr><tr><td>
+          <p><code><a href="extract_pCap_estimates.html">extract_pCap_estimates()</a></code> </p>
+        </td>
+        <td><p>Extract parameter estimates from the pCap Stan model object</p></td>
+      </tr><tr><td>
+          <p><code><a href="run_abundance_workflow.html">run_abundance_workflow()</a></code> </p>
+        </td>
+        <td><p>Run the full abundance estimation workflow for a single site and run year</p></td>
+      </tr><tr><td>
+          <p><code><a href="run_bt_spas_x_JPE_sites.html">run_bt_spas_x_JPE_sites()</a></code> </p>
+        </td>
+        <td><p>Run BT-SPAS-X for all JPE sites and run years</p></td>
       </tr><tr><td>
           <p><code><a href="plot_juv_data.html">plot_juv_data()</a></code> </p>
         </td>
         <td><p>BT SPAS X raw data plots</p></td>
       </tr><tr><td>
-          <p><code><a href="generate_diagnostic_plot_juv.html">generate_diagnostic_plot_juv()</a></code> </p>
+          <p><code><a href="plot_juv_diagnostics.html">plot_juv_diagnostics()</a></code> </p>
         </td>
         <td><p>BT SPAS X diagnostic plots</p></td>
       </tr><tr><td>
-          <p><code><a href="extract_abundance_estimates.html">extract_abundance_estimates()</a></code> </p>
+          <p><code><a href="plot_pCap_all_sites.html">plot_pCap_all_sites()</a></code> </p>
         </td>
-        <td><p>Extract parameter estimates from abundance BUGS model object</p></td>
+        <td><p>Plot pCap diagnostics for tributary sites model</p></td>
       </tr><tr><td>
-          <p><code><a href="extract_pCap_estimates.html">extract_pCap_estimates()</a></code> </p>
+          <p><code><a href="plot_pCap_main.html">plot_pCap_main()</a></code> </p>
         </td>
-        <td><p>Extract parameter estimates from the pCap BUGS model object</p></td>
+        <td><p>Plot pCap flow relationship and predicted vs observed for mainstem sites</p></td>
       </tr><tr><td>
-          <p><code><a href="run_abundance_workflow.html">run_abundance_workflow()</a></code> </p>
+          <p><code><a href="plot_pCap_site_year.html">plot_pCap_site_year()</a></code> </p>
         </td>
-        <td><p>Run abundance BUGS workflow.</p></td>
+        <td><p>Plot weekly abundance and capture probability for a site–year combination</p></td>
       </tr><tr><td>
-          <p><code><a href="run_bt_spas_x_JPE_sites.html">run_bt_spas_x_JPE_sites()</a></code> </p>
+          <p><code><a href="plot_year_re_with_effort.html">plot_year_re_with_effort()</a></code> </p>
         </td>
-        <td><p>Run all JPE sites.</p></td>
-      </tr></tbody><tbody><tr><th colspan="2">
-          <h3 id="p-s">P2S <a href="#p-s" class="anchor" aria-hidden="true"></a></h3>
-          <p class="section-desc"></p><p>Functions to run P2S</p>
-        </th>
-      </tr></tbody><tbody><tr><td>
-          <p><code><a href="prepare_P2S_inputs.html">prepare_P2S_inputs()</a></code> </p>
-        </td>
-        <td><p>Prepare data for P2S</p></td>
-      </tr><tr><td>
-          <p><code><a href="fit_passage_to_spawner_model.html">fit_passage_to_spawner_model()</a></code> </p>
-        </td>
-        <td><p>Fit Passage to Spawner (P2S) STAN Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="extract_P2S_estimates.html">extract_P2S_estimates()</a></code> </p>
-        </td>
-        <td><p>Extract parameter estimates from P2S</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_results_plot_p2s.html">generate_results_plot_p2s()</a></code> </p>
-        </td>
-        <td><p>P2S results plots</p></td>
-      </tr></tbody><tbody><tr><th colspan="2">
-          <h3 id="survival">Survival <a href="#survival" class="anchor" aria-hidden="true"></a></h3>
-          <p class="section-desc"></p><p>Functions to run Survival Model</p>
-        </th>
-      </tr></tbody><tbody><tr><td>
-          <p><code><a href="prepare_survival_inputs.html">prepare_survival_inputs()</a></code> </p>
-        </td>
-        <td><p>Prepare inputs for survival model</p></td>
-      </tr><tr><td>
-          <p><code><a href="fit_survival_model.html">fit_survival_model()</a></code> </p>
-        </td>
-        <td><p>Fit Survival Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="extract_survival_estimates.html">extract_survival_estimates()</a></code> </p>
-        </td>
-        <td><p>Extract parameter estimates from the survival STAN model object</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_survival_rate_plot.html">generate_survival_rate_plot()</a></code> </p>
-        </td>
-        <td><p>Plot smolt survival rate</p></td>
-      </tr></tbody><tbody><tr><th colspan="2">
-          <h3 id="stock-recruit">Stock Recruit <a href="#stock-recruit" class="anchor" aria-hidden="true"></a></h3>
-          <p class="section-desc"></p><p>Functions to run Stock recruit Model</p>
-        </th>
-      </tr></tbody><tbody><tr><td>
-          <p><code><a href="prepare_stock_recruit_inputs.html">prepare_stock_recruit_inputs()</a></code> </p>
-        </td>
-        <td><p>Prepare inputs for stock-recruit model</p></td>
-      </tr><tr><td>
-          <p><code><a href="fit_stock_recruit_model.html">fit_stock_recruit_model()</a></code> </p>
-        </td>
-        <td><p>Fit stock-recruit model in STAN</p></td>
-      </tr><tr><td>
-          <p><code><a href="extract_stock_recruit_estimates.html">extract_stock_recruit_estimates()</a></code> </p>
-        </td>
-        <td><p>Extract stock-recruit parameter estimates</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_results_plot_sr.html">generate_results_plot_sr()</a></code> </p>
-        </td>
-        <td><p>Stock-recruit results plots</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_diagnostic_plot_sr.html">generate_diagnostic_plot_sr()</a></code> </p>
-        </td>
-        <td><p>Stock-recruit diagnostic plots</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_diagnostic_plot_sr_covar.html">generate_diagnostic_plot_sr_covar()</a></code> </p>
-        </td>
-        <td><p>Stock-recruit diagnostic plots</p></td>
-      </tr></tbody><tbody><tr><th colspan="2">
-          <h3 id="within-season">Within season <a href="#within-season" class="anchor" aria-hidden="true"></a></h3>
-          <p class="section-desc"></p><p>Functions to run within season model</p>
-        </th>
-      </tr></tbody><tbody><tr><td>
-          <p><code><a href="prepare_inseason_inputs.html">prepare_inseason_inputs()</a></code> </p>
-        </td>
-        <td><p>Prepare Inputs for In-Season Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="fit_inseason_model.html">fit_inseason_model()</a></code> </p>
-        </td>
-        <td><p>Fit In-Season STAN Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="extract_inseason_estimates.html">extract_inseason_estimates()</a></code> </p>
-        </td>
-        <td><p>Extract Parameter Estimates from In-Season Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="generate_results_plot_inseason.html">generate_results_plot_inseason()</a></code> </p>
-        </td>
-        <td><p>Inseason forecast plot</p></td>
+        <td><p>Plot year random effects and site-year capture probabilities</p></td>
       </tr></tbody><tbody><tr><th colspan="2">
           <h2 id="model-data">Model Data <a href="#model-data" class="anchor" aria-hidden="true"></a></h2>
-          <p class="section-desc"></p><p>Additional data beyons SRJPEdata needed to run model</p>
+          <p class="section-desc"></p><p>Additional data beyond SRJPEdata needed to run models</p>
         </th>
       </tr></tbody><tbody><tr><td>
           <p><code><a href="bt_spas_x_bayes_params.html">bt_spas_x_bayes_params</a></code> </p>
         </td>
-        <td><p>BT-SPAS-X BUGS parameters</p></td>
+        <td><p>BT-SPAS-X MCMC settings</p></td>
       </tr><tr><td>
           <p><code><a href="bt_spas_x_model_code.html">bt_spas_x_model_code</a></code> </p>
         </td>
-        <td><p>BT-SPAS-X STAN model code</p></td>
+        <td><p>BT-SPAS-X model code</p></td>
       </tr><tr><td>
-          <p><code><a href="survival_model_code.html">survival_model_code</a></code> </p>
+          <p><code><a href="julian_week_to_date_lookup.html">julian_week_to_date_lookup</a></code> </p>
         </td>
-        <td><p>Survival model code</p></td>
+        <td><p>Julian week to date lookup</p></td>
       </tr><tr><td>
-          <p><code><a href="p2s_model_code.html">p2s_model_code</a></code> </p>
+          <p><code><a href="site_order_north_south.html">site_order_north_south</a></code> </p>
         </td>
-        <td><p>Passage to Spawner model code</p></td>
+        <td><p>Site order, north to south</p></td>
       </tr></tbody><tbody><tr><th colspan="2">
-          <h2 id="helper-and-storage-functions">Helper and Storage Functions <a href="#helper-and-storage-functions" class="anchor" aria-hidden="true"></a></h2>
-          <p class="section-desc"></p><p>Functions used as to generate model data / format model outputs / and interface with the database</p>
+          <h2 id="model-storage">Model Storage <a href="#model-storage" class="anchor" aria-hidden="true"></a></h2>
+          <p class="section-desc"></p><p>Functions to store and retrieve model fits and mark canonical runs</p>
         </th>
       </tr></tbody><tbody><tr><td>
-          <p><code><a href="compare_P2S_model_covariates.html">compare_P2S_model_covariates()</a></code> </p>
-        </td>
-        <td><p>Compare Environmental Covariates in Passage to Spawner (P2S) Model</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_model_object.html">get_model_object()</a></code> </p>
-        </td>
-        <td><p>Get Model Object</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_model_results_parameters.html">get_model_results_parameters()</a></code> </p>
-        </td>
-        <td><p>Get Model Parameter Results</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_most_recent_model_objects.html">get_most_recent_model_objects()</a></code> </p>
-        </td>
-        <td><p>Get Most Recent Model Objects</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_most_recent_model_results.html">get_most_recent_model_results()</a></code> </p>
-        </td>
-        <td><p>Get Most Recent Model Results</p></td>
-      </tr><tr><td>
           <p><code><a href="store_model_fit.html">store_model_fit()</a></code> </p>
         </td>
-        <td><p>Store Model Fits</p></td>
+        <td><p>Store a Model Fit Object</p></td>
       </tr><tr><td>
-          <p><code><a href="search_model_run.html">search_model_run()</a></code> </p>
+          <p><code><a href="get_model_fit.html">get_model_fit()</a></code> </p>
         </td>
-        <td><p>Search Model Run</p></td>
+        <td><p>Retrieve a Model Fit Object</p></td>
       </tr><tr><td>
-          <p><code><a href="generate_diagnostic_plot.html">generate_diagnostic_plot()</a></code> </p>
+          <p><code><a href="get_many_model_fits.html">get_many_model_fits()</a></code> </p>
         </td>
-        <td><p>Diagnostic plots</p></td>
+        <td><p>Retrieve Multiple Model Fit Objects</p></td>
       </tr><tr><td>
-          <p><code><a href="pin_model_data.html">pin_model_data()</a></code> </p>
+          <p><code><a href="list_model_versions.html">list_model_versions()</a></code> </p>
         </td>
-        <td><p>Model Data Pin</p></td>
+        <td><p>List Available Versions of a Model Fit</p></td>
+      </tr><tr><td>
+          <p><code><a href="set_canonical_model_run.html">set_canonical_model_run()</a></code> </p>
+        </td>
+        <td><p>Mark a Model Run as Canonical</p></td>
+      </tr><tr><td>
+          <p><code><a href="list_canonical_model_runs.html">list_canonical_model_runs()</a></code> </p>
+        </td>
+        <td><p>List Current Canonical Model Runs</p></td>
+      </tr><tr><td>
+          <p><code><a href="get_canonical_history.html">get_canonical_history()</a></code> </p>
+        </td>
+        <td><p>History of Canonical Designations for One Scope</p></td>
+      </tr><tr><td>
+          <p><code><a href="get_canonical_model_fit.html">get_canonical_model_fit()</a></code> </p>
+        </td>
+        <td><p>Retrieve the Canonical Model Fit</p></td>
+      </tr><tr><td>
+          <p><code><a href="get_many_canonical_model_fits.html">get_many_canonical_model_fits()</a></code> </p>
+        </td>
+        <td><p>Retrieve Multiple Canonical Model Fit Objects</p></td>
       </tr></tbody></table></div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
@@ -277,7 +214,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer></div>
