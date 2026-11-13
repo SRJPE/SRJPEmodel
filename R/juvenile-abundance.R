@@ -49,7 +49,6 @@
 #'
 #' @family Prepare Model Inputs
 #' @export
-#' @md
 prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                                 skew = NULL,
                                 site_selection = NULL,
@@ -58,28 +57,24 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                                 input_efficiency_data = NULL) {
 
   # check arguments are logical
-  if(!is.null(skew) & model_type == "all_sites") {
-    cli::cli_warn("Skew model cannot be run for the all_sites model type.")
-    return(invisible(NULL))
+  if (!is.null(skew) & model_type == "all_sites") {
+    cli::cli_abort("{.arg skew} must be NULL for the all_sites model type.")
   }
-  if(any(!exclude_from_hyper %in% unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site))){
-    cli::cli_warn("Non-valid tributary passed to exclude_from_hyper.")
-    return(invisible(NULL))
+  if (any(!exclude_from_hyper %in% unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site))) {
+    cli::cli_abort("{.arg exclude_from_hyper} contains a site not in the efficiency data.")
   }
-  if(model_type == "one_site" & length(site_selection) != 1){
-    cli::cli_warn("One site name must be passed if running one_site model type.")
-    return(invisible(NULL))
+  if (model_type == "one_site" & length(site_selection) != 1) {
+    cli::cli_abort("{.arg site_selection} must be one site name for the one_site model type.")
   }
-  if(model_type == "one_site" & is.null(skew)){
-    cli::cli_warn("skew must be specified as TRUE/FALSE when running a one_site model type.")
-    return(invisible(NULL))
+  if (model_type == "one_site" & is.null(skew)) {
+    cli::cli_abort("{.arg skew} must be TRUE or FALSE for the one_site model type.")
   }
 
   # default to the SRJPEdata objects
-  if(missing(input_catch_data)) {
+  if (missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
-  if(missing(input_efficiency_data)) {
+  if (missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
@@ -90,10 +85,10 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   mainstem_sites <- c("red bluff diversion dam", "knights landing", "tisdale")
 
   # one_site data filtering and parameter names
-  if(model_type == "one_site") {
+  if (model_type == "one_site") {
     filtered_efficiency_data <- input_efficiency_data |>
       filter(site == site_selection)
-    if(skew) {
+    if (skew) {
       # include alpha
       pCap_parameters <- c("logit_pCap", "b0_pCap", "b_flow","pro_sd_P","yr_sd_P","yr_re", "alpha") #, "b_eff")
       model_name <- "pCap_one_site_skew"
@@ -131,7 +126,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
     arrange(ns_order, year, week) |>
     ungroup()
 
-  if(any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
+  if (any(mark_recapture_data$number_recaptured > mark_recapture_data$number_released)) {
     problem_data <- mark_recapture_data |>
       dplyr::filter(number_recaptured > number_released)
 
@@ -186,13 +181,13 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   # test mr_flow replace
   clean_mr_flow <- mark_recapture_data |>
     group_by(site) |>
-    mutate(mean_eff_flow = mean(flow_cfs, na.rm = T),
-           sd_eff_flow = sd(flow_cfs, na.rm = T),
+    mutate(mean_eff_flow = mean(flow_cfs, na.rm = TRUE),
+           sd_eff_flow = sd(flow_cfs, na.rm = TRUE),
            new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
     ungroup()
 
   # prepare data and inits for one_site and all_sites separately
-  if(model_type == "all_sites") {
+  if (model_type == "all_sites") {
     # drop sites we don't want used in efficiency estimates
     use_in_hyper <- as.integer(!sites_fit %in% exclude_from_hyper)
 
@@ -244,7 +239,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
     ini_b0_pCap <- qlogis(sum(mark_recapture_data$number_recaptured) /
                             sum(mark_recapture_data$number_released))
 
-    if(is.nan(ini_b0_pCap) | is.infinite(ini_b0_pCap)) {
+    if (is.nan(ini_b0_pCap) | is.infinite(ini_b0_pCap)) {
       # -Inf happens when number recaptured == 0, logit of 0 is -Inf
       ini_b0_pCap <- -5
     }
@@ -265,7 +260,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   }))
 
   invisible(lapply(names(init_list), function(x) {
-    if(any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
+    if (any(is.nan(init_list[[x]])) | any(is.infinite(init_list[[x]]))) {
       cli::cli_abort(paste0("NaNs detected in ", x, ". Please check your input data."))
     }
   }))
@@ -357,7 +352,6 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
 #'
 #' @family Prepare Model Inputs
 #' @export
-#' @md
 prepare_abundance_inputs <- function(site, run_year,
                                      pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
                                      min_pCap = 0.0005,
@@ -366,10 +360,10 @@ prepare_abundance_inputs <- function(site, run_year,
                                      input_catch_data = NULL,
                                      input_efficiency_data = NULL) {
   # checks and default
-  if(missing(input_catch_data)) {
+  if (missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
-  if(missing(input_efficiency_data)) {
+  if (missing(input_efficiency_data)) {
     input_efficiency_data <- SRJPEdata::weekly_juvenile_abundance_efficiency_data
   }
 
@@ -379,13 +373,13 @@ prepare_abundance_inputs <- function(site, run_year,
            week %in% c(seq(45, 53), seq(1, 22))) |>
     group_by(year, week, stream, site, run_year) |>
     # keep NAs in count columns
-    summarise(count = if(all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
-              mean_fork_length = mean(mean_fork_length, na.rm = T),
-              hours_fished = mean(hours_fished, na.rm = T),
-              flow_cfs = mean(flow_cfs, na.rm = T),
-              average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = T),
-              standardized_flow = mean(standardized_flow, na.rm = T)
-              #lgN_prior = mean(lgN_prior, na.rm = T)
+    summarise(count = if (all(is.na(count))) NA_real_ else sum(count, na.rm = TRUE),
+              mean_fork_length = mean(mean_fork_length, na.rm = TRUE),
+              hours_fished = mean(hours_fished, na.rm = TRUE),
+              flow_cfs = mean(flow_cfs, na.rm = TRUE),
+              average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = TRUE),
+              standardized_flow = mean(standardized_flow, na.rm = TRUE)
+              #lgN_prior = mean(lgN_prior, na.rm = TRUE)
     ) |>
     ungroup() |>
     left_join(site_order_north_south, by = "site") |>
@@ -439,12 +433,12 @@ prepare_abundance_inputs <- function(site, run_year,
     filter(!is.na(lincoln_peterson_efficiency),
            lincoln_peterson_efficiency > 0)
 
-  if(nrow(min_pCap_new) == 0) {
+  if (nrow(min_pCap_new) == 0) {
     min_pCap_new <- min_pCap
   } else {
     min_pCap_new <- min_pCap_new |>
       pull(lincoln_peterson_efficiency) |>
-      min(na.rm = T)
+      min(na.rm = TRUE)
   }
 
   min_pCap_new = min_pCap_new * min_pCap_mult #reduce by a 0-1 factor min_pCap_mult
@@ -456,7 +450,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # analyze efficiency trials for all relevant sites (do not filter to site)
   # set up filter - if it's a tributary-based model, we cannot use efficiencies from KDL, TIS, RBDD
-  if(!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
+  if (!site %in% c("knights landing", "tisdale", "red bluff diversion dam")) {
     # drop sites from arguments and also remove mainstem
     remove_sites <- c("knights landing", "tisdale", "red bluff diversion dam")
 
@@ -617,21 +611,21 @@ prepare_abundance_inputs <- function(site, run_year,
   }
 
   # if efficiency trials occurred in the site
-  if(number_experiments_at_site > 1) {
-    if(number_weeks_without_mark_recapture == 0) {
+  if (number_experiments_at_site > 1) {
+    if (number_weeks_without_mark_recapture == 0) {
       # all weeks have efficiency trials
       model_name <- "all_mark_recap"
     } else {
       # some or all strata don't have efficiency trials
-      if(number_weeks_with_mark_recapture > 0) {
+      if (number_weeks_with_mark_recapture > 0) {
         # some weeks have efficiency trials
         model_name <- "missing_mark_recap"
-      } else if(number_weeks_with_mark_recapture == 0) {
+      } else if (number_weeks_with_mark_recapture == 0) {
         # no weeks have efficiency trials
         model_name <- "no_mark_recap"
       }
     }
-  } else if(number_experiments_at_site == 0) { # no efficiency trials were performed at that site
+  } else if (number_experiments_at_site == 0) { # no efficiency trials were performed at that site
     model_name <- "no_mark_recap_no_trib"
   }
 
@@ -735,14 +729,13 @@ prepare_abundance_inputs <- function(site, run_year,
 #'
 #' @keywords internal
 #' @export
-#' @md
 build_spline_data <- function(number_weeks_catch, k_int) {
 
   number_knots <- round(number_weeks_catch / k_int, 0)
   first_knot_position <- 2
   final_knot_position <- number_weeks_catch - 1 # keep first and/or last knot positions away from tails if there are intervals with no sampling on the tails
   knot_positions <- seq(first_knot_position, final_knot_position, length.out = number_knots) # define position of b-spline knots using even interval if no missing data
-  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = T) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
+  b_spline_matrix <- splines2::bSpline(x = 1:number_weeks_catch, knots = knot_positions, deg = 3, intercept = TRUE) # bspline basis matrix. One row for each data point (1:number_weeks_catch), and one column for each term in the cubic polynomial function (4) + number of knots
   K <- ncol(b_spline_matrix)
 
   return(list("K" = K,
@@ -772,14 +765,14 @@ build_spline_data <- function(number_weeks_catch, k_int) {
 #'
 #' @family Fit model
 #' @export
-#' @md
 fit_pCap_model <- function(input) {
 
   # call the correct model based on pCap_inputs model name (either one_site_skew, one_site, or all_sites)
   stan_model <- eval(parse(text = paste0("SRJPEmodel::bt_spas_x_model_code$", input$model_name)))
 
   # call model
-  options(mc.cores=parallel::detectCores())
+  old_options <- options(mc.cores = parallel::detectCores())
+  on.exit(options(old_options), add = TRUE)
 
   pcap <- rstan::stan(model_name = input$model_name,
                       model_code = stan_model,
@@ -834,14 +827,13 @@ fit_pCap_model <- function(input) {
 #'   on the logit scale.
 #'
 #' @export
-#' @md
 generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
   pCap_model_type <- ifelse(abundance_inputs$pCap_model_type == "all_sites", "all_sites", "one_site")
   skew <- ifelse(pCap_model_type == "one_site" & abundance_inputs$pCap_model_type == "one_site_skew", TRUE, FALSE)
 
-  # if(any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
-  if(pCap_model_type == "one_site") {
+  # if (any(abundance_inputs$sites_fit %in% c("knights landing", "tisdale", "red bluff diversion dam"))) {
+  if (pCap_model_type == "one_site") {
     # set up objects
     ModelName <- abundance_inputs$model_name
     Nstrata <- abundance_inputs$inputs$data$Nstrata
@@ -855,7 +847,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
     # extract from pCap model fit object
     pars_to_extract <- c("logit_pCap", "b0_pCap", "b_flow", "pro_sd_P", "yr_re", "yr_sd_P") # , "b_eff")
-    if(skew) {
+    if (skew) {
       pars_to_extract <- c(pars_to_extract, "alpha")
     }
 
@@ -880,7 +872,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     lt_pCap_mu = matrix(nrow = Nstrata, ncol = Ntrials) #function needs to return this
     lt_pCap_sd = lt_pCap_mu                        #function needs to return this
 
-    if(ModelName == "all_mark_recap" ){#stays as is
+    if (ModelName == "all_mark_recap" ){#stays as is
 
       for(i in 1:Nstrata){
         lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
@@ -894,7 +886,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
       }
       for (i in 1:Nwomr) {
         #for weeks without efficiency trials
-        if(skew){
+        if (skew){
           sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
           sim_pro_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
@@ -905,8 +897,8 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     } else if (ModelName == "no_mark_recap"){
 
       for (i in 1:Nwomr) {
-        if(skew){
-          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        if (skew){
+          sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
           sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
@@ -921,8 +913,8 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 
 
       for (i in 1:Nwomr) {
-        if(skew){
-          sim_pro_dev=rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
+        if (skew){
+          sim_pro_dev=brms::rskew_normal(n=Ntrials, mu = 0, sigma = pro_sd_P, alpha = alpha, xi = NULL, omega = NULL)
         } else {
           sim_prod_dev=rnorm(n=Ntrials, mean=0,sd=pro_sd_P)
         }
@@ -983,7 +975,7 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
     lt_pCap_sd=lt_pCap_mu                        #function needs to return this
     sim_yr_dev=vector(length=Ntrials)
 
-    if(ModelName=="all_mark_recap" ){
+    if (ModelName=="all_mark_recap" ){
 
       for(i in 1:Nstrata){
         lt_pCap_U[,i] = logit_pCap[,ind_pCap[i]];
@@ -1060,7 +1052,6 @@ generate_lt_pCap_Us <- function(abundance_inputs, pCap_model_object){
 #'
 #' @family Fit model
 #' @export
-#' @md
 fit_abundance_model_BUGS <- function(abundance_inputs,
                                      bugs_directory) {
   parameters <- c("lt_pCap_U", "pCap_U", "Usp", "N", "Ntot", "sd.N", "sd.Ne", "lg_CumN")
@@ -1091,9 +1082,9 @@ fit_abundance_model_BUGS <- function(abundance_inputs,
                     new_inits,
                     parameters,
                     model_file,
-                    debug = F,
+                    debug = FALSE,
                     n.chains = Nchains, n.burnin = Nburnin, n.thin = Nthin, n.iter = Nmcmc,
-                    codaPkg = F, DIC = T, clearWD = T,
+                    codaPkg = FALSE, DIC = TRUE, clearWD = TRUE,
                     bugs.directory = bugs_directory)
 
   return(abundance)
@@ -1131,7 +1122,6 @@ fit_abundance_model_BUGS <- function(abundance_inputs,
 #'   used when producing these estimates.
 #'
 #' @export
-#' @md
 extract_abundance_estimates <- function(abundance_inputs,
                                         model_object) {
 
@@ -1146,6 +1136,8 @@ extract_abundance_estimates <- function(abundance_inputs,
   formatted_table <- model_object$summary |>
     as.data.frame() |>
     tibble::rownames_to_column("parameter") |>
+    # parse_number() warns for scalar parameters with no index (e.g. Ntot),
+    # which correctly get NA
     mutate(week_index = ifelse(str_detect(parameter, "b0_pCap|b_flow"), NA,
                                suppressWarnings(readr::parse_number(parameter))),
            site = abundance_inputs$site,
@@ -1199,7 +1191,6 @@ extract_abundance_estimates <- function(abundance_inputs,
 #'   used when producing these estimates.
 #'
 #' @export
-#' @md
 extract_pCap_estimates <- function(model_object, pCap_inputs) {
 
   site_lookup <- tibble("site" = pCap_inputs$sites_fit) |>
@@ -1211,6 +1202,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
   formatted_table <- rstan::summary(model_object)$summary |>
     as.data.frame() |>
     tibble::rownames_to_column("parameter") |>
+    # parse_number() warns for parameters with no index, which correctly get NA
     mutate(week_index = NA, # no weekly estimates that are relevant
            site_index = ifelse(str_detect(parameter, "b0_pCap|b_flow"),
                                suppressWarnings(readr::parse_number(substr(parameter, 3, length(parameter)))),
@@ -1230,7 +1222,7 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
            week_fit = NA) |> # this won't be reported for the pCap model
     select(model_name, site, stream, run_year, week_fit, parameter, statistic, value, srjpedata_version)
 
-  if(pCap_inputs$model_name == "pCap_mainstem_skew_re") {
+  if (pCap_inputs$model_name == "pCap_mainstem_skew_re") {
     formatted_table <- formatted_table |>
       select(-c(site, stream)) |>
       mutate(site = pCap_inputs$site) |>
@@ -1268,10 +1260,9 @@ extract_pCap_estimates <- function(model_object, pCap_inputs) {
 #'   **parameter**, **statistic**, **value**, **srjpedata_version**
 #'
 #'   Rows where the model errored are included with only `site`, `run_year`,
-#'   and `error = TRUE` columns (from `run_abundance_workflow()`).
+#'   `error = TRUE` and `error_message` columns (from `run_abundance_workflow()`).
 #'
 #' @export
-#' @md
 run_bt_spas_x_JPE_sites <- function(sites_to_run,
                                     run_pCap = FALSE,
                                     mainstem,
@@ -1280,7 +1271,7 @@ run_bt_spas_x_JPE_sites <- function(sites_to_run,
                                     bugs_directory) {
 
   # run pCap model if necessary
-  if(run_pCap) {
+  if (run_pCap) {
     pCap_inputs <- prepare_pCap_inputs(mainstem = mainstem)
     pCap <- fit_pCap_model(pCap_inputs$inputs)
     saveRDS(pCap, pCap_model_object_filepath)
@@ -1327,10 +1318,9 @@ run_bt_spas_x_JPE_sites <- function(sites_to_run,
 #'
 #' @returns On success, the tidy data frame returned by
 #'   `extract_abundance_estimates()`. On error, a one-row tibble with columns
-#'   `site`, `run_year`, and `error = TRUE`.
+#'   `site`, `run_year`, `error = TRUE`, and `error_message`. The error is also reported as a warning.
 #'
 #' @export
-#' @md
 run_abundance_workflow <- function(site,
                                    run_year,
                                    pCap_model_object_filepath,
@@ -1341,7 +1331,7 @@ run_abundance_workflow <- function(site,
 
   results <- tryCatch({
 
-    abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = T)
+    abundance_inputs <- prepare_abundance_inputs(site, run_year, effort_adjust = TRUE)
 
     pCap <- readRDS(pCap_model_object_filepath)
 
@@ -1354,9 +1344,13 @@ run_abundance_workflow <- function(site,
     return(clean_table)
 
   },
-  error = function(e) return(tibble("site" = site,
-                                    "run_year" = run_year,
-                                    "error" = TRUE)))
+  error = function(e) {
+    cli::cli_warn("Abundance model failed for {site} {run_year}: {conditionMessage(e)}")
+    tibble::tibble(site = site,
+                   run_year = run_year,
+                   error = TRUE,
+                   error_message = conditionMessage(e))
+  })
 
   return(results)
 }

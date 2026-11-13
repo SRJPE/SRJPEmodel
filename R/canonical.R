@@ -25,7 +25,7 @@
 #' @param site_selection Optional. Site selection, for pcap_one_site scopes.
 #' @param note Optional free-text note (e.g. why this version was picked).
 #'
-#' @return Invisibly returns the number of rows inserted (always 1 on success).
+#' @returns Invisibly returns the number of rows inserted (always 1 on success).
 #'
 #' @examples
 #' \dontrun{
@@ -103,7 +103,7 @@ set_canonical_model_run <- function(con, results_name, model_run_id, set_by,
 #' @param con A database connection object.
 #' @param results_name Optional. Filter to one consolidated model name.
 #'
-#' @return A tibble with one row per scope: `model_name`, `model_type`
+#' @returns A tibble with one row per scope: `model_name`, `model_type`
 #'   (the variant of the canonical run, informational only — not part of the
 #'   scope), `site`, `run_year`, `site_selection`, `model_run_id`,
 #'   `description`, `blob_fit_storage_url`, `set_by`, `set_at`, `note`.
@@ -158,7 +158,7 @@ list_canonical_model_runs <- function(con, results_name = NULL) {
 #' by always inserting rather than updating.
 #'
 #' @inheritParams set_canonical_model_run
-#' @return A tibble with columns `model_run_id`, `set_by`, `set_at`, `note`,
+#' @returns A tibble with columns `model_run_id`, `set_by`, `set_at`, `note`,
 #'   ordered newest first.
 #'
 #' @examples
@@ -208,7 +208,7 @@ get_canonical_history <- function(con, results_name, site = NULL,
 #'
 #' @inheritParams set_canonical_model_run
 #' @inheritParams get_model_fit
-#' @return The model fit object (class `stanfit` or `bugs`).
+#' @returns The model fit object (class `stanfit` or `bugs`).
 #'
 #' @examples
 #' \dontrun{
@@ -300,7 +300,7 @@ get_canonical_model_fit <- function(con, results_name, site = NULL,
 #' @param access_key Azure storage access key with **read** permissions.
 #'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
 #'
-#' @return A named list of model fit objects. Names depend on the scope of
+#' @returns A named list of model fit objects. Names depend on the scope of
 #'   `model_name`: `"<site>_<run_year>"` for bt-spas-x (e.g. `"ubc_2020"`),
 #'   `"<site>"` for site-only scopes like plad_btspasx_results,
 #'   `"<site_selection>"` for pcap_one_site (e.g. `"tisdale"`), or
@@ -390,7 +390,7 @@ get_many_canonical_model_fits <- function(con,
 
   cli::cli_alert_success("Downloaded {n_ok}/{nrow(canonical)} canonical fit{?s} successfully.")
   if (n_fail > 0) {
-    cli::cli_alert_warning("{n_fail} fit{?s} failed — returned as NULL in the list.")
+    cli::cli_alert_warning("{n_fail} fit{?s} failed; returned as NULL in the list.")
   }
 
   fits

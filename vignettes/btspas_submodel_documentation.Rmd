@@ -18,10 +18,6 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup, include = FALSE}
-library(ggplot2)
-library(tidyverse)
-library(bayesplot)
-library(wesanderson)
 library(SRJPEdata)
 library(SRJPEmodel)
 ```
@@ -86,12 +82,12 @@ abundance <- fit_abundance_model_BUGS(abundance_inputs,
 # Model Output
 
 ```{r, eval = FALSE}
-abundance_table <- extract_abundance_estimates("ubc", 2018, abundance_inputs, abundance)
+abundance_table <- extract_abundance_estimates(abundance_inputs, abundance)
 
-generate_diagnostic_plot_juv(inputs = abundance_inputs, results_df = abundance_table)
+plot_juv_diagnostics(inputs = abundance_inputs, results_df = abundance_table)
 ```
 
-```{r, echo = FALSE, warning = FALSE, message=FALSE}
+```{r, echo = FALSE, eval = FALSE, warning = FALSE, message = FALSE}
 cfg <- config::get()
 
 con <- DBI::dbConnect(RPostgres::Postgres(),
@@ -109,7 +105,7 @@ results <- get_most_recent_model_results(con)
 
 inputs_2018 <- inputs$`1238_bt_spas_x_ubc_battle creek_2018`
 
-generate_diagnostic_plot_juv(inputs = inputs_2018, results_df = results)
+plot_juv_diagnostics(inputs = inputs_2018, results_df = results)
 
 ```
 
