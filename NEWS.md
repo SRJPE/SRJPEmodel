@@ -6,3 +6,4 @@
 * Removed `run_abundance_workflow()` and `run_bt_spas_x_JPE_sites()`. BT-SPAS-X runs for all JPE sites are handled in runSRJPE.
 * Added SRJPEdata to `Imports` (installed from GitHub via `Remotes`) and declared all other imported packages.
 * Added regression tests for `prepare_pCap_inputs()`.
+* Added `log_transform_flow` to `prepare_pCap_inputs()` and `prepare_abundance_inputs()` to fit BT-SPAS-X on log flow. Default `FALSE`.

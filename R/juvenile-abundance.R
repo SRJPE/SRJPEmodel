@@ -21,6 +21,8 @@
 #'   the hyper-distribution over `b0_pCap` and `b_flow`. Default `NULL`
 #'   (no sites excluded). Values must be present in
 #'   `unique(SRJPEdata::weekly_juvenile_abundance_efficiency_data$site)`.
+#' @param log_transform_flow Logical. If `TRUE`, use standardized log flow
+#'   (`standardized_log_efficiency_flow`) for `mr_flow`. Default `FALSE`.
 #' @param input_catch_data Optional data frame of weekly catch data.
 #'   Defaults to `SRJPEdata::weekly_juvenile_abundance_catch_data`.
 #'   If supplied, the structure must match that of the default.
@@ -53,6 +55,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                                 skew = NULL,
                                 site_selection = NULL,
                                 exclude_from_hyper = NULL,
+                                log_transform_flow = FALSE,
                                 input_catch_data = NULL,
                                 input_efficiency_data = NULL) {
 
@@ -68,6 +71,9 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   }
   if (model_type == "one_site" & is.null(skew)) {
     cli::cli_abort("{.arg skew} must be TRUE or FALSE for the one_site model type.")
+  }
+  if (!isTRUE(log_transform_flow) && !isFALSE(log_transform_flow)) {
+    cli::cli_abort("{.arg log_transform_flow} must be TRUE or FALSE.")
   }
 
   # default to the SRJPEdata objects
@@ -198,7 +204,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                  "Releases" = mark_recapture_data$number_released,
                  "Recaptures" = mark_recapture_data$number_recaptured,
                  "effort" = effort,
-                 "mr_flow" = clean_mr_flow$new_mr_flow,
+                 "mr_flow" = if (log_transform_flow) mark_recapture_data$standardized_log_efficiency_flow else clean_mr_flow$new_mr_flow,
                  "ind_yr" = mark_recapture_data$site_run_year_id,
                  "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
                  "sd_yr_ind" = sd_yr_ind) # liz updated to use dplyr to create
@@ -231,7 +237,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                  "Releases" = mark_recapture_data$number_released,
                  "Recaptures" = mark_recapture_data$number_recaptured,
                  "effort" = effort,
-                 "mr_flow" = mark_recapture_data$standardized_efficiency_flow,
+                 "mr_flow" = if (log_transform_flow) mark_recapture_data$standardized_log_efficiency_flow else mark_recapture_data$standardized_efficiency_flow,
                  "ind_yr" = mark_recapture_data$site_run_year_id,
                  "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)))
 
@@ -307,6 +313,9 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
 #' @param min_pCap_mult Numeric. Multiplier applied to `min_pCap` (or to
 #'   the observed minimum efficiency) to allow sensitivity testing. Values
 #'   less than 1 relax the upper bound on `N`. Default `1.0`.
+#' @param log_transform_flow Logical. If `TRUE`, use log flow for
+#'   `catch_flow`, `catch_flow_raw` and `mr_flow_raw`. Must match the value
+#'   used in `prepare_pCap_inputs()` for `pCap_model_object`. Default `FALSE`.
 #' @param pCap_model_object A fitted Stan model object produced by
 #'   `fit_pCap_model()`. The model type must match `pCap_model_type`.
 #' @param input_catch_data Optional data frame of weekly catch data.
@@ -334,10 +343,11 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
 #' * **pCap_model_type** The value passed to `pCap_model_type`.
 #' * **site** The value passed to `site`.
 #' * **run_year** The value passed to `run_year`.
-#' * **catch_flow_raw** Numeric vector of raw flow (cfs) for each week in
-#'   the modelled period.
-#' * **mr_flow_raw** Numeric vector of raw flow (cfs) at the time of each
-#'   mark-recapture trial used to fit the pCap model.
+#' * **catch_flow_raw** Numeric vector of raw flow (cfs, or log cfs if
+#'   `log_transform_flow = TRUE`) for each week in the modelled period.
+#' * **mr_flow_raw** Numeric vector of raw flow (cfs, or log cfs if
+#'   `log_transform_flow = TRUE`) at the time of each mark-recapture trial
+#'   used to fit the pCap model.
 #' * **weeks_fit** Integer vector of Julian weeks included in the model.
 #' * **week_date** Character vector of calendar dates associated with
 #'   `weeks_fit`.
@@ -356,10 +366,14 @@ prepare_abundance_inputs <- function(site, run_year,
                                      pCap_model_type = c("one_site", "one_site_skew", "all_sites"),
                                      min_pCap = 0.0005,
                                      min_pCap_mult = 1.0,
+                                     log_transform_flow = FALSE,
                                      pCap_model_object,
                                      input_catch_data = NULL,
                                      input_efficiency_data = NULL) {
   # checks and default
+  if (!isTRUE(log_transform_flow) && !isFALSE(log_transform_flow)) {
+    cli::cli_abort("{.arg log_transform_flow} must be TRUE or FALSE.")
+  }
   if (missing(input_catch_data)) {
     input_catch_data <- SRJPEdata::weekly_juvenile_abundance_catch_data
   }
@@ -378,7 +392,9 @@ prepare_abundance_inputs <- function(site, run_year,
               hours_fished = mean(hours_fished, na.rm = TRUE),
               flow_cfs = mean(flow_cfs, na.rm = TRUE),
               average_hours_fished_during_efficiency_trials = mean(average_hours_fished_during_efficiency_trials, na.rm = TRUE),
-              standardized_flow = mean(standardized_flow, na.rm = TRUE)
+              standardized_flow = mean(standardized_flow, na.rm = TRUE),
+              log_flow_cfs = mean(log_flow_cfs, na.rm = TRUE),
+              log_standardized_flow = mean(log_standardized_flow, na.rm = TRUE)
               #lgN_prior = mean(lgN_prior, na.rm = TRUE)
     ) |>
     ungroup() |>
@@ -586,7 +602,7 @@ prepare_abundance_inputs <- function(site, run_year,
 
   # data needed for generating lt_pCap_Us
   # also plotting data needs (sorted) for Josh's code
-  lt_pCap_U_data <- list("catch_flow" = catch_data$standardized_flow,
+  lt_pCap_U_data <- list("catch_flow" = if (log_transform_flow) catch_data$log_standardized_flow else catch_data$standardized_flow,
                          "use_trib" = indices_sites_pCap,
                          "Nwmr" = number_weeks_with_mark_recapture,
                          "Nwomr" = number_weeks_without_mark_recapture,
@@ -683,8 +699,8 @@ prepare_abundance_inputs <- function(site, run_year,
                            "pCap_model_type" = pCap_model_type,
                            "site" = site,
                            "run_year" = run_year,
-                           "catch_flow_raw" = catch_data$flow_cfs,
-                           "mr_flow_raw" = mark_recapture_data$flow_cfs,
+                           "catch_flow_raw" = if (log_transform_flow) catch_data$log_flow_cfs else catch_data$flow_cfs,
+                           "mr_flow_raw" = if (log_transform_flow) mark_recapture_data$log_flow_cfs else mark_recapture_data$flow_cfs,
                            "weeks_fit" = weeks_fit$Jwk,
                            "week_date" = weeks_fit$date,
                            "sites_fit" = sites_fit,
