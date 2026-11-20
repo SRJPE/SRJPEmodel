@@ -21,7 +21,6 @@ Imports:
     gridExtra (>= 2.3),
     parallel,
     pins (>= 1.4.0),
-    purrr (>= 1.0.0),
     R2WinBUGS (>= 2.1.0),
     readr (>= 2.1.0),
     rstan (>= 2.32.0),

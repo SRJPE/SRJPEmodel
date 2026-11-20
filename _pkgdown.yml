@@ -23,8 +23,6 @@ reference:
   - fit_abundance_model_BUGS
   - extract_abundance_estimates
   - extract_pCap_estimates
-  - run_abundance_workflow
-  - run_bt_spas_x_JPE_sites
   - plot_juv_data
   - plot_juv_diagnostics
   - plot_pCap_all_sites
