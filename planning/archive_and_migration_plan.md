@@ -107,12 +107,12 @@ Roxygen:
 Repo files:
 - [ ] Convert `README.md` to `README.Rmd`, covering install (`pak::pak("SRJPE/SRJPEmodel")`), test, lint/format, check and document.
 - [ ] Add `NEWS.md`.
-- [ ] Add a `CLAUDE.md` that points to the infra standards and `planning/style_standards_DRAFT.md` (once approved) and lists the check commands.
+- [ ] Add a `CLAUDE.md` that points to the infra standards and `planning/style_standards.md` and lists the check commands.
 - [ ] Remove `cran-comments.md`; the package isn't going to CRAN.
 
 ## Things to consider for the migration (February 2027 at the earliest)
 
-**The source is runSRJPE.** All submodel code comes from runSRJPE's `reproducible-workflow-v1` branch, not the individual submodel repos. That branch has the standardized workflow: `scripts/preseason/<submodel>/` (numbered scripts, `*_functions.R`, `stan/`), `scripts/forecast/` and `config/forecast_config.R`. Put the runSRJPE commit SHA in each migration commit message. Once a submodel is migrated, changes to it happen in SRJPEmodel.
+**The source is runSRJPE.** All submodel code comes from runSRJPE's `reproducible-workflow-v1` branch, not the individual submodel repos. That branch has the standardized workflow: `scripts/preseason/<submodel>/` (numbered scripts, `*_functions.R`, `stan/`), `scripts/forecast/` and `config/forecast_config.R`. The integrated forecast model (`scripts/forecast/`, `JPE.stan`) moves too. Put the runSRJPE commit SHA in each migration commit message. Once a submodel is migrated, changes to it happen in SRJPEmodel.
 
 **Code moves, not files.** runSRJPE won't hand off files to SRJPEmodel. Its functions move into `R/`, and its numbered scripts become the `prepare_*` → `fit_*` → `extract_*` steps. Once the workflow is in SRJPEmodel, runSRJPE calls SRJPEmodel.
 
@@ -120,7 +120,7 @@ Repo files:
 
 **Data has to land in SRJPEdata first.** runSRJPE reads local files (`data/stockrecruit/`, `data/survival/`, etc.). Package functions can't read local files, so each migration needs its inputs in an SRJPEdata release first.
 
-**Stan interface.** SRJPEmodel uses `rstan`. runSRJPE fits stock-recruit, in-season and the forecast with `cmdstanr` (installed from R-universe, which the standards allow), and the infra standards prefer it. cmdstanr compiles executables, and IT security currently blocks those on at least one machine (see `in-season/CLAUDE.md`). Decide before the first cmdstanr submodel migrates. `store_model_fit()` only validates `stanfit` and `bugs` objects, so a cmdstanr fit needs a change there.
+**Stan interface.** SRJPEmodel uses `rstan` today. Migrated submodels use `cmdstanr` (approved 2026-11-20), as runSRJPE does for stock-recruit, in-season and the forecast. cmdstanr compiles executables, which IT security currently blocks on at least one machine (see `in-season/CLAUDE.md`). `store_model_fit()` only validates `stanfit` and `bugs` objects, so it needs to accept cmdstanr fits before the first one migrates.
 
 **Check it reproduces.** Before switching runSRJPE to call a migrated function, check that it gives the same numbers as the runSRJPE script with a fixed seed. Then save a small version of that check as the submodel's regression test.
 

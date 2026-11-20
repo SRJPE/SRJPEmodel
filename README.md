@@ -39,4 +39,4 @@ devtools::build_readme() # render this README
 ```
 
 Style standards for this package are in
-`planning/style_standards_DRAFT.md`.
+`planning/style_standards.md`.
