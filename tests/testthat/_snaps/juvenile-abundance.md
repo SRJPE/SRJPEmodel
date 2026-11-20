@@ -30,3 +30,11 @@
       Error in `prepare_pCap_inputs()`:
       ! `exclude_from_hyper` contains a site not in the efficiency data.
 
+---
+
+    Code
+      prepare_pCap_inputs("all_sites", log_transform_flow = "yes")
+    Condition
+      Error in `prepare_pCap_inputs()`:
+      ! `log_transform_flow` must be TRUE or FALSE.
+
