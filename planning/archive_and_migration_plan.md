@@ -1,10 +1,12 @@
 # Archive and migration plan
 
-Draft, 2026-11-12. Updated with decisions from review.
+Draft, 2026-11-12. Updated 2026-11-20: runSRJPE's `reproducible-workflow-v1` branch is the source for v1.
 
 ## Goal
 
-Get SRJPEmodel down to the code that is live today (BT-SPAS-X, model storage, canonical runs) so the stock-recruit, survival/travel-time, in-season and PLAD functions can be added back as they reach a natural break (likely Jan-Apr 2027). Archive everything else without losing it.
+Get SRJPEmodel down to the code that is live today (BT-SPAS-X, model storage, canonical runs) so the stock-recruit, survival/travel-time, in-season, forecast and PLAD code can be moved in from runSRJPE after the WY 2027 forecasting season (February 2027 at the earliest). Archive everything else without losing it.
+
+The end state is that the workflow lives in SRJPEmodel and runSRJPE calls SRJPEmodel functions.
 
 ## Decisions so far
 
@@ -90,7 +92,6 @@ Code in `juvenile_abundance.R` and `plot.R`:
 - [ ] `T`/`F` → `TRUE`/`FALSE` (about 19 places).
 - [ ] `sapply()` → `vapply()` in `plot.R`.
 - [ ] Two `suppressWarnings(readr::parse_number(...))` calls in the extract functions: add a comment saying which warning is expected and why it's safe.
-- [ ] *(changes behavior)* `run_abundance_workflow()` catches every error and returns only `error = TRUE`, so the reason is lost. Keep the error message in the returned row and report it with `cli::cli_warn()`.
 - [ ] *(changes behavior)* `prepare_pCap_inputs()` warns and returns `NULL` on bad arguments. Switch to `cli::cli_abort()`.
 - [ ] *(changes behavior)* Rename `generate_diagnostic_plot_juv()` → `plot_juv_diagnostics()`. No other repo calls it.
 - [ ] **[decide]** Rename `R/juvenile_abundance.R` → `R/juvenile-abundance.R` (kebab-case file names).
@@ -109,17 +110,19 @@ Repo files:
 - [ ] Add a `CLAUDE.md` that points to the infra standards and `planning/style_standards_DRAFT.md` (once approved) and lists the check commands.
 - [ ] Remove `cran-comments.md`; the package isn't going to CRAN.
 
-## Things to consider for the migration (Jan-Apr 2027)
+## Things to consider for the migration (February 2027 at the earliest)
 
-**Which code is the source.** For each submodel, decide which repo and commit is canonical (the submodel repo, or the version runSRJPE consumes), and put the commit SHA in the migration commit message. bt-spas-x is published and static; for the others, the submodel repo may keep changing after migration. Decide whether SRJPEmodel or the submodel repo is where changes happen from then on.
+**The source is runSRJPE.** All submodel code comes from runSRJPE's `reproducible-workflow-v1` branch, not the individual submodel repos. That branch has the standardized workflow: `scripts/preseason/<submodel>/` (numbered scripts, `*_functions.R`, `stan/`), `scripts/forecast/` and `config/forecast_config.R`. Put the runSRJPE commit SHA in each migration commit message. Once a submodel is migrated, changes to it happen in SRJPEmodel.
 
-**Data has to land in SRJPEdata first.** Most submodel repos read local files (`stock-recruit/data/`, the survival export in `runSRJPE/data/survival/`). Package functions can't read local files, so each migration needs its inputs in an SRJPEdata release first.
+**Code moves, not files.** runSRJPE won't hand off files to SRJPEmodel. Its functions move into `R/`, and its numbered scripts become the `prepare_*` → `fit_*` → `extract_*` steps. Once the workflow is in SRJPEmodel, runSRJPE calls SRJPEmodel.
 
-**Match runSRJPE's hand-off formats.** runSRJPE consumes file hand-offs now (its README calls this Scenario A) and wants to run the code itself (Scenario B). If each `extract_*` function returns what the hand-off contains (SR: α, β, γ, sd_pro draws; survival: `survival_draws_<site>` + `survival_sites`; in-season: `timing.rds` + `nx_<issue_date>.csv`), runSRJPE's `compute_*` functions barely change.
+**Fits are stored with `store_model_fit()`.** runSRJPE uploads `.rds` fits to Google Drive for WY 2027 only. In SRJPEmodel, fits go through `storage.R` (Azure blob + database) instead.
 
-**Stan interface.** SRJPEmodel uses `rstan`. The infra standards prefer `brms` or `cmdstanr`, and in-season already uses `cmdstanr` (installed from R-universe, which the standards allow). cmdstanr compiles executables, and IT security currently blocks those on at least one machine (see `in-season/CLAUDE.md`). Decide before migrating in-season. `store_model_fit()` only validates `stanfit` and `bugs` objects, so a cmdstanr fit would need a change there.
+**Data has to land in SRJPEdata first.** runSRJPE reads local files (`data/stockrecruit/`, `data/survival/`, etc.). Package functions can't read local files, so each migration needs its inputs in an SRJPEdata release first.
 
-**Check it reproduces.** Before replacing a hand-off, check that the migrated function gives the same numbers as the submodel repo with a fixed seed. Then save a small version of that check as the submodel's regression test.
+**Stan interface.** SRJPEmodel uses `rstan`. runSRJPE fits stock-recruit, in-season and the forecast with `cmdstanr` (installed from R-universe, which the standards allow), and the infra standards prefer it. cmdstanr compiles executables, and IT security currently blocks those on at least one machine (see `in-season/CLAUDE.md`). Decide before the first cmdstanr submodel migrates. `store_model_fit()` only validates `stanfit` and `bugs` objects, so a cmdstanr fit needs a change there.
+
+**Check it reproduces.** Before switching runSRJPE to call a migrated function, check that it gives the same numbers as the runSRJPE script with a fixed seed. Then save a small version of that check as the submodel's regression test.
 
 **Prep scripts in `archive/`.** Look at them at the break point. Pull in the useful parts as `prepare_*_inputs()` functions and leave the rest.
 
@@ -139,4 +142,4 @@ Do one submodel per PR, in whatever order they reach their break point.
 
 1. Kebab-case file names? Recommended yes. It changes one file today.
 2. SRJPEdata as a dependency: `Remotes:` (simple, but against the standards), or publish SRJPEdata to R-universe?
-3. Sign-off on the three behavior changes marked above (error reporting in `run_abundance_workflow()`, abort instead of `NULL` in `prepare_pCap_inputs()`, renaming the diagnostic plot function).
+3. Sign-off on the behavior changes marked above (abort instead of `NULL` in `prepare_pCap_inputs()`, renaming the diagnostic plot function). `run_abundance_workflow()` and `run_bt_spas_x_JPE_sites()` were removed instead, since runSRJPE runs BT-SPAS-X across sites.
