@@ -21,3 +21,5 @@ config.yml
 .positai
 .RData
 .httr-oauth
+
+planning/style_standards_DRAFT.md
