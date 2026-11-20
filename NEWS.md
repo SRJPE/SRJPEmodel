@@ -7,4 +7,3 @@
 * Added SRJPEdata to `Imports` (installed from GitHub via `Remotes`) and declared all other imported packages.
 * Added regression tests for `prepare_pCap_inputs()`.
 * Added `log_transform_flow` to `prepare_pCap_inputs()` and `prepare_abundance_inputs()` to fit BT-SPAS-X on log flow. Default `FALSE`.
-* `prepare_pCap_inputs()` (all_sites) now uses SRJPEdata's `standardized_efficiency_flow` for `mr_flow` instead of re-standardizing `flow_cfs`. Results are the same on the full SRJPEdata data but differ if a subset is passed to `input_efficiency_data`.

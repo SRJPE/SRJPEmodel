@@ -184,11 +184,13 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
   number_efficiency_experiments <- unique(mark_recapture_data[c("site", "run_year", "week")]) |>
     nrow() # number of efficiency experiments completed, nrow(mark_recapture_data) this depends on whether you have lifestage or not
 
-  mr_flow <- if (log_transform_flow) {
-    mark_recapture_data$standardized_log_efficiency_flow
-  } else {
-    mark_recapture_data$standardized_efficiency_flow
-  }
+  # test mr_flow replace
+  clean_mr_flow <- mark_recapture_data |>
+    group_by(site) |>
+    mutate(mean_eff_flow = mean(flow_cfs, na.rm = TRUE),
+           sd_eff_flow = sd(flow_cfs, na.rm = TRUE),
+           new_mr_flow = (flow_cfs - mean_eff_flow) / sd_eff_flow) |>
+    ungroup()
 
   # prepare data and inits for one_site and all_sites separately
   if (model_type == "all_sites") {
@@ -202,7 +204,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                  "Releases" = mark_recapture_data$number_released,
                  "Recaptures" = mark_recapture_data$number_recaptured,
                  "effort" = effort,
-                 "mr_flow" = mr_flow,
+                 "mr_flow" = if (log_transform_flow) mark_recapture_data$standardized_log_efficiency_flow else clean_mr_flow$new_mr_flow,
                  "ind_yr" = mark_recapture_data$site_run_year_id,
                  "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)),
                  "sd_yr_ind" = sd_yr_ind) # liz updated to use dplyr to create
@@ -235,7 +237,7 @@ prepare_pCap_inputs <- function(model_type = c("all_sites", "one_site"),
                  "Releases" = mark_recapture_data$number_released,
                  "Recaptures" = mark_recapture_data$number_recaptured,
                  "effort" = effort,
-                 "mr_flow" = mr_flow,
+                 "mr_flow" = if (log_transform_flow) mark_recapture_data$standardized_log_efficiency_flow else mark_recapture_data$standardized_efficiency_flow,
                  "ind_yr" = mark_recapture_data$site_run_year_id,
                  "Nyr_re" = length(unique(mark_recapture_data$site_run_year_id)))
 
