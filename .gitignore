@@ -19,3 +19,5 @@ config.json
 *.vcv
 config.yml
 .positai
+.RData
+.httr-oauth

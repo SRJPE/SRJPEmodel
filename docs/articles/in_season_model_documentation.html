@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -50,17 +50,30 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="../articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="../articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
+    </li>
+    <li>
+      <a href="../articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="../articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
     </li>
   </ul>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -83,13 +96,19 @@
 Kroman</h4>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/SRJPE/SRJPEmodel/blob/HEAD/vignettes/in_season_model_documentation.Rmd" class="external-link"><code>vignettes/in_season_model_documentation.Rmd</code></a></small>
       <div class="hidden name"><code>in_season_model_documentation.Rmd</code></div>
 
     </div>
 
     
     
+<blockquote>
+<p><strong>Superseded.</strong> The in-season functions described here
+were removed from SRJPEmodel in November 2026 and will be added back
+from the in-season repo. Code below is shown for reference and is not
+run.</p>
+</blockquote>
 <div class="section level3">
 <h3 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h3>
@@ -119,7 +138,7 @@ routing to the Delta.</p>
 <p><em>Figure 1: Conceptual Diagram of SRJPE In Season model.</em></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/include_graphics.html" class="external-link">include_graphics</a></span><span class="op">(</span>path <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"vignettes"</span>, <span class="st">"images"</span>, <span class="st">"inseason_conceptual_diagram.png"</span><span class="op">)</span><span class="op">)</span> </span></code></pre></div>
-<p><img src="images%2Finseason_conceptual_diagram.png" width="1276"></p>
+<p><img src="images/inseason_conceptual_diagram.png" class="r-plt" alt="" width="1276"></p>
 </div>
 <div class="section level2">
 <h2 id="model-architecture">Model Architecture<a class="anchor" aria-label="anchor" href="#model-architecture"></a>
@@ -137,7 +156,7 @@ to Delta) are applied.</p>
 <h2 id="model-inputs">Model Inputs<a class="anchor" aria-label="anchor" href="#model-inputs"></a>
 </h2>
 <p>The model takes in one dataset produced by
-<code><a href="../reference/prepare_inseason_inputs.html">prepare_inseason_inputs()</a></code> function. This function takes in
+<code>prepare_inseason_inputs()</code> function. This function takes in
 a database connection to the model run database, a stream, a site, the
 covariate you would like to use to fit the model (see
 <code>?prepare_inseason_inputs()</code> for the full list of
@@ -161,166 +180,26 @@ environmental covariate.</p>
 <span>                      password <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">db_password</span><span class="op">)</span></span>
 <span></span>
 <span></span>
-<span><span class="va">inseason_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_inseason_inputs.html">prepare_inseason_inputs</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"battle creek"</span>, <span class="st">"ubc"</span>,</span>
+<span><span class="va">inseason_inputs</span> <span class="op">&lt;-</span> <span class="fu">prepare_inseason_inputs</span><span class="op">(</span><span class="va">con</span>, <span class="st">"battle creek"</span>, <span class="st">"ubc"</span>,</span>
 <span>                                             covariate_effect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                                             autocorrelation <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">inseason_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_inseason_model.html">fit_inseason_model</a></span><span class="op">(</span><span class="va">inseason_inputs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">inseason_fit</span> <span class="op">&lt;-</span> <span class="fu">fit_inseason_model</span><span class="op">(</span><span class="va">inseason_inputs</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
 </h2>
 <p>The Stock Recruit model produces a STAN fit object when run. You can
 extract parameter estimates from the model object with the function
-<code><a href="../reference/extract_inseason_estimates.html">extract_inseason_estimates()</a></code>. This produces a table.</p>
+<code>extract_inseason_estimates()</code>. This produces a table.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">inseason_estimates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_inseason_estimates.html">extract_inseason_estimates</a></span><span class="op">(</span><span class="va">inseason_inputs</span>, <span class="va">inseason_fit_subset</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">inseason_estimates</span> <span class="op">&lt;-</span> <span class="fu">extract_inseason_estimates</span><span class="op">(</span><span class="va">inseason_inputs</span>, <span class="va">inseason_fit_subset</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">inseason_estimates</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
-<colgroup>
-<col width="10%">
-<col width="5%">
-<col width="9%">
-<col width="10%">
-<col width="13%">
-<col width="15%">
-<col width="5%">
-<col width="12%">
-<col width="18%">
-</colgroup>
-<thead><tr class="header">
-<th align="left">parameter</th>
-<th align="right">year</th>
-<th align="right">week_fit</th>
-<th align="left">statistic</th>
-<th align="right">value</th>
-<th align="left">model_name</th>
-<th align="left">site</th>
-<th align="left">stream</th>
-<th align="left">srjpedata_version</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">mean</td>
-<td align="right">0.5172657</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">se_mean</td>
-<td align="right">0.0005400</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">sd</td>
-<td align="right">0.0237471</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">2.5</td>
-<td align="right">0.4748207</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">25</td>
-<td align="right">0.5009836</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">50</td>
-<td align="right">0.5163066</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">75</td>
-<td align="right">0.5326806</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">97.5</td>
-<td align="right">0.5679647</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="odd">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">n_eff</td>
-<td align="right">1933.6832388</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-<tr class="even">
-<td align="left">phi</td>
-<td align="right">1999</td>
-<td align="right">NA</td>
-<td align="left">Rhat</td>
-<td align="right">1.0014891</td>
-<td align="left">beta_dev_hbmrt</td>
-<td align="left">lcc</td>
-<td align="left">clear creek</td>
-<td align="left">0.0.2</td>
-</tr>
-</tbody>
-</table>
 <p>The following plots show in season model results.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu"><a href="../reference/generate_results_plot_inseason.html">generate_results_plot_inseason</a></span><span class="op">(</span>inseason_inputs <span class="op">=</span> <span class="va">inseason_inputs</span>, con <span class="op">=</span> <span class="va">con</span><span class="op">)</span></span></code></pre></div>
-<p><img src="in_season_model_documentation_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="fu"><a href="../reference/generate_diagnostic_plot.html">generate_diagnostic_plot</a></span><span class="op">(</span><span class="va">inseason_inputs</span>, <span class="va">inseason_fit_subset</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "beta_dev_hbmrt"</span></span></code></pre></div>
-<p><img src="in_season_model_documentation_files/figure-html/unnamed-chunk-7-2.png" width="672"></p>
+<code class="sourceCode R"><span><span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu">generate_results_plot_inseason</span><span class="op">(</span>inseason_inputs <span class="op">=</span> <span class="va">inseason_inputs</span>, con <span class="op">=</span> <span class="va">con</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">generate_diagnostic_plot</span><span class="op">(</span><span class="va">inseason_inputs</span>, <span class="va">inseason_fit_subset</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Resources</strong></p>
 </div>
   </div>
@@ -340,7 +219,7 @@ extract parameter estimates from the model object with the function
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer>

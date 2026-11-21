@@ -2,6 +2,16 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
-^cran-comments\.md$
 ^\.positai$
 ^\.claude$
+^planning$
+^archive$
+^data-raw$
+^model_files$
+^db$
+^docs$
+^pkgdown$
+^_pkgdown\.yml$
+^\.github$
+^LICENSE$
+^vignettes$

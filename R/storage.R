@@ -1,30 +1,9 @@
-# storage.R
-# Functions for storing and retrieving model fit objects (.rds) in Azure Blob Storage,
-# and writing model run metadata to the JPE database.
-#
-# ── Public API ────────────────────────────────────────────────────────────────
-#   store_model_fit()      Upload a model fit object and record it in the DB.
-#   get_model_fit()        Download the most recent (or a specific) model fit.
-#   list_model_versions()  List all stored versions for a given model type.
-# ── Internal helpers ──────────────────────────────────────────────────────────
-#   setup_azure_blob_backend()   Build an AzureStor endpoint object.
-#   model_pin_board()            Build a pins board scoped to one model type.
-#   insert_model_run()           Write one model run record to the database.
-# ─────────────────────────────────────────────────────────────────────────────
+# Store model fits (.rds) in Azure Blob Storage and record each run in the
+# model_run table of the JPE database.
 
 # ── Model name constants ───────────────────────────────────────────────────────
-# .approved_model_names: must match the `name` column of the `model_name` table.
-# .abundance_model_types / .pcap_one_site_model_types: the specific variants
-#   stored in the `model_type` column of `model_run`. These map to a single
-#   consolidated model_name in the DB ("bt-spas-x" and "pcap_one_site").
-# Extend these vectors (and update model_name / model_type accordingly) when
-# adding new model families.
-#
-# The abundance model family is stored under the consolidated name
-# "bt-spas-x" (the actual estimator it runs — a Bayesian Time-Stratified
-# Petersen model), not "abundance"; "abundance" describes the quantity every
-# model type here ultimately estimates, so it isn't specific enough to use
-# as one model family's name.
+# .approved_model_names must match the `name` column of the `model_name` table.
+# Add to these vectors (and the database tables) when adding a model.
 
 .approved_model_names <- c(
   "bt-spas-x", "plad_btspasx_results",
@@ -32,14 +11,8 @@
   "stock_recruit", "survival", "inseason", "plad"
 )
 
-# Abundance (BT-SPAS-X) model type variants (stored in model_run.model_type
-# when present). prepare_abundance_inputs() still derives one of these
-# internally to pick the right BUGS model file, and store_model_fit() still
-# accepts them directly from that pipeline (preserving model_type provenance
-# for pipeline-driven runs). They are *not* meant to be chosen by a human
-# uploading a fit manually (e.g. via a Shiny app) — for that, use the plain
-# "bt-spas-x" name below instead, which consolidates to itself and records
-# model_type = NULL.
+# BT-SPAS-X variants, stored in model_run.model_type. Manual uploads should
+# use plain "bt-spas-x" instead, which records model_type = NULL.
 .abundance_model_types <- c(
   "all_mark_recap", "no_mark_recap", "missing_mark_recap", "no_mark_recap_no_trib"
 )
@@ -135,7 +108,7 @@
 #' @param access_key Azure storage access key with **write** permissions.
 #'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
 #'
-#' @return Invisibly returns the blob URL of the stored `.rds` file.
+#' @returns Invisibly returns the blob URL of the stored `.rds` file.
 #'
 #' @examples
 #' \dontrun{
@@ -303,7 +276,7 @@ store_model_fit <- function(con,
 #' @param version Optional. A specific version string as shown by
 #'   [list_model_versions()]. Overrides DB-based resolution when supplied.
 #'
-#' @return The model fit object (class `stanfit` or `bugs`).
+#' @returns The model fit object (class `stanfit` or `bugs`).
 #'
 #' @examples
 #' \dontrun{
@@ -396,7 +369,7 @@ get_model_fit <- function(results_name,
         dplyr::first()
 
       cli::cli_alert_info(
-        "No filters supplied — downloading latest version: {.val {version}}"
+        "No filters supplied; downloading latest version: {.val {version}}"
       )
     }
   }
@@ -421,7 +394,7 @@ get_model_fit <- function(results_name,
 #'
 #' @inheritParams get_model_fit
 #'
-#' @return A tibble with columns `version`, `created`, and `hash`.
+#' @returns A tibble with columns `version`, `created`, and `hash`.
 #'
 #' @examples
 #' \dontrun{
@@ -480,7 +453,7 @@ list_model_versions <- function(results_name,
 #' @param access_key Azure storage access key with **read** permissions.
 #'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
 #'
-#' @return A named list of model fit objects. Names are formatted as
+#' @returns A named list of model fit objects. Names are formatted as
 #'   `"<site>_<run_year>"` (e.g. `"ubc_2020"`, `"lcc_2021"`). Any site ×
 #'   run_year that fails to download is returned as `NULL` with a warning
 #'   rather than aborting the whole batch.
@@ -580,7 +553,7 @@ get_many_model_fits <- function(con,
 
   cli::cli_alert_success("Downloaded {n_ok}/{nrow(runs)} fit{?s} successfully.")
   if (n_fail > 0) {
-    cli::cli_alert_warning("{n_fail} fit{?s} failed — returned as NULL in the list.")
+    cli::cli_alert_warning("{n_fail} fit{?s} failed; returned as NULL in the list.")
   }
 
   fits
@@ -617,7 +590,7 @@ get_many_model_fits <- function(con,
 #' @param description Character or NULL. Human-readable run description.
 #' @param model_inputs List. The inputs object from `prepare_*_inputs()`.
 #'
-#' @return Invisibly returns the number of rows inserted (always 1 on success).
+#' @returns Invisibly returns the number of rows inserted (always 1 on success).
 #' @keywords internal
 insert_model_run <- function(con, blob_url, results_name, description, model_inputs) {
 
@@ -697,6 +670,7 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
 
 
 #' Null-coalescing operator
+#' @noRd
 #' @keywords internal
 `%||%` <- function(x, y) if (!is.null(x)) x else y
 
@@ -707,7 +681,7 @@ insert_model_run <- function(con, blob_url, results_name, description, model_inp
 #' @param storage_account Azure storage account name.
 #' @param access_key Azure storage access key.
 #'
-#' @return An `AzureStor` storage endpoint object.
+#' @returns An `AzureStor` storage endpoint object.
 #' @keywords internal
 setup_azure_blob_backend <- function(storage_account,
                                      access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
@@ -732,7 +706,7 @@ setup_azure_blob_backend <- function(storage_account,
 #' @param model_name Model type name, used as the blob subfolder.
 #' @param access_key Azure storage access key.
 #'
-#' @return A `pins` board object connected to Azure Blob Storage.
+#' @returns A `pins` board object connected to Azure Blob Storage.
 #' @keywords internal
 model_pin_board <- function(storage_account, container, model_name,
                             access_key = Sys.getenv("AZ_CONTAINER_ACCESS_KEY")) {
