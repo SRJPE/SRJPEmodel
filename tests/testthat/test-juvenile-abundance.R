@@ -29,4 +29,5 @@ test_that("prepare_pCap_inputs() errors on bad arguments", {
   expect_snapshot(prepare_pCap_inputs("one_site", skew = FALSE), error = TRUE)
   expect_snapshot(prepare_pCap_inputs("one_site", site_selection = "tisdale"), error = TRUE)
   expect_snapshot(prepare_pCap_inputs("all_sites", exclude_from_hyper = "not a site"), error = TRUE)
+  expect_snapshot(prepare_pCap_inputs("all_sites", log_transform_flow = "yes"), error = TRUE)
 })
