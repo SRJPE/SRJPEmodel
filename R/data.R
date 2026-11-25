@@ -1,41 +1,40 @@
+#' BT-SPAS-X MCMC settings
+#'
+#' @details MCMC settings used to fit the BT-SPAS-X models.
+#' @format A named list:
+#' * **number_mcmc** Numeric. Total iterations per chain for the BUGS abundance model.
+#' * **number_burnin** Numeric. Iterations discarded as burn-in.
+#' * **number_thin** Numeric. Thinning interval.
+#' * **number_chains** Numeric. Number of chains, used by both the pCap and abundance models.
+#' @source Built in `data-raw/cache-params.R`.
+"bt_spas_x_bayes_params"
 
-#' @title BT-SPAS-X BUGS parameters
-#' @name bt_spas_x_bayes_params
-#' @description Parameters for running BUGS on the BT-SPAS-X model
-#' @format A named list with 4 elements:
-#' \itemize{
-#'   \item \code{number_mcmc}: TODO
-#'   \item \code{number_burnin}:
-#'   \item \code{number_thin}:
-#'   \item \code{number_chains}:
-#'   }
-'bt_spas_x_bayes_params'
+#' BT-SPAS-X model code
+#'
+#' @details Stan code for the pCap models and BUGS code for the abundance
+#'   model, read from `model_files/`. `fit_pCap_model()` picks the pCap model
+#'   by name.
+#' @format A named list of character strings:
+#' * **pCap_all_sites** Stan code for the hierarchical tributary pCap model.
+#' * **pCap_one_site** Stan code for the single-site (mainstem) pCap model.
+#' * **pCap_one_site_skew** As `pCap_one_site`, with skew-normal process error.
+#' * **abundance_BUGS** WinBUGS code for the abundance model.
+#' @source Built in `data-raw/cache-models.R`.
+"bt_spas_x_model_code"
 
-#' @title BT-SPAS-X STAN model code
-#' @name bt_spas_x_model_code
-#' @description A nested named list containing model code for versions of the bt-spas-x models.
-#' Model code written in WinBUGS has two versions: "with" and "without" cut functions. The
-#' STAN
-#' @format A named list with 4 elements:
-#' \itemize{
-#'   \item \code{pCap_all}: pCap model code
-#'   \item \code{abundance}: abundance model code (STAN)
-#'   \item \code{abundance_BUGS}: abundance model code (BUGS)
-#'   }
-'bt_spas_x_model_code'
+#' Julian week to date lookup
+#'
+#' @format A tibble with 53 rows:
+#' * **Jwk** Numeric. Julian week, 1-53.
+#' * **date** Character. First day of the week, as `"Mon-DD"` (e.g. `"Jan-01"`).
+#' @source `data-raw/juvenile_abundance/Jwk_Dates.txt`, built in `data-raw/cache-models.R`.
+"julian_week_to_date_lookup"
 
-#' @title Passage to Spawner model code
-#' @name p2s_model_code
-#' @description A character string containing the STAN model code for the Passage to Spawner submodel.
-'p2s_model_code'
-
-#' @title Survival model code
-#' @name survival_model_code
-#' @description A nested named list containing model code for versions of the survival models.
-#' @format A named list with 2 elements:
-#' \itemize{
-#'   \item \code{survival_CovWY}:
-#'   \item \code{survival_NoCov}:
-#'   }
-'survival_model_code'
-
+#' Site order, north to south
+#'
+#' @details Used to sort sites from north to south in model inputs and plots.
+#' @format A tibble with 15 rows:
+#' * **ns_order** Integer. Position from north (1) to south.
+#' * **site** Character. Site name, as used in SRJPEdata.
+#' @source Built in `data-raw/cache-params.R`.
+"site_order_north_south"

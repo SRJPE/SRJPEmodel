@@ -1,35 +1,7 @@
-# canonical.R
-# Functions for designating and retrieving the canonical ("production") model
-# run for a given model type + scope (site / run_year / site_selection,
-# where applicable). Builds on top of storage.R: a canonical designation
-# always points at a specific model_run row via model_run_id, so canonical
-# fits are downloaded through the same get_model_fit()/version machinery as
-# any other stored fit — this file only adds the "which version is
-# production" bookkeeping.
-#
-# canonical_model_run (see db/migrations/0001_create_canonical_model_run.sql)
-# is an append-only log, not an update-in-place table: set_canonical_model_run()
-# always inserts a new row rather than overwriting an existing one. The
-# "current" canonical version for a scope is simply the row with the latest
-# set_at for that scope — mirroring the newest-wins pattern store_model_fit()
-# already uses for pin versions. This gives a free audit trail with no
-# separate is_current flag or transactional flip.
-#
-# Deliberately not part of the scope: model_type (the mark-recapture variant
-# for bt-spas-x, e.g. "all_mark_recap"). A canonical designation answers
-# "what's the production run for this site/run_year", not "...for this
-# specific variant" — the variant is an implementation detail of how a given
-# model_run was fit, not something that should further subdivide which run
-# counts as canonical. It's still shown in list_canonical_model_runs()'s
-# output (joined from model_run), just not part of the lookup key.
-#
-# ── Public API ────────────────────────────────────────────────────────────────
-#   set_canonical_model_run()      Record a model_run as canonical for a scope.
-#   list_canonical_model_runs()    Current canonical designation per scope.
-#   get_canonical_history()        Full audit trail for one scope.
-#   get_canonical_model_fit()      Download the current canonical fit for a scope.
-#   get_many_canonical_model_fits() Download canonical fits for many site × run_year scopes.
-# ─────────────────────────────────────────────────────────────────────────────
+# Mark which stored model_run is canonical (production) for a model and scope
+# (site / run_year / site_selection). canonical_model_run is append-only, so
+# the row with the latest set_at is current and older rows are the history.
+# model_type (e.g. "all_mark_recap") is not part of the scope.
 
 
 # ── set_canonical_model_run() ───────────────────────────────────────────────
@@ -53,7 +25,7 @@
 #' @param site_selection Optional. Site selection, for pcap_one_site scopes.
 #' @param note Optional free-text note (e.g. why this version was picked).
 #'
-#' @return Invisibly returns the number of rows inserted (always 1 on success).
+#' @returns Invisibly returns the number of rows inserted (always 1 on success).
 #'
 #' @examples
 #' \dontrun{
@@ -131,7 +103,7 @@ set_canonical_model_run <- function(con, results_name, model_run_id, set_by,
 #' @param con A database connection object.
 #' @param results_name Optional. Filter to one consolidated model name.
 #'
-#' @return A tibble with one row per scope: `model_name`, `model_type`
+#' @returns A tibble with one row per scope: `model_name`, `model_type`
 #'   (the variant of the canonical run, informational only — not part of the
 #'   scope), `site`, `run_year`, `site_selection`, `model_run_id`,
 #'   `description`, `blob_fit_storage_url`, `set_by`, `set_at`, `note`.
@@ -186,7 +158,7 @@ list_canonical_model_runs <- function(con, results_name = NULL) {
 #' by always inserting rather than updating.
 #'
 #' @inheritParams set_canonical_model_run
-#' @return A tibble with columns `model_run_id`, `set_by`, `set_at`, `note`,
+#' @returns A tibble with columns `model_run_id`, `set_by`, `set_at`, `note`,
 #'   ordered newest first.
 #'
 #' @examples
@@ -236,7 +208,7 @@ get_canonical_history <- function(con, results_name, site = NULL,
 #'
 #' @inheritParams set_canonical_model_run
 #' @inheritParams get_model_fit
-#' @return The model fit object (class `stanfit` or `bugs`).
+#' @returns The model fit object (class `stanfit` or `bugs`).
 #'
 #' @examples
 #' \dontrun{
@@ -328,7 +300,7 @@ get_canonical_model_fit <- function(con, results_name, site = NULL,
 #' @param access_key Azure storage access key with **read** permissions.
 #'   Defaults to the `AZ_CONTAINER_ACCESS_KEY` environment variable.
 #'
-#' @return A named list of model fit objects. Names depend on the scope of
+#' @returns A named list of model fit objects. Names depend on the scope of
 #'   `model_name`: `"<site>_<run_year>"` for bt-spas-x (e.g. `"ubc_2020"`),
 #'   `"<site>"` for site-only scopes like plad_btspasx_results,
 #'   `"<site_selection>"` for pcap_one_site (e.g. `"tisdale"`), or
@@ -418,7 +390,7 @@ get_many_canonical_model_fits <- function(con,
 
   cli::cli_alert_success("Downloaded {n_ok}/{nrow(canonical)} canonical fit{?s} successfully.")
   if (n_fail > 0) {
-    cli::cli_alert_warning("{n_fail} fit{?s} failed — returned as NULL in the list.")
+    cli::cli_alert_warning("{n_fail} fit{?s} failed; returned as NULL in the list.")
   }
 
   fits

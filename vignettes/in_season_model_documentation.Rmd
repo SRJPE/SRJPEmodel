@@ -9,8 +9,12 @@ vignette: "%\\VignetteIndexEntry{Stock Recruit Model} %\\VignetteEngine{knitr::r
 #output: word_document
 ---
 
+> **Superseded.** The in-season functions described here were removed from SRJPEmodel in November 2026 and will be added back from the in-season repo. Code below is shown for reference and is not run.
+
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  eval = FALSE,
   collapse = TRUE,
   comment = "#>",
   fig.width = 7,
@@ -43,7 +47,7 @@ The framework fits historical timing curves to weekly BT‑SPAS‑X outputs (inc
 
 *Figure 1: Conceptual Diagram of SRJPE In Season model.* 
 
-```{r}
+```{r, eval = TRUE}
 knitr::include_graphics(path = here::here("vignettes", "images", "inseason_conceptual_diagram.png")) 
 ```
 

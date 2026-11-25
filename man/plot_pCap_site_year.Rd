@@ -44,6 +44,15 @@ Default \code{0.5}.}
 \item{lb}{Numeric. Lower quantile bound. Default \code{0.025}.}
 
 \item{ub}{Numeric. Upper quantile bound. Default \code{0.975}.}
+
+\item{input_catch_data}{Optional data frame of weekly catch data.
+Defaults to \code{SRJPEdata::weekly_juvenile_abundance_catch_data}.
+If supplied, the structure must match that of the default.}
+
+\item{input_efficiency_data}{Optional data frame of weekly efficiency
+(mark-recapture) data. Defaults to
+\code{SRJPEdata::weekly_juvenile_abundance_efficiency_data}.
+If supplied, the structure must match that of the default.}
 }
 \value{
 A named list with two ggplot objects:

@@ -19,3 +19,6 @@ config.json
 *.vcv
 config.yml
 .positai
+.RData
+.httr-oauth
+data-raw/WinBUGS14

@@ -3,21 +3,28 @@
 \docType{data}
 \name{bt_spas_x_model_code}
 \alias{bt_spas_x_model_code}
-\title{BT-SPAS-X STAN model code}
+\title{BT-SPAS-X model code}
 \format{
-A named list with 4 elements:
+A named list of character strings:
 \itemize{
-\item \code{pCap_all}: pCap model code
-\item \code{abundance}: abundance model code (STAN)
-\item \code{abundance_BUGS}: abundance model code (BUGS)
+\item \strong{pCap_all_sites} Stan code for the hierarchical tributary pCap model.
+\item \strong{pCap_one_site} Stan code for the single-site (mainstem) pCap model.
+\item \strong{pCap_one_site_skew} As \code{pCap_one_site}, with skew-normal process error.
+\item \strong{abundance_BUGS} WinBUGS code for the abundance model.
 }
+}
+\source{
+Built in \code{data-raw/cache-models.R}.
 }
 \usage{
 bt_spas_x_model_code
 }
 \description{
-A nested named list containing model code for versions of the bt-spas-x models.
-Model code written in WinBUGS has two versions: "with" and "without" cut functions. The
-STAN
+BT-SPAS-X model code
+}
+\details{
+Stan code for the pCap models and BUGS code for the abundance
+model, read from \verb{model_files/}. \code{fit_pCap_model()} picks the pCap model
+by name.
 }
 \keyword{datasets}

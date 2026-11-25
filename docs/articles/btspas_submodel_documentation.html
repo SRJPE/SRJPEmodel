@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -50,17 +50,30 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="../articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="../articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
+    </li>
+    <li>
+      <a href="../articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="../articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
     </li>
   </ul>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -83,7 +96,7 @@
 Korman</h4>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/SRJPE/SRJPEmodel/blob/HEAD/vignettes/btspas_submodel_documentation.Rmd" class="external-link"><code>vignettes/btspas_submodel_documentation.Rmd</code></a></small>
       <div class="hidden name"><code>btspas_submodel_documentation.Rmd</code></div>
 
     </div>
@@ -138,7 +151,7 @@ model or a within season outmigrant forecast model. See figure 1 below
 to see how it fits into the full JPE model system.</p>
 <p><em>Figure 1: Conceptual Diagram of SRJPE model. BTSPAS X sub-model
 highlighted in yellow</em></p>
-<p><img src="images%2FBTSPASX%20jpe%20diagram.png"></p>
+<p><img src="images/BTSPASX%20jpe%20diagram.png"></p>
 </div>
 <div class="section level3">
 <h3 id="submodel-architecture">Submodel Architecture<a class="anchor" aria-label="anchor" href="#submodel-architecture"></a>
@@ -167,7 +180,7 @@ define a normal distribution from which site specific intercepts β_S are
 drawn. The red triangle indicates that trap efficiency estimates
 contribute to estimates of abundance, but that abundance model
 parameters do not influence trap efficiency parameters.</em></p>
-<p><img src="images%2FDAG_diagram.png"></p>
+<p><img src="images/DAG_diagram.png"></p>
 </div>
 <div class="section level2">
 <h2 id="model-inputs">Model inputs<a class="anchor" aria-label="anchor" href="#model-inputs"></a>
@@ -177,8 +190,8 @@ parameters do not influence trap efficiency parameters.</em></p>
 <li>
 <strong>Weekly Juvenile Abundance Model Data</strong> Weekly catch,
 efficiency, flow, and log normal priors needed to run the model. This is
-in the <code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_catch_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_catch_data</a></code> and
-<code><a href="https://rdrr.io/pkg/SRJPEdata/man/weekly_juvenile_abundance_efficiency_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_efficiency_data</a></code> data
+in the <code><a href="https://srjpe.github.io/SRJPEdata/reference/weekly_juvenile_abundance_catch_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_catch_data</a></code> and
+<code><a href="https://srjpe.github.io/SRJPEdata/reference/weekly_juvenile_abundance_efficiency_data.html" class="external-link">SRJPEdata::weekly_juvenile_abundance_efficiency_data</a></code> data
 objects.</li>
 <li>
 <strong>BTSPAS params</strong> Bayesian estimation specifications.
@@ -199,14 +212,15 @@ more details.</p>
 <span><span class="co"># example for upper battle creek (ubc) 2018 (trib)</span></span>
 <span></span>
 <span><span class="co"># run pCap model</span></span>
-<span><span class="va">pCap_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_pCap_inputs.html">prepare_pCap_inputs</a></span><span class="op">(</span>mainstem <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">pCap</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_pCap_model.html">fit_pCap_model</a></span><span class="op">(</span><span class="va">pCap_inputs</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span></span>
+<span><span class="va">pCap_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_pCap_inputs.html">prepare_pCap_inputs</a></span><span class="op">(</span>model_type <span class="op">=</span> <span class="st">"all_sites"</span><span class="op">)</span></span>
+<span><span class="va">pCap</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_pCap_model.html">fit_pCap_model</a></span><span class="op">(</span><span class="va">pCap_inputs</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># run abundance model</span></span>
-<span><span class="va">abundance_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_abundance_inputs.html">prepare_abundance_inputs</a></span><span class="op">(</span><span class="st">"ubc"</span>, <span class="fl">2018</span>, effort_adjust <span class="op">=</span> <span class="cn">T</span>, <span class="va">pCap</span><span class="op">)</span></span>
+<span><span class="va">abundance_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_abundance_inputs.html">prepare_abundance_inputs</a></span><span class="op">(</span>site <span class="op">=</span> <span class="st">"ubc"</span>,</span>
+<span>                                             run_year <span class="op">=</span> <span class="fl">2010</span>,</span>
+<span>                                             pCap_model_type <span class="op">=</span> <span class="st">"all_sites"</span>,</span>
+<span>                                             pCap_model_object <span class="op">=</span> <span class="va">pCap</span><span class="op">)</span></span>
 <span><span class="va">abundance</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_abundance_model_BUGS.html">fit_abundance_model_BUGS</a></span><span class="op">(</span><span class="va">abundance_inputs</span>,</span>
-<span>                                      <span class="co"># point towards where you store the .bug model</span></span>
-<span>                                      <span class="st">"C:/Users/Liz/Documents/SRJPEmodel/model_files/abundance_model.bug"</span>,</span>
 <span>                                      <span class="co"># point to where you have WinBUGS</span></span>
 <span>                                      <span class="st">"C:/Users/Liz/Documents/SRJPEmodel/data-raw/WinBUGS14"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -214,10 +228,9 @@ more details.</p>
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">abundance_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_abundance_estimates.html">extract_abundance_estimates</a></span><span class="op">(</span><span class="st">"ubc"</span>, <span class="fl">2018</span>, <span class="va">abundance_inputs</span>, <span class="va">abundance</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">abundance_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_abundance_estimates.html">extract_abundance_estimates</a></span><span class="op">(</span><span class="va">abundance_inputs</span>, <span class="va">abundance</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/generate_diagnostic_plot_juv.html">generate_diagnostic_plot_juv</a></span><span class="op">(</span>inputs <span class="op">=</span> <span class="va">abundance_inputs</span>, results_df <span class="op">=</span> <span class="va">abundance_table</span><span class="op">)</span></span></code></pre></div>
-<p><img src="btspas_submodel_documentation_files/figure-html/unnamed-chunk-4-1.png" width="672"></p>
+<span><span class="fu"><a href="../reference/plot_juv_diagnostics.html">plot_juv_diagnostics</a></span><span class="op">(</span>inputs <span class="op">=</span> <span class="va">abundance_inputs</span>, results_df <span class="op">=</span> <span class="va">abundance_table</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="resources">Resources<a class="anchor" aria-label="anchor" href="#resources"></a>
@@ -241,7 +254,7 @@ more details.</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer>

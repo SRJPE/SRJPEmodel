@@ -1,49 +1,42 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file and run devtools::build_readme() -->
+
 # SRJPEmodel
 
-This data package contains the Spring Run Juvenile Production Estimate (SRJPE) Forecast model. This model is made up of multiple submodels that are combined to produce an annual forecast of juvenile spring run chinook salmon at the delta entry. 
+Functions and documentation for the Spring Run Juvenile Production
+Estimate (SRJPE) forecast model. Input data comes from the
+[SRJPEdata](https://github.com/SRJPE/SRJPEdata) package, and the
+forecast is run in [runSRJPE](https://github.com/SRJPE/runSRJPE).
 
-This model is dependent on data produced in the `SRJPEdata` R package. 
-
-The SR JPE model is still in development. This package will be updated to contain the most up to date code and documentation on the model. 
+The package currently contains the BT-SPAS-X juvenile abundance submodel
+and the functions for storing model fits. The stock-recruit,
+survival/travel-time, in-season and PLAD submodels are being developed
+in their own repositories and will be added back as they are finalized.
+Earlier versions of their code are in `archive/` and at the tag
+`legacy-pre-migration`.
 
 ## Installation
 
-```
-# install.packages("remotes")
-remotes::install_github("SRJPE/SRJPEmodel")
-```
-
-## Usage
-This package contains code and documenation for the SR JPE model. 
-
-```
-# datasets within the package
-data(package = 'SRJPEmodel')
-
-# explore package documentation 
-?SRJPEmodel
+``` r
+# install.packages("pak")
+pak::pak("SRJPE/SRJPEmodel")
 ```
 
-## SR JPE Submodel Components 
-This repository contains code to run a few versions of the SR JPE including: 
+## Submodels
 
-* Within Season Forecast 
-* SR Annual Forecast 
+- [BT-SPAS-X juvenile
+  abundance](https://srjpe.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html)
+- Stock-recruit, survival, in-season and PLAD: articles are superseded
+  until their code is added back.
 
-*Both these versions can be run using tributary RST data or Mainstem RST data*
+## Development
 
-These models are both dependent on the following submodels, click on the link to view an article giving a brief overview of each submodel: 
+``` r
+devtools::document()     # regenerate NAMESPACE and man/
+devtools::test()         # run tests
+devtools::check()        # R CMD check
+devtools::build_readme() # render this README
+```
 
-* [BTSPAS-X Juvenile Abundance Modeling](https://srjpe.github.io/SRJPEmodel/articles/btspas_submodel_documentation.html)
-* [Passage to Spawner (P2S) - Adult Spawner Modeling](https://srjpe.github.io/SRJPEmodel/articles/passage_to_spawner_submodel.html) 
-* Survival Model 
-* Probabilistic Length at Date (PLAD) - Run Identification Model 
-* Stock-Recruit Model 
-* Travel Time Model 
-
-## Explore model fits and results 
-
-Explore model datasets, fits, and results on the SRJPEdashboard shiny app. (Add link)
-
-
-
+Style standards for this package are in
+`planning/style_standards.md`.

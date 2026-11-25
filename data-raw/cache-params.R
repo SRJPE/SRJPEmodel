@@ -6,12 +6,8 @@ bt_spas_x_bayes_params <- list(number_mcmc = 10000,
 
 usethis::use_data(bt_spas_x_bayes_params, overwrite = TRUE)
 
-# JPE forecasting
-forecast_seed <- 123
-usethis::use_data(forecast_seed, overwrite = TRUE)
-
 # site order
-site_order_north_south <- tibble("ns_order" = 1:15,
+site_order_north_south <- tibble::tibble("ns_order" = 1:15,
                                  "site" = c("lcc", "ucc", "ubc",
                                             "mill creek", "deer creek",
                                             "butte creek",

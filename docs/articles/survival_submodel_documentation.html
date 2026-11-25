@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SRJPEmodel</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -50,17 +50,30 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (P2S)</a>
+      <a href="../articles/btspas_submodel_documentation.html">BT-SPAS-X Submodel</a>
+    </li>
+    <li class="dropdown-header">Superseded</li>
+    <li>
+      <a href="../articles/stock_recruit_model_documentation.html">Stock Recruit Model</a>
     </li>
     <li>
       <a href="../articles/survival_submodel_documentation.html">Survival Model</a>
+    </li>
+    <li>
+      <a href="../articles/in_season_model_documentation.html">In Season Model</a>
+    </li>
+    <li>
+      <a href="../articles/plad_submodel_documentation.html">PLAD Model</a>
+    </li>
+    <li>
+      <a href="../articles/passage_to_spawner_submodel.html">Passage to Spawner Model (retired)</a>
     </li>
   </ul>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/SRJPE/SRJPEmodel" class="external-link">
+  <a href="https://github.com/SRJPE/SRJPEmodel/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -83,13 +96,19 @@
 Cordoleani</h4>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/SRJPE/SRJPEmodel/blob/HEAD/vignettes/survival_submodel_documentation.Rmd" class="external-link"><code>vignettes/survival_submodel_documentation.Rmd</code></a></small>
       <div class="hidden name"><code>survival_submodel_documentation.Rmd</code></div>
 
     </div>
 
     
     
+<blockquote>
+<p><strong>Superseded.</strong> The survival functions described here
+were removed from SRJPEmodel in November 2026 and will be added back
+from the survival-travel-time repo. Code below is shown for reference
+and is not run.</p>
+</blockquote>
 <div class="section level3">
 <h3 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h3>
@@ -124,7 +143,7 @@ model. See figure 1 below to see how it fits into the full JPE model
 system.</p>
 <p><em>Figure 1: Conceptual Diagram of SRJPE model. Survival sub-model
 shown in yellow.</em>Submodel Architecture</p>
-<p><img src="images%2Fsurvival_doc_picture_1.png"></p>
+<p><img src="images/survival_doc_picture_1.png"></p>
 <p>The bayesian version of a Cormak-Jolly-Seber (CJS) model uses a
 classic maximum likelihood (MLE) method. The Bayesian CJS model was
 taken from stan example at <a href="https://mc-stan.org/docs/stan-users-guide/mark-recapture-models.html." class="external-link uri">https://mc-stan.org/docs/stan-users-guide/mark-recapture-models.html.</a> The
@@ -141,7 +160,7 @@ Delta exit. The last reach is used to further improve detection
 probability estimation at the Sacramento location.</p>
 <p><em>Figure 2: Diagram describing survival rate and detection
 probability.</em>Model inputs</p>
-<p><img src="images%2Fsurvival_doc_figure_2.png"></p>
+<p><img src="images/survival_doc_figure_2.png"></p>
 <p>The tagging data used for this work were obtained through the
 Interagency Telemetry Advisory Group (ITAG), which is an interagency
 coordination group formed to support the planning and implementation of
@@ -149,7 +168,7 @@ a coordinated acoustic telemetry array in the Sacramento and San Joaquin
 Rivers, the Sacramento-San Joaquin River Delta, and San Francisco Bay.
 This data is processed in the SRJPEdata package to produce a
 <code>survival_model_inputs</code> data object.</p>
-<p>The <code><a href="https://rdrr.io/pkg/SRJPEdata/man/survival_model_inputs.html" class="external-link">SRJPEdata::survival_model_inputs</a></code> data object
+<p>The <code><a href="https://srjpe.github.io/SRJPEdata/reference/survival_model_inputs.html" class="external-link">SRJPEdata::survival_model_inputs</a></code> data object
 includes the following columns: the individual fish ID, the fish’s
 detection history (“ch”) which gives a 0 when a fish is not detected at
 one of the location and a 1 if it is, the study ID, fish length and
@@ -167,11 +186,11 @@ capture sites and standardized versions of those distances.</p>
 <p>There are 2 versions of the STAN survival model:</p>
 <ul>
 <li><p>1: No Covariate Model: To run the no covariate model, call
-<code><a href="../reference/prepare_survival_inputs.html">SRJPEmodel::prepare_survival_inputs()</a></code> with no arguments
+<code>SRJPEmodel::prepare_survival_inputs()</code> with no arguments
 supplied.</p></li>
 <li>
 <p>2: Covariate Model: To run the covariate model, call
-<code><a href="../reference/prepare_survival_inputs.html">SRJPEmodel::prepare_survival_inputs()</a></code> with a
+<code>SRJPEmodel::prepare_survival_inputs()</code> with a
 <code>number_of_water_year_types</code> argument and an
 <code>effect</code> argument.</p>
 <ul>
@@ -204,15 +223,15 @@ condition of released fish as a covariate.</p></li>
 </li>
 </ul>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SRJPEdata</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SRJPEmodel</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://srjpe.github.io/SRJPEdata/" class="external-link">SRJPEdata</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://SRJPE.github.io/SRJPEmodel/">SRJPEmodel</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Survival Model </span></span>
 <span><span class="co"># Prepare survival data</span></span>
-<span><span class="va">survival_data</span> <span class="op">&lt;-</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu"><a href="../reference/prepare_survival_inputs.html">prepare_survival_inputs</a></span><span class="op">(</span>number_of_water_year_types <span class="op">=</span> <span class="fl">2</span>, </span>
+<span><span class="va">survival_data</span> <span class="op">&lt;-</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu">prepare_survival_inputs</span><span class="op">(</span>number_of_water_year_types <span class="op">=</span> <span class="fl">2</span>, </span>
 <span>                                                     effect <span class="op">=</span> <span class="st">"fork_length_effect"</span><span class="op">)</span></span>
 <span><span class="co"># Fit survival model </span></span>
-<span><span class="va">survival_model_fit</span> <span class="op">&lt;-</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu"><a href="../reference/fit_survival_model.html">fit_survival_model</a></span><span class="op">(</span>survival_inputs <span class="op">=</span> <span class="va">survival_data</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">survival_model_fit</span> <span class="op">&lt;-</span> <span class="fu">SRJPEmodel</span><span class="fu">::</span><span class="fu">fit_survival_model</span><span class="op">(</span>survival_inputs <span class="op">=</span> <span class="va">survival_data</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model-output">Model Output<a class="anchor" aria-label="anchor" href="#model-output"></a>
@@ -223,7 +242,7 @@ detection probability rates for each year and release group.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># TODO confirm that this is working with Liz and then update to pull survival model fits</span></span>
 <span><span class="co"># Table to show model fits</span></span>
-<span><span class="va">survival_estimates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_survival_estimates.html">extract_survival_estimates</a></span><span class="op">(</span><span class="va">survival_model_fit</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">survival_estimates</span> <span class="op">&lt;-</span> <span class="fu">extract_survival_estimates</span><span class="op">(</span><span class="va">survival_model_fit</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Plots</strong></p>
 <p>The following plots show predicted survival from release to
 Sacramento for each release group and year along with 95% CI.</p>
@@ -233,9 +252,9 @@ group. Survival rates are colored by water year type. Error bars
 represent the 25 and 75 percentiles.</em></p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Generate survival plot</span></span>
-<span><span class="fu"><a href="../reference/generate_survival_rate_plot.html">generate_survival_rate_plot</a></span><span class="op">(</span><span class="va">survival_estimates</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">generate_survival_rate_plot</span><span class="op">(</span><span class="va">survival_estimates</span><span class="op">)</span></span></code></pre></div>
 <p><img src=""></p>
-<p><img src="images%2Fsurvival_plot.png"></p>
+<p><img src="images/survival_plot.png"></p>
 <p><strong>Resources</strong></p>
 <p>For more in depth documentation on the Spring Run JPE Survival Model
 please see the full report.</p>
@@ -257,7 +276,7 @@ please see the full report.</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
       </footer>
